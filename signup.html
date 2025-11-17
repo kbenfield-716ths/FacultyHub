@@ -1,71 +1,109 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>IRPA Signup</title>
+  <meta charset="UTF-8">
+  <title>IRPA Moonlighter Signup</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- Calendar signup UI -->
-  <h1>IRPA Moonlighter Signup</h1>
+  <div id="signupContainer">
+    <div id="signupHeader">
+      <div>
+        <h1>IRPA Moonlighter Signup</h1>
+        <p id="providerInfo"></p>
+      </div>
 
-  <p id="providerInfo"></p>
-<div id="weekday-labels">
-  <div>Sun</div>
-  <div>Mon</div>
-  <div>Tue</div>
-  <div>Wed</div>
-  <div>Thu</div>
-  <div>Fri</div>
-  <div>Sat</div>
-</div>
-  <div id="calendar"></div>
+      <div id="monthPickerLabel">
+        Month:&nbsp;
+        <input type="month" id="monthPicker">
+      </div>
+    </div>
 
-  <label>
-    Desired nights this month:
-    <input type="number" id="desired" min="0" max="15" value="4">
-  </label>
+    <!-- Weekday labels -->
+    <div id="weekday-labels">
+      <div>Sun</div>
+      <div>Mon</div>
+      <div>Tue</div>
+      <div>Wed</div>
+      <div>Thu</div>
+      <div>Fri</div>
+      <div>Sat</div>
+    </div>
 
-  <div style="margin-top: 1rem;">
-    <button id="saveBtn">Save My Signup</button>
+    <!-- Calendar grid -->
+    <div id="calendar"></div>
+
+    <!-- Desired nights + Save -->
+    <div id="controlsRow">
+      <label>
+        Desired nights this month:
+        <input type="number" id="desired" min="0" max="20" value="4">
+      </label>
+
+      <button id="saveBtn">Save My Signup</button>
+    </div>
   </div>
 
   <script>
-    // 1. Backend base URL (replace this with your real Render URL)
-    const API_BASE = "https://IRPA-web.onrender.com";
+    // 1. Backend URL (update this when your Render service is live)
+    const API_BASE = "https://your-service.onrender.com";
 
-    // 2. Read provider + month info from the URL
-    // Example link you would send them:
-    //   signup.html?provider_id=jsmith&provider_name=John%20Smith&month=2025-12
+    // 2. Helper to get current month "YYYY-MM"
+    function currentMonthString() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, "0");
+      return `${y}-${m}`;
+    }
+
+    // 3. Read provider + initial month from URL
     const params = new URLSearchParams(window.location.search);
     const provider_id = params.get("provider_id") || "test_provider";
     const provider_name = params.get("provider_name") || "Test Provider";
-    const monthStr = params.get("month") || "2025-12"; // "YYYY-MM"
+    let monthStr = params.get("month") || currentMonthString();  // "YYYY-MM"
 
-    document.getElementById("providerInfo").textContent =
-      `Signing up as ${provider_name} for ${monthStr}`;
+    // 4. Hook up basic UI references
+    const providerInfoEl = document.getElementById("providerInfo");
+    const monthPickerEl = document.getElementById("monthPicker");
+    const calendarEl = document.getElementById("calendar");
+    const desiredInput = document.getElementById("desired");
+    const saveBtn = document.getElementById("saveBtn");
 
-    // 3. Calendar state
+    // 5. State: selected dates for the CURRENT month view
     const selectedDates = new Set();
 
-    // 4. Render a simple month calendar grid
+    function updateHeader() {
+      providerInfoEl.textContent = `Signing up as ${provider_name} for ${monthStr}`;
+      monthPickerEl.value = monthStr;
+    }
+
+    // 6. Render the month calendar with weekday alignment
     function renderCalendar() {
-      const calendar = document.getElementById("calendar");
-      calendar.innerHTML = "";
+      calendarEl.innerHTML = "";
 
       const [year, month] = monthStr.split("-").map(Number);
       const firstDay = new Date(year, month - 1, 1);
-      const lastDay = new Date(year, month, 0); // last day of this month
+      const lastDay = new Date(year, month, 0); // last day of month
 
-      // Simple grid: show day numbers; you can enhance later if you want weekdays, etc.
+      const startWeekday = firstDay.getDay(); // 0–6 (Sun–Sat)
+
+      // Leading empty cells so the 1st lands on the correct weekday
+      for (let i = 0; i < startWeekday; i++) {
+        const emptyCell = document.createElement("div");
+        emptyCell.className = "irpa-day-cell empty";
+        calendarEl.appendChild(emptyCell);
+      }
+
+      // Actual day cells
       for (let day = 1; day <= lastDay.getDate(); day++) {
         const dateStr = `${monthStr}-${String(day).padStart(2, "0")}`;
+
         const cell = document.createElement("div");
         cell.className = "irpa-day-cell";
         cell.textContent = day;
         cell.dataset.date = dateStr;
 
-        // If already selected (e.g. re-render), mark it
         if (selectedDates.has(dateStr)) {
           cell.classList.add("selected");
         }
@@ -80,19 +118,22 @@
           }
         });
 
-        calendar.appendChild(cell);
+        calendarEl.appendChild(cell);
       }
     }
 
-    renderCalendar();
+    // 7. Month picker: let user change month, clear selections for new month
+    monthPickerEl.addEventListener("change", () => {
+      if (!monthPickerEl.value) return;
+      monthStr = monthPickerEl.value;
+      selectedDates.clear();      // each month has its own set; user saves per-month
+      updateHeader();
+      renderCalendar();
+    });
 
-    // 5. Save button handler
-    document.getElementById("saveBtn").addEventListener("click", async () => {
-      const desiredVal = parseInt(
-        document.getElementById("desired").value,
-        10
-      );
-
+    // 8. Save handler: sends CURRENT month’s picks to backend
+    saveBtn.addEventListener("click", async () => {
+      const desiredVal = parseInt(desiredInput.value, 10);
       if (isNaN(desiredVal) || desiredVal < 0) {
         alert("Please enter a valid desired nights number.");
         return;
@@ -104,7 +145,7 @@
         month: monthStr,
         desired_nights: desiredVal,
         dates: Array.from(selectedDates),
-        locked_dates: []   // later you can choose to mark some dates as locked
+        locked_dates: []  // you can wire special 'locked' clicks later
       };
 
       try {
@@ -115,21 +156,24 @@
         });
 
         if (!res.ok) {
-          const text = await res.text();
-          console.error("Error response:", text);
-          alert("Error saving signup: " + text);
+          const txt = await res.text();
+          console.error("Error response:", txt);
+          alert("Error saving signup: " + txt);
           return;
         }
 
         const data = await res.json();
         console.log("Saved:", data);
-        alert("Signup saved. Thank you!");
+        alert(`Signup for ${monthStr} saved. You can now change the month and repeat if needed.`);
       } catch (err) {
         console.error(err);
         alert("Network error saving signup.");
       }
     });
-  </script>
 
+    // 9. Initial render
+    updateHeader();
+    renderCalendar();
+  </script>
 </body>
 </html>
