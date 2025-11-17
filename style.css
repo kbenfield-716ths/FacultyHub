@@ -138,54 +138,13 @@ table td {
   border: 1px solid #fecaca;
 }
 
-/* ===== Calendar Styling ===== */
-/* Calendar wrapper */
-#calendar {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
-  max-width: 700px;
-  margin: 20px auto;
-}
-
-/* Each day cell */
-.irpa-day-cell {
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  padding: 12px 0;
-  text-align: center;
-  font-size: 18px;
-  cursor: pointer;
-  background: #fafafa;
-  user-select: none;
-  min-height: 40px;
-  line-height: 1.2em;
-}
-
-/* Selected day */
-.irpa-day-cell.selected {
-  background-color: #10b981;
-  color: white;
-  border-color: #059669;
-}
-
-/* Day labels row */
-#weekday-labels {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  max-width: 700px;
-  margin: 0 auto;
-  text-align: center;
-  font-weight: bold;
-  margin-bottom: 6px;
-}
-
 /* ===== Chart ===== */
 #coverageChart {
   margin-top: 2rem;
   width: 100%;
   height: 300px;
 }
+
 /* ---------- IRPA Signup Calendar ---------- */
 
 #signupContainer {
@@ -229,7 +188,7 @@ table td {
 /* Weekday labels */
 
 #weekday-labels {
-  display: grid;
+  display: grid !important;
   grid-template-columns: repeat(7, 1fr);
   max-width: 700px;
   margin: 10px auto 4px auto;
@@ -242,7 +201,7 @@ table td {
 /* Calendar grid */
 
 #calendar {
-  display: grid;
+  display: grid !important;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
   max-width: 700px;
@@ -252,6 +211,7 @@ table td {
 /* Each day cell */
 
 .irpa-day-cell {
+  box-sizing: border-box;
   border: 1px solid #ccc;
   border-radius: 6px;
   padding: 10px 0;
