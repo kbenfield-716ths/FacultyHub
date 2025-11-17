@@ -7,6 +7,11 @@
 </head>
 <body>
 
+  <!-- Top header -->
+  <header style="text-align:center; padding:12px 8px; font-weight:600;">
+    UVA Division of Pulmonary and Critical Care
+  </header>
+
   <div id="signupContainer">
     <div id="signupHeader">
       <div>
@@ -15,12 +20,19 @@
       </div>
 
       <div id="monthPickerLabel">
-        Month:&nbsp;
+        Start month:&nbsp;
         <input type="month" id="monthPicker">
+        &nbsp;Show:&nbsp;
+        <select id="monthsToShow">
+          <option value="1">1 month</option>
+          <option value="2" selected>2 months</option>
+          <option value="3">3 months</option>
+          <option value="4">4 months</option>
+        </select>
       </div>
     </div>
 
-    <!-- Weekday labels -->
+    <!-- Weekday labels (shared for all months) -->
     <div id="weekday-labels">
       <div>Sun</div>
       <div>Mon</div>
@@ -31,13 +43,13 @@
       <div>Sat</div>
     </div>
 
-    <!-- Calendar grid -->
+    <!-- Calendar grid: will contain multiple months stacked vertically -->
     <div id="calendar"></div>
 
     <!-- Desired nights + Save -->
     <div id="controlsRow">
       <label>
-        Desired nights this month:
+        Desired nights per month (applied to each visible month on save):
         <input type="number" id="desired" min="0" max="20" value="4">
       </label>
 
@@ -45,11 +57,16 @@
     </div>
   </div>
 
+  <!-- Footer -->
+  <footer style="text-align:center; padding:16px 8px; font-size:0.85rem; color:#555;">
+    built by platypus inc.
+  </footer>
+
   <script>
     // 1. Backend URL (update this when your Render service is live)
     const API_BASE = "https://your-service.onrender.com";
 
-    // 2. Helper to get current month "YYYY-MM"
+    // Helper to get current month "YYYY-MM"
     function currentMonthString() {
       const now = new Date();
       const y = now.getFullYear();
@@ -57,81 +74,123 @@
       return `${y}-${m}`;
     }
 
-    // 3. Read provider + initial month from URL
+    // Read provider info + initial start month from URL
     const params = new URLSearchParams(window.location.search);
     const provider_id = params.get("provider_id") || "test_provider";
     const provider_name = params.get("provider_name") || "Test Provider";
-    let monthStr = params.get("month") || currentMonthString();  // "YYYY-MM"
+    let monthStr = params.get("month") || currentMonthString();  // base month "YYYY-MM"
 
-    // 4. Hook up basic UI references
+    // DOM references
     const providerInfoEl = document.getElementById("providerInfo");
     const monthPickerEl = document.getElementById("monthPicker");
+    const monthsToShowEl = document.getElementById("monthsToShow");
     const calendarEl = document.getElementById("calendar");
     const desiredInput = document.getElementById("desired");
     const saveBtn = document.getElementById("saveBtn");
 
-    // 5. State: selected dates for the CURRENT month view
+    // Selected dates across ALL visible months (YYYY-MM-DD strings)
     const selectedDates = new Set();
 
     function updateHeader() {
-      providerInfoEl.textContent = `Signing up as ${provider_name} for ${monthStr}`;
+      providerInfoEl.textContent =
+        `Signing up as ${provider_name}. Start month: ${monthStr}. Showing ${monthsToShowEl.value} month(s).`;
       monthPickerEl.value = monthStr;
     }
 
-    // 6. Render the month calendar with weekday alignment
+    function getVisibleMonths() {
+      const count = parseInt(monthsToShowEl.value, 10) || 1;
+      const [baseYear, baseMonth] = monthStr.split("-").map(Number);
+      const months = [];
+
+      for (let i = 0; i < count; i++) {
+        const d = new Date(baseYear, baseMonth - 1 + i, 1);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        months.push(`${y}-${m}`);
+      }
+      return months;
+    }
+
+    function monthKeyFromDateStr(dateStr) {
+      // "YYYY-MM-DD" -> "YYYY-MM"
+      return dateStr.slice(0, 7);
+    }
+
+    // Render the calendars for all visible months (stacked vertically)
     function renderCalendar() {
       calendarEl.innerHTML = "";
 
-      const [year, month] = monthStr.split("-").map(Number);
-      const firstDay = new Date(year, month - 1, 1);
-      const lastDay = new Date(year, month, 0); // last day of month
+      const visibleMonths = getVisibleMonths();
 
-      const startWeekday = firstDay.getDay(); // 0–6 (Sun–Sat)
+      for (const mKey of visibleMonths) {
+        const [year, month] = mKey.split("-").map(Number);
+        const firstDay = new Date(year, month - 1, 1);
+        const lastDay = new Date(year, month, 0); // last day of month
+        const startWeekday = firstDay.getDay();   // 0–6
 
-      // Leading empty cells so the 1st lands on the correct weekday
-      for (let i = 0; i < startWeekday; i++) {
-        const emptyCell = document.createElement("div");
-        emptyCell.className = "irpa-day-cell empty";
-        calendarEl.appendChild(emptyCell);
-      }
+        // Month label row spanning all 7 columns
+        const labelCell = document.createElement("div");
+        labelCell.className = "month-label";
+        labelCell.style.gridColumn = "1 / -1";
+        labelCell.style.textAlign = "center";
+        labelCell.style.fontWeight = "600";
+        labelCell.style.marginTop = "8px";
+        labelCell.textContent = firstDay.toLocaleString("en-US", {
+          month: "long",
+          year: "numeric"
+        });
+        calendarEl.appendChild(labelCell);
 
-      // Actual day cells
-      for (let day = 1; day <= lastDay.getDate(); day++) {
-        const dateStr = `${monthStr}-${String(day).padStart(2, "0")}`;
-
-        const cell = document.createElement("div");
-        cell.className = "irpa-day-cell";
-        cell.textContent = day;
-        cell.dataset.date = dateStr;
-
-        if (selectedDates.has(dateStr)) {
-          cell.classList.add("selected");
+        // Leading empty cells so the 1st lands on the correct weekday
+        for (let i = 0; i < startWeekday; i++) {
+          const emptyCell = document.createElement("div");
+          emptyCell.className = "irpa-day-cell empty";
+          calendarEl.appendChild(emptyCell);
         }
 
-        cell.addEventListener("click", () => {
+        // Actual day cells
+        for (let day = 1; day <= lastDay.getDate(); day++) {
+          const dateStr = `${mKey}-${String(day).padStart(2, "0")}`;
+
+          const cell = document.createElement("div");
+          cell.className = "irpa-day-cell";
+          cell.textContent = day;
+          cell.dataset.date = dateStr;
+
           if (selectedDates.has(dateStr)) {
-            selectedDates.delete(dateStr);
-            cell.classList.remove("selected");
-          } else {
-            selectedDates.add(dateStr);
             cell.classList.add("selected");
           }
-        });
 
-        calendarEl.appendChild(cell);
+          cell.addEventListener("click", () => {
+            if (selectedDates.has(dateStr)) {
+              selectedDates.delete(dateStr);
+              cell.classList.remove("selected");
+            } else {
+              selectedDates.add(dateStr);
+              cell.classList.add("selected");
+            }
+          });
+
+          calendarEl.appendChild(cell);
+        }
       }
     }
 
-    // 7. Month picker: let user change month, clear selections for new month
+    // Start month changed
     monthPickerEl.addEventListener("change", () => {
       if (!monthPickerEl.value) return;
       monthStr = monthPickerEl.value;
-      selectedDates.clear();      // each month has its own set; user saves per-month
       updateHeader();
       renderCalendar();
     });
 
-    // 8. Save handler: sends CURRENT month’s picks to backend
+    // Number of months to show changed
+    monthsToShowEl.addEventListener("change", () => {
+      updateHeader();
+      renderCalendar();
+    });
+
+    // Save handler: sends one signup payload per VISIBLE month that has selections
     saveBtn.addEventListener("click", async () => {
       const desiredVal = parseInt(desiredInput.value, 10);
       if (isNaN(desiredVal) || desiredVal < 0) {
@@ -139,39 +198,58 @@
         return;
       }
 
-      const payload = {
-        provider_id,
-        provider_name,
-        month: monthStr,
-        desired_nights: desiredVal,
-        dates: Array.from(selectedDates),
-        locked_dates: []  // you can wire special 'locked' clicks later
-      };
+      const visibleMonths = new Set(getVisibleMonths());
+      const monthToDates = new Map();
+
+      // Group selected dates by month, but only for visible months
+      for (const dateStr of selectedDates) {
+        const mKey = monthKeyFromDateStr(dateStr);
+        if (!visibleMonths.has(mKey)) continue;
+        if (!monthToDates.has(mKey)) {
+          monthToDates.set(mKey, []);
+        }
+        monthToDates.get(mKey).push(dateStr);
+      }
+
+      if (monthToDates.size === 0) {
+        alert("No dates selected in the visible months.");
+        return;
+      }
 
       try {
-        const res = await fetch(`${API_BASE}/api/signup`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        for (const [mKey, dates] of monthToDates.entries()) {
+          const payload = {
+            provider_id,
+            provider_name,
+            month: mKey,
+            desired_nights: desiredVal,
+            dates: dates,
+            locked_dates: []  // hook in special handling later if needed
+          };
 
-        if (!res.ok) {
-          const txt = await res.text();
-          console.error("Error response:", txt);
-          alert("Error saving signup: " + txt);
-          return;
+          const res = await fetch(`${API_BASE}/api/signup`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          if (!res.ok) {
+            const txt = await res.text();
+            console.error("Error response for", mKey, ":", txt);
+            alert("Error saving signup for " + mKey + ": " + txt);
+            return;
+          }
         }
 
-        const data = await res.json();
-        console.log("Saved:", data);
-        alert(`Signup for ${monthStr} saved. You can now change the month and repeat if needed.`);
+        alert("Signup saved for all visible months with selected dates.");
       } catch (err) {
         console.error(err);
         alert("Network error saving signup.");
       }
     });
 
-    // 9. Initial render
+    // Initial render
+    monthPickerEl.value = monthStr;
     updateHeader();
     renderCalendar();
   </script>
