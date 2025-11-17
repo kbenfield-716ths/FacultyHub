@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>IRPA Signup</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Your calendar UI goes here -->
+  <div id="calendar"></div>
+
+  <label>
+    Desired nights:
+    <input type="number" id="desired" min="0" max="10">
+  </label>
+
+  <button id="saveBtn">Save My Signup</button>
+
+  <script>
+    // 1) Backend location
+    const API_BASE = "https://your-service.onrender.com";
+
+    // 2) Parse provider info from URL
+    const params = new URLSearchParams(window.location.search);
+    const provider_id = params.get("provider_id");   // e.g. "jdoe"
+    const provider_name = params.get("provider_name"); // e.g. "John Doe"
+    const month = params.get("month"); // e.g. "2025-12"
+
+    // 3) Selected dates from your calendar (you’ll fill this in)
+    const selectedDates = new Set();
+
+    // 4) Click handler
+    document.getElementById("saveBtn").addEventListener("click", () => {
+      const payload = {
+        provider_id,
+        provider_name,
+        month,
+        desired_nights: parseInt(document.getElementById("desired").value, 10),
+        dates: Array.from(selectedDates),
+        locked_dates: []
+      };
+
+      fetch(`${API_BASE}/api/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      .then(res => res.json())
+      .then(data => {
+        alert("Signup saved!");
+      })
+      .catch(err => {
+        alert("Error saving signup");
+        console.error(err);
+      });
+    });
+  </script>
+
+</body>
+</html>
