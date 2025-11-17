@@ -6,53 +6,120 @@
 </head>
 <body>
 
-  <!-- Your calendar UI goes here -->
+  <!-- Calendar signup UI -->
+  <h1>IRPA Moonlighter Signup</h1>
+
+  <p id="providerInfo"></p>
+
   <div id="calendar"></div>
 
   <label>
-    Desired nights:
-    <input type="number" id="desired" min="0" max="10">
+    Desired nights this month:
+    <input type="number" id="desired" min="0" max="15" value="4">
   </label>
 
-  <button id="saveBtn">Save My Signup</button>
+  <div style="margin-top: 1rem;">
+    <button id="saveBtn">Save My Signup</button>
+  </div>
 
   <script>
-    // 1) Backend location
-    const API_BASE = "https://IRPA-web.onrender.com";
+    // 1. Backend base URL (replace this with your real Render URL)
+    const API_BASE = "https://your-service.onrender.com";
 
-    // 2) Parse provider info from URL
+    // 2. Read provider + month info from the URL
+    // Example link you would send them:
+    //   signup.html?provider_id=jsmith&provider_name=John%20Smith&month=2025-12
     const params = new URLSearchParams(window.location.search);
-    const provider_id = params.get("provider_id");   // e.g. "jdoe"
-    const provider_name = params.get("provider_name"); // e.g. "John Doe"
-    const month = params.get("month"); // e.g. "2025-12"
+    const provider_id = params.get("provider_id") || "test_provider";
+    const provider_name = params.get("provider_name") || "Test Provider";
+    const monthStr = params.get("month") || "2025-12"; // "YYYY-MM"
 
-    // 3) Selected dates from your calendar (you’ll fill this in)
+    document.getElementById("providerInfo").textContent =
+      `Signing up as ${provider_name} for ${monthStr}`;
+
+    // 3. Calendar state
     const selectedDates = new Set();
 
-    // 4) Click handler
-    document.getElementById("saveBtn").addEventListener("click", () => {
+    // 4. Render a simple month calendar grid
+    function renderCalendar() {
+      const calendar = document.getElementById("calendar");
+      calendar.innerHTML = "";
+
+      const [year, month] = monthStr.split("-").map(Number);
+      const firstDay = new Date(year, month - 1, 1);
+      const lastDay = new Date(year, month, 0); // last day of this month
+
+      // Simple grid: show day numbers; you can enhance later if you want weekdays, etc.
+      for (let day = 1; day <= lastDay.getDate(); day++) {
+        const dateStr = `${monthStr}-${String(day).padStart(2, "0")}`;
+        const cell = document.createElement("div");
+        cell.className = "irpa-day-cell";
+        cell.textContent = day;
+        cell.dataset.date = dateStr;
+
+        // If already selected (e.g. re-render), mark it
+        if (selectedDates.has(dateStr)) {
+          cell.classList.add("selected");
+        }
+
+        cell.addEventListener("click", () => {
+          if (selectedDates.has(dateStr)) {
+            selectedDates.delete(dateStr);
+            cell.classList.remove("selected");
+          } else {
+            selectedDates.add(dateStr);
+            cell.classList.add("selected");
+          }
+        });
+
+        calendar.appendChild(cell);
+      }
+    }
+
+    renderCalendar();
+
+    // 5. Save button handler
+    document.getElementById("saveBtn").addEventListener("click", async () => {
+      const desiredVal = parseInt(
+        document.getElementById("desired").value,
+        10
+      );
+
+      if (isNaN(desiredVal) || desiredVal < 0) {
+        alert("Please enter a valid desired nights number.");
+        return;
+      }
+
       const payload = {
         provider_id,
         provider_name,
-        month,
-        desired_nights: parseInt(document.getElementById("desired").value, 10),
+        month: monthStr,
+        desired_nights: desiredVal,
         dates: Array.from(selectedDates),
-        locked_dates: []
+        locked_dates: []   // later you can choose to mark some dates as locked
       };
 
-      fetch(`${API_BASE}/api/signup`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
-      .then(res => res.json())
-      .then(data => {
-        alert("Signup saved!");
-      })
-      .catch(err => {
-        alert("Error saving signup");
+      try {
+        const res = await fetch(`${API_BASE}/api/signup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+          const text = await res.text();
+          console.error("Error response:", text);
+          alert("Error saving signup: " + text);
+          return;
+        }
+
+        const data = await res.json();
+        console.log("Saved:", data);
+        alert("Signup saved. Thank you!");
+      } catch (err) {
         console.error(err);
-      });
+        alert("Network error saving signup.");
+      }
     });
   </script>
 
