@@ -2,7 +2,7 @@
 from collections import defaultdict
 from .models import Signup, Shift, Provider
 
-from .moonlighter_optimizer import run_optimizer  # you adapt this import
+from .moonlighter_optimizer import runoptimizer  # you adapt this import
 
 
 def run_optimizer_for_month(db, month_row, strategy: str, night_slots: int):
