@@ -140,6 +140,8 @@ table td {
 
 /* ===== Calendar Styling ===== */
 .calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 40px);
   width: 100%;
   border-collapse: collapse;
   margin-top: 1rem;
@@ -183,6 +185,21 @@ table td {
 .calendar td:nth-child(1),
 .calendar td:nth-child(7) {
   background: #f8fafc;
+}
+
+.irpa-day-cell {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  text-align: center;
+  padding: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.irpa-day-cell.selected {
+  background-color: #10b981; /* green-ish */
+  color: white;
+  border-color: #059669;
 }
 
 /* ===== Chart ===== */
