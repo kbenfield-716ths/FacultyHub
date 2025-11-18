@@ -38,6 +38,9 @@ COPY moonlighter_optimizer.py /app/moonlighter_optimizer.py
 # If you have other helper Python files that backend imports,
 # add them here with more COPY lines.
 
+# ⬇️ NEW: copy your faculty CSV into the image
+COPY faculty.csv /app/faculty.csv
+
 # Expose the port the app will listen on inside the container
 EXPOSE 8000
 
