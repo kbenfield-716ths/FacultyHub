@@ -1,0 +1,20 @@
+# fly.toml app configuration file generated for moonlighter-web on 2025-11-18T09:32:51-05:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'moonlighter-web'
+primary_region = 'iad'
+
+[build]
+   dockerfile = "Dockerfile"
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = false
+  min_machines_running = 1
+  processes = ['app']
+
+[[vm]]
+  size = 'shared-cpu-1x'
