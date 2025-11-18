@@ -79,36 +79,52 @@ FACULTY_CSV = DATA_DIR / "faculty.csv"
 def seed_providers_from_csv(db: Session) -> None:
     """Populate Provider table from faculty.csv if it's empty."""
     print(f"[seed_providers] Looking for CSV at {FACULTY_CSV}")
+
     if not FACULTY_CSV.exists():
         print("[seed_providers] faculty.csv not found, skipping.")
         return
 
-    existing_count = db.query(Provider).count()
-    if existing_count > 0:
-        print(f"[seed_providers] Providers already exist ({existing_count}), skipping.")
-        return
-
-    print(f"[seed_providers] Loading providers from {FACULTY_CSV}")
+    # Log CSV headers so we know they match faculty_id,name,email
     with FACULTY_CSV.open(newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
-        for row in reader:
-            faculty_id = row.get("faculty_id", "").strip()
-            name = row.get("name", "").strip()
-            email = row.get("email", "").strip()
+        headers = reader.fieldnames
+        print(f"[seed_providers] CSV headers: {headers}")
 
+    existing_count = db.query(Provider).count()
+    print(f"[seed_providers] Existing providers in DB: {existing_count}")
+
+    if existing_count > 0:
+        print("[seed_providers] Providers already present, NOT reseeding.")
+        return
+
+    # Re-open to actually read rows
+    inserted = 0
+    with FACULTY_CSV.open(newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for idx, row in enumerate(reader, start=1):
+            faculty_id = (row.get("faculty_id") or "").strip()
+            name = (row.get("name") or "").strip()
+            email = (row.get("email") or "").strip()
+
+            # Log each row briefly
+            print(f"[seed_providers] Row {idx}: faculty_id='{faculty_id}', name='{name}', email='{email}'")
+
+            # Skip incomplete rows
             if not faculty_id or not name:
+                print(f"[seed_providers]  -> skipping row {idx}, missing id or name")
                 continue
 
             # Avoid duplicates in CSV
             exists = db.query(Provider).filter(Provider.id == faculty_id).first()
             if exists:
+                print(f"[seed_providers]  -> row {idx} duplicate faculty_id {faculty_id}, skipping")
                 continue
 
             db.add(Provider(id=faculty_id, name=name, email=email or None))
+            inserted += 1
 
     db.commit()
-    print("[seed_providers] Done seeding providers from CSV")
-
+    print(f"[seed_providers] Seeding complete. Inserted {inserted} providers.")
 
 # ---------- FastAPI lifecycle ----------
 
