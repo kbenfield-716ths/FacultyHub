@@ -1,12 +1,20 @@
 # backend/app.py
+from datetime import date
+from typing import List, Optional
+
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List
-from datetime import date
+from sqlalchemy.orm import Session
+
 from .models import (
-    SessionLocal, init_db,
-    Provider, Month, Shift, Signup, Assignment
+    SessionLocal,
+    init_db,
+    Provider,
+    Month,
+    Shift,
+    Signup,
+    Assignment,
 )
 from .optimizer_bridge import run_optimizer_for_month
 
@@ -42,7 +50,7 @@ class SignupPayload(BaseModel):
 
 
 @app.post("/api/signup")
-def save_signup(payload: SignupPayload, db=Depends(get_db)):
+def save_signup(payload: SignupPayload, db: Session = Depends(get_db)):
     # Ensure provider
     provider = db.query(Provider).get(payload.provider_id)
     if not provider:
@@ -78,7 +86,7 @@ def save_signup(payload: SignupPayload, db=Depends(get_db)):
     shift_ids = [s.id for s in existing_shifts.values()]
     db.query(Signup).filter(
         Signup.provider_id == payload.provider_id,
-        Signup.shift_id.in_(shift_ids)
+        Signup.shift_id.in_(shift_ids),
     ).delete(synchronize_session=False)
 
     # Write new signups
@@ -95,10 +103,50 @@ def save_signup(payload: SignupPayload, db=Depends(get_db)):
     db.commit()
     return {"status": "ok"}
 
-    # in backend/app.py (or similar)
-    @app.get("/api/admin/signups")
-    def list_signups(month: str | None = None, db: Session = Depends(get_db)):
-    q = db.query(Signup)
+
+# -------- Admin endpoint to see signups --------
+
+class AdminSignupOut(BaseModel):
+    provider_id: str
+    provider_name: str
+    date: date
+    month: str            # "YYYY-MM"
+    desired_nights: int
+    locked: bool
+
+
+@app.get("/api/admin/signups", response_model=List[AdminSignupOut])
+def list_signups(
+    month: Optional[str] = None,  # "YYYY-MM" or omitted
+    db: Session = Depends(get_db),
+):
+    # Join Signup -> Shift -> Month -> Provider
+    q = (
+        db.query(Signup, Shift, Month, Provider)
+        .join(Shift, Signup.shift_id == Shift.id)
+        .join(Month, Shift.month_id == Month.id)
+        .join(Provider, Signup.provider_id == Provider.id)
+    )
+
     if month:
-        q = q.filter(Signup.month == month)
-    return q.order_by(Signup.provider_name, Signup.date).all()
+        try:
+            year, m = map(int, month.split("-"))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="month must be 'YYYY-MM'")
+        q = q.filter(Month.year == year, Month.month == m)
+
+    rows = q.order_by(Month.year, Month.month, Shift.date, Provider.name).all()
+
+    results: List[AdminSignupOut] = []
+    for su, sh, mo, pr in rows:
+        results.append(
+            AdminSignupOut(
+                provider_id=pr.id,
+                provider_name=pr.name,
+                date=sh.date,
+                month=f"{mo.year:04d}-{mo.month:02d}",
+                desired_nights=su.desired_nights,
+                locked=su.locked,
+            )
+        )
+    return results
