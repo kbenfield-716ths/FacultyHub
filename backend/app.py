@@ -36,7 +36,54 @@ def get_db():
         yield db
     finally:
         db.close()
+# ---------- CSV seeding helpers ----------
 
+DATA_DIR = Path(__file__).resolve().parent.parent
+FACULTY_CSV = DATA_DIR / "faculty.csv"   # /app/faculty.csv inside the container
+
+
+def seed_providers_from_csv(db: Session) -> None:
+    """
+    Seed the Provider table from faculty.csv *if* it is empty.
+    Safe to call multiple times.
+    """
+    existing_count = db.query(Provider).count()
+    if existing_count > 0:
+        # Already seeded / providers created by signups
+        return
+
+    if not FACULTY_CSV.exists():
+        print(f"[seed_providers] faculty.csv not found at {FACULTY_CSV}")
+        return
+
+    print(f"[seed_providers] Loading providers from {FACULTY_CSV}")
+    with FACULTY_CSV.open(newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+
+        for row in reader:
+            # Adjust these field names if your CSV is different
+            pid = row.get("id") or row.get("provider_id")
+            name = row.get("name") or row.get("provider_name")
+
+            if not pid or not name:
+                # Skip malformed rows
+                continue
+
+            # Only insert if not present (id is primary key)
+            existing = db.query(Provider).get(pid)
+            if not existing:
+                db.add(Provider(id=pid, name=name))
+
+    db.commit()
+    print("[seed_providers] Done seeding providers from CSV")
+
+
+# FastAPI startup hook: init DB + seed providers
+@app.on_event("startup")
+def on_startup():
+    init_db()
+    with SessionLocal() as db:
+        seed_providers_from_csv(db)
 
 # ---------- Pydantic Schemas ----------
 
@@ -69,57 +116,7 @@ class ProviderOut(BaseModel):
         orm_mode = True
 
 
-# ---------- CSV seeding for Provider ----------
 
-def seed_providers_from_csv(db: Session):
-    """
-    Read faculty.csv from the repo root and insert Providers
-    if the table is currently empty.
-    Expected CSV format: id,name
-    """
-    count = db.query(Provider).count()
-    if count > 0:
-        # Already seeded, don't seed again
-        return
-
-    # backend/app.py -> /app/backend/ in container
-    # repo root (where faculty.csv lives) -> one level up
-    root_dir = os.path.dirname(os.path.dirname(__file__))
-    csv_path = os.path.join(root_dir, "faculty.csv")
-
-    if not os.path.exists(csv_path):
-        print(f"[seed_providers_from_csv] faculty.csv not found at {csv_path}")
-        return
-
-    print(f"[seed_providers_from_csv] Seeding providers from {csv_path}")
-
-    with open(csv_path, newline="") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            pid = row.get("id") or row.get("provider_id")
-            name = row.get("name") or row.get("provider_name")
-            if not pid or not name:
-                continue
-
-            # Avoid duplicates
-            existing = db.query(Provider).filter_by(id=pid).first()
-            if existing:
-                continue
-
-            db.add(Provider(id=pid, name=name))
-
-    db.commit()
-    print("[seed_providers_from_csv] Seeding complete.")
-
-
-@app.on_event("startup")
-def on_startup():
-    # Run seeding once on startup
-    db = SessionLocal()
-    try:
-        seed_providers_from_csv(db)
-    finally:
-        db.close()
 
 
 # ---------- Signup endpoint ----------
