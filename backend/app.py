@@ -1,29 +1,23 @@
 # backend/app.py
-from datetime import date
-from typing import List, Optional
-
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import List, Optional
+from datetime import date
 from sqlalchemy.orm import Session
 
 from .models import (
-    SessionLocal,
-    init_db,
-    Provider,
-    Month,
-    Shift,
-    Signup,
-    Assignment,
+    SessionLocal, init_db,
+    Provider, Month, Shift, Signup, Assignment
 )
 from .optimizer_bridge import run_optimizer_for_month
 
 app = FastAPI()
 
-# Allow calls from your GitHub Pages site
+# Allow calls from your GitHub Pages site (you can tighten this later)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # later you can lock this to your GitHub Pages URL
+    allow_origins=["*"],  # later: ["https://kbenfield-716ths.github.io"]
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -40,23 +34,48 @@ def get_db():
         db.close()
 
 
+# ---------- Pydantic Schemas ----------
+
 class SignupPayload(BaseModel):
     provider_id: str
     provider_name: str
-    month: str            # "2025-12"
+    month: str            # "2025-11"
     desired_nights: int
-    dates: List[date]     # ["2025-12-01", ...]
+    dates: List[date]     # ["2025-11-06", ...]
     locked_dates: List[date] = []
 
 
+class SignupOut(BaseModel):
+    provider_id: str
+    provider_name: str
+    date: date
+    month: str
+    desired_nights: int
+    locked: bool
+
+    class Config:
+        orm_mode = True
+
+
+class ProviderOut(BaseModel):
+    id: str
+    name: str
+
+    class Config:
+        orm_mode = True
+
+
+# ---------- Signup endpoint ----------
+
 @app.post("/api/signup")
 def save_signup(payload: SignupPayload, db: Session = Depends(get_db)):
-    # Ensure provider
+    # Ensure provider exists
     provider = db.query(Provider).get(payload.provider_id)
     if not provider:
         provider = Provider(id=payload.provider_id, name=payload.provider_name)
         db.add(provider)
 
+    # Ensure Month row exists
     year, month = map(int, payload.month.split("-"))
     month_row = (
         db.query(Month)
@@ -68,7 +87,7 @@ def save_signup(payload: SignupPayload, db: Session = Depends(get_db)):
         db.add(month_row)
         db.flush()
 
-    # Ensure shifts exist for dates
+    # Ensure shifts exist for the selected dates
     existing_shifts = {
         s.date: s for s in db.query(Shift).filter(Shift.month_id == month_row.id)
     }
@@ -82,11 +101,11 @@ def save_signup(payload: SignupPayload, db: Session = Depends(get_db)):
             db.flush()
             existing_shifts[d] = s
 
-    # Clear old signups for this provider+month
+    # Clear old signups for this provider in this month
     shift_ids = [s.id for s in existing_shifts.values()]
     db.query(Signup).filter(
         Signup.provider_id == payload.provider_id,
-        Signup.shift_id.in_(shift_ids),
+        Signup.shift_id.in_(shift_ids)
     ).delete(synchronize_session=False)
 
     # Write new signups
@@ -94,9 +113,12 @@ def save_signup(payload: SignupPayload, db: Session = Depends(get_db)):
     for d in payload.dates:
         su = Signup(
             provider_id=payload.provider_id,
-            shift_id=existing_shifts[d].id,
+            provider_name=payload.provider_name,
+            date=d,
+            month=payload.month,
             desired_nights=payload.desired_nights,
             locked=d in locked_set,
+            shift_id=existing_shifts[d].id,
         )
         db.add(su)
 
@@ -104,49 +126,22 @@ def save_signup(payload: SignupPayload, db: Session = Depends(get_db)):
     return {"status": "ok"}
 
 
-# -------- Admin endpoint to see signups --------
+# ---------- Admin: list signups ----------
 
-class AdminSignupOut(BaseModel):
-    provider_id: str
-    provider_name: str
-    date: date
-    month: str            # "YYYY-MM"
-    desired_nights: int
-    locked: bool
-
-
-@app.get("/api/admin/signups", response_model=List[AdminSignupOut])
+@app.get("/api/admin/signups", response_model=List[SignupOut])
 def list_signups(
-    month: Optional[str] = None,  # "YYYY-MM" or omitted
+    month: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
-    # Join Signup -> Shift -> Month -> Provider
-    q = (
-        db.query(Signup, Shift, Month, Provider)
-        .join(Shift, Signup.shift_id == Shift.id)
-        .join(Month, Shift.month_id == Month.id)
-        .join(Provider, Signup.provider_id == Provider.id)
-    )
-
+    q = db.query(Signup)
     if month:
-        try:
-            year, m = map(int, month.split("-"))
-        except ValueError:
-            raise HTTPException(status_code=400, detail="month must be 'YYYY-MM'")
-        q = q.filter(Month.year == year, Month.month == m)
+        q = q.filter(Signup.month == month)
+    return q.order_by(Signup.provider_name, Signup.date).all()
 
-    rows = q.order_by(Month.year, Month.month, Shift.date, Provider.name).all()
 
-    results: List[AdminSignupOut] = []
-    for su, sh, mo, pr in rows:
-        results.append(
-            AdminSignupOut(
-                provider_id=pr.id,
-                provider_name=pr.name,
-                date=sh.date,
-                month=f"{mo.year:04d}-{mo.month:02d}",
-                desired_nights=su.desired_nights,
-                locked=su.locked,
-            )
-        )
-    return results
+# ---------- Providers list (for dropdown) ----------
+
+@app.get("/api/providers", response_model=List[ProviderOut])
+def list_providers(db: Session = Depends(get_db)):
+    providers = db.query(Provider).order_by(Provider.name).all()
+    return providers
