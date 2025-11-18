@@ -94,3 +94,11 @@ def save_signup(payload: SignupPayload, db=Depends(get_db)):
 
     db.commit()
     return {"status": "ok"}
+
+    # in backend/app.py (or similar)
+    @app.get("/api/admin/signups")
+    def list_signups(month: str | None = None, db: Session = Depends(get_db)):
+    q = db.query(Signup)
+    if month:
+        q = q.filter(Signup.month == month)
+    return q.order_by(Signup.provider_name, Signup.date).all()
