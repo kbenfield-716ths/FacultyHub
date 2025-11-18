@@ -16,6 +16,19 @@
     <div id="signupHeader">
       <div>
         <h1>IRPA Moonlighter Signup</h1>
+
+        <!-- Faculty selector -->
+        <div style="margin-bottom: 4px; font-size: 0.9rem;">
+          Faculty:&nbsp;
+          <select id="providerSelect">
+            <option value="">-- select your name --</option>
+            <!-- TODO: replace these with your real list -->
+            <option value="k_enfield" data-name="Kyle Enfield">Enfield, Kyle</option>
+            <option value="a_smith" data-name="Alex Smith">Smith, Alex</option>
+            <option value="j_doe" data-name="Jamie Doe">Doe, Jamie</option>
+          </select>
+        </div>
+
         <p id="providerInfo"></p>
       </div>
 
@@ -63,10 +76,10 @@
   </footer>
 
   <script>
-    // 1. Backend URL (update this when your Render service is live)
+    // Backend base URL (FastAPI on Fly)
     const API_BASE = "https://moonlighter-web.fly.dev";
 
-    // Helper to get current month "YYYY-MM"
+    // Helper: current month "YYYY-MM"
     function currentMonthString() {
       const now = new Date();
       const y = now.getFullYear();
@@ -74,13 +87,14 @@
       return `${y}-${m}`;
     }
 
-    // Read provider info + initial start month from URL
+    // URL params
     const params = new URLSearchParams(window.location.search);
-    const provider_id = params.get("provider_id") || "test_provider";
-    const provider_name = params.get("provider_name") || "Test Provider";
+    let provider_id = params.get("provider_id") || "";
+    let provider_name = params.get("provider_name") || "";
     let monthStr = params.get("month") || currentMonthString();  // base month "YYYY-MM"
 
-    // DOM references
+    // DOM refs
+    const providerSelectEl = document.getElementById("providerSelect");
     const providerInfoEl = document.getElementById("providerInfo");
     const monthPickerEl = document.getElementById("monthPicker");
     const monthsToShowEl = document.getElementById("monthsToShow");
@@ -88,12 +102,46 @@
     const desiredInput = document.getElementById("desired");
     const saveBtn = document.getElementById("saveBtn");
 
-    // Selected dates across ALL visible months (YYYY-MM-DD strings)
+    // Track selected dates (YYYY-MM-DD)
     const selectedDates = new Set();
 
+    // Try to pre-select faculty from URL params
+    function syncProviderFromParams() {
+      if (!provider_id && !provider_name) return;
+
+      for (const opt of providerSelectEl.options) {
+        if (!opt.value) continue;
+
+        const optId = opt.value;
+        const optName = opt.dataset.name;
+
+        if ((provider_id && optId === provider_id) ||
+            (provider_name && optName === provider_name)) {
+          providerSelectEl.value = optId;
+          provider_id = optId;
+          provider_name = optName;
+          return;
+        }
+      }
+    }
+
+    // When faculty changes via dropdown
+    providerSelectEl.addEventListener("change", () => {
+      const opt = providerSelectEl.selectedOptions[0];
+      if (!opt || !opt.value) {
+        provider_id = "";
+        provider_name = "";
+      } else {
+        provider_id = opt.value;
+        provider_name = opt.dataset.name || opt.textContent.trim();
+      }
+      updateHeader();
+    });
+
     function updateHeader() {
+      const who = provider_name ? provider_name : "— no faculty selected —";
       providerInfoEl.textContent =
-        `Signing up as ${provider_name}. Start month: ${monthStr}. Showing ${monthsToShowEl.value} month(s).`;
+        `Signing up as ${who}. Start month: ${monthStr}. Showing ${monthsToShowEl.value} month(s).`;
       monthPickerEl.value = monthStr;
     }
 
@@ -116,7 +164,7 @@
       return dateStr.slice(0, 7);
     }
 
-    // Render the calendars for all visible months (stacked vertically)
+    // Render calendars for all visible months
     function renderCalendar() {
       calendarEl.innerHTML = "";
 
@@ -125,10 +173,10 @@
       for (const mKey of visibleMonths) {
         const [year, month] = mKey.split("-").map(Number);
         const firstDay = new Date(year, month - 1, 1);
-        const lastDay = new Date(year, month, 0); // last day of month
-        const startWeekday = firstDay.getDay();   // 0–6
+        const lastDay = new Date(year, month, 0);
+        const startWeekday = firstDay.getDay();
 
-        // Month label row spanning all 7 columns
+        // Month label row
         const labelCell = document.createElement("div");
         labelCell.className = "month-label";
         labelCell.style.gridColumn = "1 / -1";
@@ -141,14 +189,14 @@
         });
         calendarEl.appendChild(labelCell);
 
-        // Leading empty cells so the 1st lands on the correct weekday
+        // Leading blanks
         for (let i = 0; i < startWeekday; i++) {
           const emptyCell = document.createElement("div");
           emptyCell.className = "irpa-day-cell empty";
           calendarEl.appendChild(emptyCell);
         }
 
-        // Actual day cells
+        // Days
         for (let day = 1; day <= lastDay.getDate(); day++) {
           const dateStr = `${mKey}-${String(day).padStart(2, "0")}`;
 
@@ -184,14 +232,19 @@
       renderCalendar();
     });
 
-    // Number of months to show changed
+    // Months to show changed
     monthsToShowEl.addEventListener("change", () => {
       updateHeader();
       renderCalendar();
     });
 
-    // Save handler: sends one signup payload per VISIBLE month that has selections
+    // Save handler: send one payload per visible month with selections
     saveBtn.addEventListener("click", async () => {
+      if (!provider_id || !provider_name) {
+        alert("Please select your name from the faculty list before saving.");
+        return;
+      }
+
       const desiredVal = parseInt(desiredInput.value, 10);
       if (isNaN(desiredVal) || desiredVal < 0) {
         alert("Please enter a valid desired nights number.");
@@ -201,7 +254,7 @@
       const visibleMonths = new Set(getVisibleMonths());
       const monthToDates = new Map();
 
-      // Group selected dates by month, but only for visible months
+      // Group selected dates by visible month
       for (const dateStr of selectedDates) {
         const mKey = monthKeyFromDateStr(dateStr);
         if (!visibleMonths.has(mKey)) continue;
@@ -224,29 +277,35 @@
             month: mKey,
             desired_nights: desiredVal,
             dates: dates,
-            locked_dates: []  // hook in special handling later if needed
+            locked_dates: []
           };
 
           const res = await fetch(`${API_BASE}/api/signup`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
-          }) 
-          .then(async (res) => {
-            if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            alert(`Error: ${err.detail || res.statusText}`);
-              return;
-            }
-            alert("Signup saved successfully!");
-          })
-          .catch((err) => {
-            console.error(err);
-          alert("Network error talking to signup service.");
-        });
+          });
 
+          if (!res.ok) {
+            let msg = res.statusText;
+            try {
+              const err = await res.json();
+              if (err && err.detail) msg = err.detail;
+            } catch (_) {}
+            alert(`Error saving for ${mKey}: ${msg}`);
+            return;
+          }
+        }
 
-    // Initial render
+        alert("Signup saved successfully for all selected months!");
+      } catch (err) {
+        console.error(err);
+        alert("Network error talking to signup service.");
+      }
+    });
+
+    // Initial setup
+    syncProviderFromParams();
     monthPickerEl.value = monthStr;
     updateHeader();
     renderCalendar();
