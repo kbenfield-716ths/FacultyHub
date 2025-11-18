@@ -11,6 +11,8 @@ from .models import (
     Provider, Month, Shift, Signup, Assignment
 )
 from .optimizer_bridge import run_optimizer_for_month
+import csv
+import os
 
 app = FastAPI()
 
@@ -32,7 +34,42 @@ def get_db():
         yield db
     finally:
         db.close()
+# ---------- CSV Provider Seeding ----------
 
+def seed_providers_from_csv(db: Session):
+    """
+    Reads faculty.csv at the project root and seeds Provider table.
+    Expected columns: faculty_id, name, email
+    """
+    csv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "faculty.csv")
+
+    if not os.path.exists(csv_path):
+        print(f"⚠️ faculty.csv not found at {csv_path}, skipping provider seeding.")
+        return
+
+    with open(csv_path, newline='', encoding="utf-8") as f:
+        reader = csv.reader(f)
+        rows = list(reader)
+
+    # Detect header row
+    has_header = False
+    if rows and rows[0][0].lower().strip() == "faculty_id":
+        has_header = True
+        rows = rows[1:]
+
+    for row in rows:
+        if len(row) < 2:
+            continue
+
+        pid = row[0].strip()
+        name = row[1].strip()
+
+        existing = db.query(Provider).get(pid)
+        if not existing:
+            print(f"🌱 Seeding provider: {pid} -> {name}")
+            db.add(Provider(id=pid, name=name))
+
+    db.commit()
 
 # ---------- Pydantic Schemas ----------
 
@@ -64,7 +101,14 @@ class ProviderOut(BaseModel):
     class Config:
         orm_mode = True
 
-
+@app.on_event("startup")
+def startup_seed():
+    db = SessionLocal()
+    try:
+        seed_providers_from_csv(db)
+    finally:
+        db.close()
+        
 # ---------- Signup endpoint ----------
 
 @app.post("/api/signup")
