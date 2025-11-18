@@ -16,20 +16,15 @@
     <div id="signupHeader">
       <div>
         <h1>IRPA Moonlighter Signup</h1>
-
-        <!-- Faculty selector -->
-        <div style="margin-bottom: 4px; font-size: 0.9rem;">
-          Faculty:&nbsp;
-          <select id="providerSelect">
-            <option value="">-- select your name --</option>
-            <!-- TODO: replace these with your real list -->
-            <option value="k_enfield" data-name="Kyle Enfield">Enfield, Kyle</option>
-            <option value="a_smith" data-name="Alex Smith">Smith, Alex</option>
-            <option value="j_doe" data-name="Jamie Doe">Doe, Jamie</option>
-          </select>
-        </div>
-
         <p id="providerInfo"></p>
+      </div>
+
+      <!-- Provider selection row -->
+      <div id="providerRow">
+        <label for="providerSelect">Provider:&nbsp;</label>
+        <select id="providerSelect">
+          <option value="">Select your name…</option>
+        </select>
       </div>
 
       <div id="monthPickerLabel">
@@ -76,10 +71,10 @@
   </footer>
 
   <script>
-    // Backend base URL (FastAPI on Fly)
+    // Backend base URL
     const API_BASE = "https://moonlighter-web.fly.dev";
 
-    // Helper: current month "YYYY-MM"
+    // Helper to get current month "YYYY-MM"
     function currentMonthString() {
       const now = new Date();
       const y = now.getFullYear();
@@ -87,61 +82,34 @@
       return `${y}-${m}`;
     }
 
-    // URL params
+    // Read optional initial provider + month from URL
     const params = new URLSearchParams(window.location.search);
-    let provider_id = params.get("provider_id") || "";
-    let provider_name = params.get("provider_name") || "";
-    let monthStr = params.get("month") || currentMonthString();  // base month "YYYY-MM"
+    const paramProviderId = params.get("provider_id") || "";
+    const paramProviderName = params.get("provider_name") || "";
+    let provider_id = paramProviderId;
+    let provider_name = paramProviderName;
+    let monthStr = params.get("month") || currentMonthString();  // base "YYYY-MM"
 
-    // DOM refs
+    // DOM references
+    const providerInfoEl  = document.getElementById("providerInfo");
     const providerSelectEl = document.getElementById("providerSelect");
-    const providerInfoEl = document.getElementById("providerInfo");
-    const monthPickerEl = document.getElementById("monthPicker");
-    const monthsToShowEl = document.getElementById("monthsToShow");
-    const calendarEl = document.getElementById("calendar");
-    const desiredInput = document.getElementById("desired");
-    const saveBtn = document.getElementById("saveBtn");
+    const monthPickerEl   = document.getElementById("monthPicker");
+    const monthsToShowEl  = document.getElementById("monthsToShow");
+    const calendarEl      = document.getElementById("calendar");
+    const desiredInput    = document.getElementById("desired");
+    const saveBtn         = document.getElementById("saveBtn");
 
-    // Track selected dates (YYYY-MM-DD)
+    // Selected dates across ALL visible months (YYYY-MM-DD strings)
     const selectedDates = new Set();
 
-    // Try to pre-select faculty from URL params
-    function syncProviderFromParams() {
-      if (!provider_id && !provider_name) return;
-
-      for (const opt of providerSelectEl.options) {
-        if (!opt.value) continue;
-
-        const optId = opt.value;
-        const optName = opt.dataset.name;
-
-        if ((provider_id && optId === provider_id) ||
-            (provider_name && optName === provider_name)) {
-          providerSelectEl.value = optId;
-          provider_id = optId;
-          provider_name = optName;
-          return;
-        }
-      }
-    }
-
-    // When faculty changes via dropdown
-    providerSelectEl.addEventListener("change", () => {
-      const opt = providerSelectEl.selectedOptions[0];
-      if (!opt || !opt.value) {
-        provider_id = "";
-        provider_name = "";
-      } else {
-        provider_id = opt.value;
-        provider_name = opt.dataset.name || opt.textContent.trim();
-      }
-      updateHeader();
-    });
-
     function updateHeader() {
-      const who = provider_name ? provider_name : "— no faculty selected —";
+      const providerText = provider_name
+        ? `Signing up as ${provider_name}. `
+        : `Select your name to begin. `;
+
       providerInfoEl.textContent =
-        `Signing up as ${who}. Start month: ${monthStr}. Showing ${monthsToShowEl.value} month(s).`;
+        `${providerText}Start month: ${monthStr}. Showing ${monthsToShowEl.value} month(s).`;
+
       monthPickerEl.value = monthStr;
     }
 
@@ -164,7 +132,7 @@
       return dateStr.slice(0, 7);
     }
 
-    // Render calendars for all visible months
+    // Render the calendars for all visible months (stacked vertically)
     function renderCalendar() {
       calendarEl.innerHTML = "";
 
@@ -173,10 +141,10 @@
       for (const mKey of visibleMonths) {
         const [year, month] = mKey.split("-").map(Number);
         const firstDay = new Date(year, month - 1, 1);
-        const lastDay = new Date(year, month, 0);
-        const startWeekday = firstDay.getDay();
+        const lastDay  = new Date(year, month, 0); // last day of month
+        const startWeekday = firstDay.getDay();    // 0–6
 
-        // Month label row
+        // Month label row spanning all 7 columns
         const labelCell = document.createElement("div");
         labelCell.className = "month-label";
         labelCell.style.gridColumn = "1 / -1";
@@ -189,14 +157,14 @@
         });
         calendarEl.appendChild(labelCell);
 
-        // Leading blanks
+        // Leading empty cells so the 1st lands on the correct weekday
         for (let i = 0; i < startWeekday; i++) {
           const emptyCell = document.createElement("div");
           emptyCell.className = "irpa-day-cell empty";
           calendarEl.appendChild(emptyCell);
         }
 
-        // Days
+        // Actual day cells
         for (let day = 1; day <= lastDay.getDate(); day++) {
           const dateStr = `${mKey}-${String(day).padStart(2, "0")}`;
 
@@ -232,16 +200,25 @@
       renderCalendar();
     });
 
-    // Months to show changed
+    // Number of months to show changed
     monthsToShowEl.addEventListener("change", () => {
       updateHeader();
       renderCalendar();
     });
 
-    // Save handler: send one payload per visible month with selections
+    // Provider selection changed
+    providerSelectEl.addEventListener("change", () => {
+      const id = providerSelectEl.value;
+      const name = providerSelectEl.options[providerSelectEl.selectedIndex]?.text || "";
+      provider_id = id;
+      provider_name = name;
+      updateHeader();
+    });
+
+    // Save handler: sends one signup payload per VISIBLE month that has selections
     saveBtn.addEventListener("click", async () => {
       if (!provider_id || !provider_name) {
-        alert("Please select your name from the faculty list before saving.");
+        alert("Please select your name before saving.");
         return;
       }
 
@@ -254,7 +231,7 @@
       const visibleMonths = new Set(getVisibleMonths());
       const monthToDates = new Map();
 
-      // Group selected dates by visible month
+      // Group selected dates by month, but only for visible months
       for (const dateStr of selectedDates) {
         const mKey = monthKeyFromDateStr(dateStr);
         if (!visibleMonths.has(mKey)) continue;
@@ -287,28 +264,59 @@
           });
 
           if (!res.ok) {
-            let msg = res.statusText;
-            try {
-              const err = await res.json();
-              if (err && err.detail) msg = err.detail;
-            } catch (_) {}
-            alert(`Error saving for ${mKey}: ${msg}`);
-            return;
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || res.statusText || "Unknown error");
           }
         }
 
-        alert("Signup saved successfully for all selected months!");
+        alert("Signup saved successfully!");
       } catch (err) {
         console.error(err);
-        alert("Network error talking to signup service.");
+        alert("There was a problem saving your signup.");
       }
     });
 
-    // Initial setup
-    syncProviderFromParams();
+    // Load providers from backend and populate dropdown
+    async function loadProviders() {
+      try {
+        const res = await fetch(`${API_BASE}/api/providers`);
+        if (!res.ok) {
+          console.error("Failed to load providers", res.status);
+          return;
+        }
+        const providers = await res.json();
+
+        providers.forEach(p => {
+          const opt = document.createElement("option");
+          opt.value = p.id;
+          opt.textContent = p.name;
+          providerSelectEl.appendChild(opt);
+        });
+
+        // If provider was passed via URL, preselect
+        if (paramProviderId) {
+          providerSelectEl.value = paramProviderId;
+        }
+
+        if (providerSelectEl.value) {
+          const selected = providers.find(p => p.id === providerSelectEl.value);
+          if (selected) {
+            provider_id = selected.id;
+            provider_name = selected.name;
+          }
+        }
+
+        updateHeader();
+      } catch (err) {
+        console.error("Error loading providers", err);
+      }
+    }
+
+    // Initial render
     monthPickerEl.value = monthStr;
     updateHeader();
     renderCalendar();
+    loadProviders();
   </script>
 </body>
 </html>
