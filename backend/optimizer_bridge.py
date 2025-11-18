@@ -1,8 +1,10 @@
 # backend/optimizer_bridge.py
-from collections import defaultdict
-from .models import Signup, Shift, Provider
+from typing import List, Tuple, Dict
 
-from moonlighter_optimizer import runoptimizer  # you adapt this import
+import pandas as pd
+
+from .models import Provider, Month, Shift, Signup
+from moonlighter_optimizer import MoonlighterScheduleOptimizer
 
 
 def run_optimizer_for_month(db, month_row: Month, strategy: str, night_slots: int):
@@ -11,7 +13,7 @@ def run_optimizer_for_month(db, month_row: Month, strategy: str, night_slots: in
     MoonlighterScheduleOptimizer, and return a list of (Provider, Shift)
     assignments.
     """
-    # Load all signups for this month
+    # Load all signups for this month, joined with shifts and providers
     rows = (
         db.query(Signup, Shift, Provider)
         .join(Shift, Signup.shift_id == Shift.id)
@@ -23,30 +25,32 @@ def run_optimizer_for_month(db, month_row: Month, strategy: str, night_slots: in
     if not rows:
         return []
 
-    # Build per-faculty records for optimizer:
-    # faculty_id -> {faculty_id, name, desired_nights, requested_dates(list), priority}
+    # Build per-provider records in the shape expected by the optimizer:
+    # faculty_id, name, desired_nights, requested_dates, priority
     faculty_records: Dict[str, Dict] = {}
 
     for signup, shift, provider in rows:
-        fid = provider.id
+        fid = provider.id  # faculty_id
         if fid not in faculty_records:
             faculty_records[fid] = {
                 "faculty_id": fid,
                 "name": provider.name,
                 "desired_nights": signup.desired_nights,
                 "requested_dates": [],
-                "priority": 1 if provider.is_priority else 2,
+                # You can later add a true priority field to Provider;
+                # for now, everyone is "medium" priority = 2
+                "priority": 2,
             }
         faculty_records[fid]["requested_dates"].append(shift.date.isoformat())
 
-    # lists -> comma-separated strings
+    # Deduplicate & convert lists to comma-separated strings
     for rec in faculty_records.values():
         unique_dates = sorted(set(rec["requested_dates"]))
         rec["requested_dates"] = ",".join(unique_dates)
 
+    # Create DataFrame and run the optimizer
     df = pd.DataFrame(list(faculty_records.values()))
 
-    # Run optimizer
     opt = MoonlighterScheduleOptimizer(df, night_slots=night_slots)
     result = opt.optimize(strategy=strategy or "balanced")
     schedule = result.get("schedule", {})
