@@ -80,6 +80,11 @@ class ProviderCreate(BaseModel):
     email: Optional[str] = None
 
 
+class ProviderUpdate(BaseModel):
+    name: str
+    email: Optional[str] = None
+
+
 class AssignmentOut(BaseModel):
     provider_id: str
     provider_name: str
@@ -350,6 +355,30 @@ def create_provider(provider: ProviderCreate, db: Session = Depends(get_db)):
         "id": new_provider.id,
         "name": new_provider.name,
         "email": new_provider.email
+    }}
+
+
+@app.put("/api/admin/providers/{provider_id}")
+def update_provider(provider_id: str, provider: ProviderUpdate, db: Session = Depends(get_db)):
+    """
+    Update an existing provider's name and/or email.
+    Provider ID cannot be changed.
+    """
+    existing = db.query(Provider).filter(Provider.id == provider_id).first()
+    if not existing:
+        raise HTTPException(404, f"Provider '{provider_id}' not found")
+    
+    # Update fields
+    existing.name = provider.name
+    existing.email = provider.email
+    
+    db.commit()
+    db.refresh(existing)
+    
+    return {"status": "ok", "provider": {
+        "id": existing.id,
+        "name": existing.name,
+        "email": existing.email
     }}
 
 
