@@ -74,6 +74,12 @@ class ProviderOut(BaseModel):
         from_attributes = True
 
 
+class ProviderCreate(BaseModel):
+    id: str
+    name: str
+    email: Optional[str] = None
+
+
 class AssignmentOut(BaseModel):
     provider_id: str
     provider_name: str
@@ -318,6 +324,119 @@ def list_assignments(
 def list_providers(db: Session = Depends(get_db)):
     providers = db.query(Provider).order_by(Provider.name).all()
     return providers
+
+
+# ---------- Admin: Provider management ----------
+
+@app.post("/api/admin/providers")
+def create_provider(provider: ProviderCreate, db: Session = Depends(get_db)):
+    """
+    Add a new provider.
+    """
+    existing = db.query(Provider).filter(Provider.id == provider.id).first()
+    if existing:
+        raise HTTPException(400, f"Provider with id '{provider.id}' already exists")
+    
+    new_provider = Provider(
+        id=provider.id,
+        name=provider.name,
+        email=provider.email
+    )
+    db.add(new_provider)
+    db.commit()
+    db.refresh(new_provider)
+    
+    return {"status": "ok", "provider": {
+        "id": new_provider.id,
+        "name": new_provider.name,
+        "email": new_provider.email
+    }}
+
+
+@app.delete("/api/admin/providers/{provider_id}")
+def delete_provider(provider_id: str, db: Session = Depends(get_db)):
+    """
+    Delete a provider and all their signups/assignments.
+    """
+    provider = db.query(Provider).filter(Provider.id == provider_id).first()
+    if not provider:
+        raise HTTPException(404, f"Provider '{provider_id}' not found")
+    
+    # Delete related signups and assignments
+    db.query(Signup).filter(Signup.provider_id == provider_id).delete()
+    db.query(Assignment).filter(Assignment.provider_id == provider_id).delete()
+    
+    # Delete provider
+    db.delete(provider)
+    db.commit()
+    
+    return {"status": "ok", "message": f"Provider '{provider.name}' deleted"}
+
+
+# ---------- Admin: Clear data ----------
+
+@app.delete("/api/admin/clear_month")
+def clear_month_data(month: str, db: Session = Depends(get_db)):
+    """
+    Clear all signups and assignments for a specific month.
+    Does not delete providers.
+    """
+    year, month_num = map(int, month.split("-"))
+    month_row = (
+        db.query(Month)
+        .filter(Month.year == year, Month.month == month_num)
+        .first()
+    )
+    
+    if not month_row:
+        return {"status": "ok", "message": "No data found for this month"}
+    
+    shift_ids = [s.id for s in month_row.shifts]
+    
+    # Delete assignments
+    assignment_count = db.query(Assignment).filter(Assignment.shift_id.in_(shift_ids)).delete(synchronize_session=False)
+    
+    # Delete signups
+    signup_count = db.query(Signup).filter(Signup.shift_id.in_(shift_ids)).delete(synchronize_session=False)
+    
+    # Delete shifts
+    db.query(Shift).filter(Shift.month_id == month_row.id).delete(synchronize_session=False)
+    
+    # Delete month
+    db.delete(month_row)
+    db.commit()
+    
+    return {
+        "status": "ok",
+        "message": f"Cleared {signup_count} signups and {assignment_count} assignments for {month}"
+    }
+
+
+@app.delete("/api/admin/clear_all")
+def clear_all_data(confirm: str, db: Session = Depends(get_db)):
+    """
+    Clear ALL data (signups, assignments, shifts, months).
+    Does not delete providers.
+    Requires confirmation string.
+    """
+    if confirm != "DELETE_ALL_DATA":
+        raise HTTPException(400, "Confirmation string required: DELETE_ALL_DATA")
+    
+    assignment_count = db.query(Assignment).count()
+    signup_count = db.query(Signup).count()
+    shift_count = db.query(Shift).count()
+    month_count = db.query(Month).count()
+    
+    db.query(Assignment).delete()
+    db.query(Signup).delete()
+    db.query(Shift).delete()
+    db.query(Month).delete()
+    db.commit()
+    
+    return {
+        "status": "ok",
+        "message": f"Cleared all data: {assignment_count} assignments, {signup_count} signups, {shift_count} shifts, {month_count} months"
+    }
 
 
 # ---------- Admin: run optimizer for a month ----------
