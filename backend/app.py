@@ -1,11 +1,13 @@
 # backend/app.py
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import date
 from pathlib import Path
 import csv
+import io
 
 from sqlalchemy.orm import Session
 
@@ -242,3 +244,144 @@ def list_signups(
 def list_providers(db: Session = Depends(get_db)):
     providers = db.query(Provider).order_by(Provider.name).all()
     return providers
+
+# ---------- Admin: list signups ----------
+
+class SignupOut(BaseModel):
+    provider_id: str
+    provider_name: str
+    date: date
+    month: str
+    desired_nights: int
+    locked: bool
+
+    class Config:
+        from_attributes = True
+
+
+@app.get("/api/admin/signups", response_model=List[SignupOut])
+def list_signups(
+    month: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Return one row per provider-date signup:
+    - provider_id, provider_name
+    - date
+    - month (YYYY-MM)
+    - desired_nights
+    - locked
+    """
+    q = (
+        db.query(
+            Signup.provider_id,
+            Provider.name.label("provider_name"),
+            Shift.date.label("date"),
+            Month.year.label("year"),
+            Month.month.label("month_num"),
+            Signup.desired_nights,
+            Signup.locked,
+        )
+        .join(Provider, Signup.provider_id == Provider.id)
+        .join(Shift, Signup.shift_id == Shift.id)
+        .join(Month, Shift.month_id == Month.id)
+    )
+
+    if month:
+        year, mnum = map(int, month.split("-"))
+        q = q.filter(Month.year == year, Month.month == mnum)
+
+    rows = q.order_by(Provider.name, Shift.date).all()
+
+    result: List[SignupOut] = []
+    for r in rows:
+        month_str = f"{r.year:04d}-{r.month_num:02d}"
+        result.append(
+            SignupOut(
+                provider_id=r.provider_id,
+                provider_name=r.provider_name,
+                date=r.date,
+                month=month_str,
+                desired_nights=r.desired_nights,
+                locked=bool(r.locked),
+            )
+        )
+    return result
+
+
+# ---------- Admin: run optimizer for a month ----------
+
+@app.post("/api/admin/run_optimizer")
+def run_optimizer_endpoint(
+    month: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Run the scheduling optimizer for a given month ("YYYY-MM").
+    """
+    # If run_optimizer_for_month isn't fully implemented yet,
+    # you can temporarily stub it out to just return [].
+    assignments = run_optimizer_for_month(month, db)
+    if assignments is None:
+        count = 0
+    else:
+        try:
+            count = len(assignments)
+        except TypeError:
+            count = 0
+
+    return {"status": "ok", "month": month, "assigned_shifts": count}
+
+
+# ---------- Admin: CSV export of signups ----------
+
+@app.get("/api/admin/signups_csv", response_class=PlainTextResponse)
+def signups_csv(
+    month: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Export all signups for a given month as CSV:
+    provider_id,provider_name,date,month,desired_nights,locked
+    """
+    year, mnum = map(int, month.split("-"))
+
+    q = (
+        db.query(
+            Signup.provider_id,
+            Provider.name.label("provider_name"),
+            Shift.date.label("date"),
+            Month.year.label("year"),
+            Month.month.label("month_num"),
+            Signup.desired_nights,
+            Signup.locked,
+        )
+        .join(Provider, Signup.provider_id == Provider.id)
+        .join(Shift, Signup.shift_id == Shift.id)
+        .join(Month, Shift.month_id == Month.id)
+        .filter(Month.year == year, Month.month == mnum)
+        .order_by(Provider.name, Shift.date)
+    )
+
+    rows = q.all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["provider_id", "provider_name", "date", "month", "desired_nights", "locked"])
+
+    for r in rows:
+        month_str = f"{r.year:04d}-{r.month_num:02d}"
+        writer.writerow([
+            r.provider_id,
+            r.provider_name,
+            r.date.isoformat(),
+            month_str,
+            r.desired_nights,
+            int(bool(r.locked)),
+        ])
+
+    csv_text = output.getvalue()
+    headers = {
+        "Content-Disposition": f'attachment; filename="signups_{month}.csv"'
+    }
+    return PlainTextResponse(csv_text, headers=headers)
