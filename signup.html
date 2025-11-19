@@ -2,13 +2,39 @@
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#232f3e">
   <title>IRPA Moonlighter Signup</title>
+  <link rel="manifest" href="/manifest.json">
   <link rel="stylesheet" href="style.css">
+  <style>
+    /* Back button styling */
+    .back-button {
+      background: rgba(0,82,204,0.1);
+      color: #0052cc;
+      border: 1px solid #0052cc;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      text-decoration: none;
+      display: inline-block;
+      transition: all 0.2s;
+      margin-bottom: 16px;
+    }
+    
+    .back-button:hover {
+      background: #0052cc;
+      color: white;
+      transform: translateX(-2px);
+    }
+  </style>
 </head>
 <body>
 
-  <!-- Top header -->
-  <header style="text-align:center; padding:12px 8px; font-weight:600;">
+  <!-- Top header with back button -->
+  <header style="text-align:center; padding:12px 8px; font-weight:600; position: relative;">
+    <a href="Scheduling.html" class="back-button" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%);">← Back</a>
     UVA Division of Pulmonary and Critical Care
   </header>
 
@@ -310,6 +336,14 @@
       } catch (err) {
         console.error("Error loading providers", err);
       }
+    }
+
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/Service_Worker.js')
+          .catch(err => console.log('Service Worker registration failed', err));
+      });
     }
 
     // Initial render
