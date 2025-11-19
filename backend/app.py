@@ -62,13 +62,23 @@ class SignupOut(BaseModel):
     locked: bool
 
     class Config:
-        from_attributes = True  # pydantic v2 replacement for orm_mode
+        from_attributes = True
 
 
 class ProviderOut(BaseModel):
     id: str
     name: str
     email: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class AssignmentOut(BaseModel):
+    provider_id: str
+    provider_name: str
+    date: date
+    month: str
 
     class Config:
         from_attributes = True
@@ -254,6 +264,49 @@ def list_signups(
                 month=month_str,
                 desired_nights=r.desired_nights,
                 locked=bool(r.locked),
+            )
+        )
+    return result
+
+
+# ---------- Admin: list assignments (generated schedule) ----------
+
+@app.get("/api/admin/assignments", response_model=List[AssignmentOut])
+def list_assignments(
+    month: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Return the generated schedule (assignments) for a month.
+    """
+    q = (
+        db.query(
+            Assignment.provider_id,
+            Provider.name.label("provider_name"),
+            Shift.date.label("date"),
+            Month.year.label("year"),
+            Month.month.label("month_num"),
+        )
+        .join(Provider, Assignment.provider_id == Provider.id)
+        .join(Shift, Assignment.shift_id == Shift.id)
+        .join(Month, Shift.month_id == Month.id)
+    )
+
+    if month:
+        year, mnum = map(int, month.split("-"))
+        q = q.filter(Month.year == year, Month.month == mnum)
+
+    rows = q.order_by(Shift.date, Provider.name).all()
+
+    result: List[AssignmentOut] = []
+    for r in rows:
+        month_str = f"{r.year:04d}-{r.month_num:02d}"
+        result.append(
+            AssignmentOut(
+                provider_id=r.provider_id,
+                provider_name=r.provider_name,
+                date=r.date,
+                month=month_str,
             )
         )
     return result
