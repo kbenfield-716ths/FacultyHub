@@ -212,7 +212,7 @@ def list_signups(
     month: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
-    q = db.query(Signup).join(Signup.shift).join(Shift.month_rel).join(Signup.provider)
+    q = db.query(Signup).join(Signup.shift).join(Shift.month).join(Signup.provider)
 
     if month:
         year, mnum = map(int, month.split("-"))
@@ -228,7 +228,7 @@ def list_signups(
                 provider_id=s.provider_id,
                 provider_name=s.provider.name if s.provider else "",
                 date=s.shift.date,
-                month=f"{s.shift.month_rel.year:04d}-{s.shift.month_rel.month:02d}",
+                month=f"{s.shift.month.year:04d}-{s.shift.month.month:02d}",
                 desired_nights=s.desired_nights,
                 locked=s.locked,
             )
