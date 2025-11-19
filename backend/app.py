@@ -174,11 +174,29 @@ def startup_event():
 
 @app.get("/")
 async def serve_index():
-    """Serve the main index.html (renamed from pwa-index.html)"""
+    """Serve the main index.html"""
     index_path = STATIC_DIR / "index.html"
     if index_path.exists():
         return FileResponse(index_path)
-    return {"status": "ok", "message": "No index.html found"}
+    return {"status": "ok", "message": "API running"}
+
+@app.get("/favicon.ico")
+async def serve_favicon_ico():
+    favicon_path = STATIC_DIR / "favicon.ico"
+    if favicon_path.exists():
+        return FileResponse(favicon_path)
+    # Fallback to SVG
+    svg_path = STATIC_DIR / "favicon.svg"
+    if svg_path.exists():
+        return FileResponse(svg_path, media_type="image/svg+xml")
+    return {"error": "favicon not found"}
+
+@app.get("/favicon.svg")
+async def serve_favicon_svg():
+    favicon_path = STATIC_DIR / "favicon.svg"
+    if favicon_path.exists():
+        return FileResponse(favicon_path, media_type="image/svg+xml")
+    return {"error": "favicon.svg not found"}
 
 @app.get("/manifest.json")
 async def serve_manifest():
@@ -204,18 +222,17 @@ async def serve_style():
 @app.get("/{filename}.html")
 async def serve_html_file(filename: str):
     """Serve any HTML file"""
-    # Handle both cases: Scheduling.html and scheduling.html
+    # Try exact match first
     html_path = STATIC_DIR / f"{filename}.html"
     if html_path.exists():
         return FileResponse(html_path)
     
-    # Try capitalized versions
-    html_path = STATIC_DIR / f"{filename.capitalize()}.html"
-    if html_path.exists():
-        return FileResponse(html_path)
-    
-    # Try with capital first letter for files like Resources.Html
+    # Try case-insensitive search (for files like Resources.Html)
     for file in STATIC_DIR.glob("*.html"):
+        if file.stem.lower() == filename.lower():
+            return FileResponse(file)
+    
+    for file in STATIC_DIR.glob("*.Html"):
         if file.stem.lower() == filename.lower():
             return FileResponse(file)
     
