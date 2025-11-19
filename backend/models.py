@@ -5,8 +5,11 @@ from sqlalchemy import (
     ForeignKey, create_engine
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
+import os
 
-DATABASE_URL = "sqlite:///./moonlighter.db"
+# Use persistent volume if available, fallback to local
+db_path = "/data/moonlighter.db" if os.path.exists("/data") else "./moonlighter.db"
+DATABASE_URL = f"sqlite:///{db_path}"
 
 Base = declarative_base()
 engine = create_engine(
