@@ -4,3 +4,4 @@ sqlalchemy
 pydantic
 pandas
 orjson
+notion-client==2.2.1
