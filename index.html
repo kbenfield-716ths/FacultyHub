@@ -1,229 +1,297 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>🌙 IRPA Optimizer by Platypus Inc.</title>
-  <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <link rel="icon" href="favicon.ico" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#232f3e">
+  <meta name="description" content="IRPA Faculty Hub - Scheduling and Resources">
+  
+  <title>IRPA Faculty Hub</title>
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json">
+  
+  <!-- Icons -->
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  
+  <link rel="stylesheet" href="style.css">
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f6f6f9;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #232f3e;
+      color: white;
+      padding: 16px 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    .install-button {
+      display: none;
+      background: white;
+      color: #232f3e;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .install-button:hover {
+      background: #e8e8e8;
+      transform: translateY(-1px);
+    }
+
+    .install-button.show {
+      display: block;
+    }
+
+    main {
+      max-width: 1200px;
+      margin: 32px auto;
+      padding: 0 20px;
+    }
+
+    .welcome {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 32px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .welcome h2 {
+      font-size: 1.3rem;
+      margin-bottom: 8px;
+      color: #232f3e;
+    }
+
+    .welcome p {
+      color: #666;
+      line-height: 1.6;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-top: 24px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      transition: all 0.3s ease;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+      border: 2px solid transparent;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.12);
+      border-color: #0052cc;
+    }
+
+    .card-icon {
+      font-size: 2.5rem;
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .card h3 {
+      font-size: 1.2rem;
+      margin-bottom: 8px;
+      color: #232f3e;
+    }
+
+    .card p {
+      color: #666;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .card.primary {
+      background: linear-gradient(135deg, #0052cc 0%, #0747a6 100%);
+      color: white;
+    }
+
+    .card.primary h3,
+    .card.primary p {
+      color: white;
+    }
+
+    .footer {
+      text-align: center;
+      padding: 32px 20px;
+      color: #999;
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 768px) {
+      .cards-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      h1 {
+        font-size: 1.2rem;
+      }
+      
+      .header-content {
+        flex-direction: column;
+        gap: 12px;
+      }
+    }
+
+    /* Offline indicator */
+    .offline-indicator {
+      display: none;
+      background: #ff9800;
+      color: white;
+      text-align: center;
+      padding: 8px;
+      font-size: 0.85rem;
+    }
+
+    .offline-indicator.show {
+      display: block;
+    }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <header class="header">
-      <h1>🌙 IRPA Optimizer</h1>
-      <div id="pyStatus" class="status not-ready">🟠 Python: Not Ready</div>
-    </header>
-
-    <p>Upload your <code>moonlighter_template.csv</code> file, then click <strong>Run Optimizer</strong> once Python is ready.</p>
-
-    <div class="controls">
-      <label class="upload-btn">
-        📁 Upload CSV
-        <input type="file" id="csvFile" accept=".csv" hidden>
-      </label>
-      <span id="fileName" class="file-name"></span>
-
-      <label>Strategy:
-        <select id="strategy">
-          <option value="balanced" selected>Balanced</option>
-          <option value="coverage">Coverage-first</option>
-          <option value="satisfaction">Satisfaction-first</option>
-        </select>
-      </label>
-
-      <label>People per night:
-        <input type="number" id="slots" value="1" min="1" step="1">
-      </label>
-
-      <button id="runBtn" disabled>Run Optimizer</button>
-      <button id="resetBtn" class="secondary">Reset</button>
-    </div>
-
-    <div id="output" class="results"></div>
-    <canvas id="coverageChart"></canvas>
+  <div class="offline-indicator" id="offlineIndicator">
+    📡 You're offline. Some features may be limited.
   </div>
 
-  <script type="module">
-    const runBtn = document.getElementById("runBtn");
-    const resetBtn = document.getElementById("resetBtn");
-    const fileInput = document.getElementById("csvFile");
-    const fileNameDisplay = document.getElementById("fileName");
-    const outputDiv = document.getElementById("output");
-    const strategySel = document.getElementById("strategy");
-    const slotsInput = document.getElementById("slots");
-    const statusIndicator = document.getElementById("pyStatus");
-    let pyodide;
+  <header>
+    <div class="header-content">
+      <h1>🏥 IRPA Faculty Hub</h1>
+      <button class="install-button" id="installButton">
+        📱 Install App
+      </button>
+    </div>
+  </header>
 
-    // ===== PYODIDE INITIALIZATION =====
-    async function initPyodide() {
-      statusIndicator.textContent = "🟠 Python: Loading...";
-      outputDiv.innerHTML = "<p>Loading Python environment... please wait.</p>";
+  <main>
+    <div class="welcome">
+      <h2>Welcome to the IRPA Faculty Hub</h2>
+      <p>Your central hub for scheduling, resources, and faculty information. Select a tool below to get started.</p>
+    </div>
 
-      pyodide = await loadPyodide();
-      await pyodide.loadPackage(["pandas", "micropip"]);
+    <div class="cards-grid">
+      <!-- Primary Card: Scheduling -->
+      <a href="scheduling.html" class="card primary">
+        <span class="card-icon">📅</span>
+        <h3>Moonlighter Scheduling</h3>
+        <p>Submit your availability for moonlighting shifts and view the generated schedule.</p>
+      </a>
 
-      const optimizerPy = await fetch("moonlighter_optimizer.py").then(r => r.text());
-      const runnerPy = await fetch("run_moonlighter.py").then(r => r.text());
-      pyodide.FS.writeFile("moonlighter_optimizer.py", optimizerPy);
-      pyodide.FS.writeFile("run_moonlighter.py", runnerPy);
+      <!-- Faculty Resources -->
+      <a href="resources.html" class="card">
+        <span class="card-icon">📚</span>
+        <h3>Faculty Knowledge Base</h3>
+        <p>Access FAQs, policies, procedures, and helpful resources for faculty members.</p>
+      </a>
 
-      statusIndicator.textContent = "🟢 Python: Ready";
-      statusIndicator.classList.replace("not-ready", "ready");
-      outputDiv.innerHTML = "<p>Environment ready. Upload CSV and click Run.</p>";
-      runBtn.disabled = false;
-    }
-    initPyodide();
+      <!-- Placeholder for future features -->
+      <div class="card" style="opacity: 0.6; cursor: not-allowed;" onclick="alert('Coming soon!')">
+        <span class="card-icon">📊</span>
+        <h3>Reports & Analytics</h3>
+        <p>View scheduling statistics and insights. (Coming soon)</p>
+      </div>
 
-    // ===== FILE INPUT HANDLER =====
-    fileInput.addEventListener("change", (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        fileNameDisplay.textContent = `📄 Loaded: ${file.name}`;
+      <div class="card" style="opacity: 0.6; cursor: not-allowed;" onclick="alert('Coming soon!')">
+        <span class="card-icon">👥</span>
+        <h3>Faculty Directory</h3>
+        <p>Contact information and profiles for all faculty members. (Coming soon)</p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p>IRPA Faculty Hub &copy; 2025 | University of Virginia</p>
+  </footer>
+
+  <script>
+    // PWA Install prompt
+    let deferredPrompt;
+    const installButton = document.getElementById('installButton');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      installButton.classList.add('show');
+    });
+
+    installButton.addEventListener('click', async () => {
+      if (!deferredPrompt) {
+        return;
+      }
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`User response: ${outcome}`);
+      deferredPrompt = null;
+      installButton.classList.remove('show');
+    });
+
+    window.addEventListener('appinstalled', () => {
+      console.log('PWA installed');
+      installButton.classList.remove('show');
+    });
+
+    // Offline detection
+    function updateOnlineStatus() {
+      const indicator = document.getElementById('offlineIndicator');
+      if (!navigator.onLine) {
+        indicator.classList.add('show');
       } else {
-        fileNameDisplay.textContent = "";
-      }
-    });
-
-    // ===== RUN OPTIMIZER =====
-    runBtn.addEventListener("click", async () => {
-      const file = fileInput.files[0];
-      if (!file) { alert("Please upload a CSV first."); return; }
-
-      const csvText = await file.text();
-      const encoder = new TextEncoder();
-      pyodide.FS.writeFile("moonlighter_template.csv", encoder.encode(csvText));
-
-      outputDiv.innerHTML = "<p>Running optimization... please wait.</p>";
-      const strategy = strategySel.value;
-      const slots = parseInt(slotsInput.value || "1", 10);
-
-      try {
-        const result = await pyodide.runPythonAsync(`
-from run_moonlighter import run_optimizer
-import json
-output = run_optimizer('moonlighter_template.csv', night_slots=${slots}, strategy='${strategy}')
-json.dumps(output)
-        `);
-        const data = JSON.parse(result);
-        renderResults(data);
-      } catch (err) {
-        outputDiv.innerHTML = `
-          <div class="error-box">
-            ⚠️ <strong>Could not process CSV:</strong><br>
-            <pre>${err}</pre>
-          </div>`;
-      }
-    });
-
-    // ===== RESET BUTTON =====
-    resetBtn.addEventListener("click", () => {
-      fileInput.value = "";
-      fileNameDisplay.textContent = "";
-      outputDiv.innerHTML = "";
-      if (window._coverageChart) {
-        window._coverageChart.destroy();
-        window._coverageChart = null;
-      }
-      statusIndicator.textContent = "🟢 Python: Ready";
-    });
-
-    // ===== RENDER RESULTS =====
-    function renderResults(data) {
-      const { metrics, summary, schedule } = data;
-
-      // ----- Summary table -----
-      const rows = (summary || []).map(s => `
-        <tr>
-          <td>${s.name || ""}</td>
-          <td>${s.desired ?? ""}</td>
-          <td>${s.assigned ?? ""}</td>
-          <td>${s.fulfillment ?? ""}</td>
-        </tr>`).join("");
-
-      outputDiv.innerHTML = `
-        <h2>Results</h2>
-        <p><strong>Coverage:</strong> ${metrics.coverage_rate}%</p>
-        <p><strong>Average Satisfaction:</strong> ${metrics.avg_satisfaction}%</p>
-        <table>
-          <tr><th>Faculty</th><th>Desired</th><th>Assigned</th><th>Fulfillment (%)</th></tr>
-          ${rows}
-        </table>
-      `;
-
-      // ----- Chart -----
-      const ctx = document.getElementById("coverageChart").getContext("2d");
-      if (window._coverageChart) window._coverageChart.destroy();
-
-      window._coverageChart = new Chart(ctx, {
-        type: "bar",
-        data: {
-          labels: (summary || []).map(s => s.name),
-          datasets: [{
-            label: "Fulfillment %",
-            data: (summary || []).map(s => s.fulfillment),
-            backgroundColor: "rgba(37, 99, 235, 0.7)"
-          }]
-        },
-        options: { scales: { y: { beginAtZero: true, max: 120 } } }
-      });
-
-      // ----- Convert faculty IDs to names -----
-      const idToName = {};
-      (summary || []).forEach(s => {
-        if (s.id && s.name) idToName[s.id] = s.name;
-      });
-
-      const scheduleWithNames = {};
-      for (const [date, fids] of Object.entries(schedule || {})) {
-        scheduleWithNames[date] = fids.map(fid => idToName[fid] || fid);
-      }
-
-      // ----- Build automatic month calendar(s) -----
-      const allMonths = [...new Set(Object.keys(scheduleWithNames).map(d => d.slice(0,7)))];
-      for (const ym of allMonths) {
-        const [year, month] = ym.split("-").map(Number);
-        const calendarHTML = buildCalendar(scheduleWithNames, year, month);
-        const title = new Date(year, month - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
-        outputDiv.innerHTML += `<h3>📅 ${title}</h3>${calendarHTML}`;
+        indicator.classList.remove('show');
       }
     }
 
-    function buildCalendar(schedule, year, month) {
-      const firstDay = new Date(year, month - 1, 1);
-      const lastDay = new Date(year, month, 0);
-      const weeks = [];
-      let current = new Date(firstDay);
-      let week = new Array(7).fill("");
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    updateOnlineStatus();
 
-      // Fill initial blanks
-      for (let i = 0; i < current.getDay(); i++) week[i] = "";
-
-      while (current <= lastDay) {
-        const day = current.getDate();
-        const dateStr = `${year}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-        const names = schedule[dateStr] ? schedule[dateStr].join(", ") : "";
-        week[current.getDay()] = names
-          ? `<div class="day-content"><strong>${day}</strong><br>${names}</div>`
-          : `<div class="day-content"><strong>${day}</strong></div>`;
-
-        if (current.getDay() === 6 || day === lastDay.getDate()) {
-          weeks.push(week);
-          week = new Array(7).fill("");
-        }
-
-        current.setDate(current.getDate() + 1);
-      }
-
-      const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-      return `
-        <table class="calendar">
-          <tr>${weekdays.map(d => `<th>${d}</th>`).join("")}</tr>
-          ${weeks.map(w => `<tr>${w.map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}
-        </table>
-      `;
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(reg => console.log('Service Worker registered'))
+          .catch(err => console.log('Service Worker registration failed', err));
+      });
     }
   </script>
 </body>
+</html>
 </html>
