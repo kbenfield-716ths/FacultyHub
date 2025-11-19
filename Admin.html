@@ -73,6 +73,10 @@
       background: #dc3545;
       color: white;
     }
+    button.edit {
+      background: #28a745;
+      color: white;
+    }
     button:disabled {
       opacity: 0.6;
       cursor: default;
@@ -148,6 +152,57 @@
     .form-field label {
       font-size: 0.85rem;
       font-weight: 500;
+    }
+    .action-buttons {
+      display: flex;
+      gap: 6px;
+    }
+    
+    /* Modal styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+    }
+    .modal-content {
+      background-color: white;
+      margin: 10% auto;
+      padding: 20px;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .modal-header h2 {
+      margin: 0;
+    }
+    .close {
+      font-size: 28px;
+      font-weight: bold;
+      color: #aaa;
+      cursor: pointer;
+    }
+    .close:hover {
+      color: #000;
+    }
+    .modal-body {
+      margin-bottom: 20px;
+    }
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
     }
   </style>
 </head>
@@ -243,6 +298,34 @@
     <div id="status"></div>
   </div>
 
+  <!-- Edit Provider Modal -->
+  <div id="editModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Edit Provider</h2>
+        <span class="close">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div class="form-field" style="margin-bottom: 12px;">
+          <label>Provider ID (cannot be changed)</label>
+          <input type="text" id="editProviderId" disabled style="background: #f0f0f0;">
+        </div>
+        <div class="form-field" style="margin-bottom: 12px;">
+          <label>Name</label>
+          <input type="text" id="editProviderName" placeholder="Dr. Jane Smith">
+        </div>
+        <div class="form-field" style="margin-bottom: 12px;">
+          <label>Email (optional)</label>
+          <input type="email" id="editProviderEmail" placeholder="smith@virginia.edu">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="secondary" id="cancelEditBtn">Cancel</button>
+        <button class="edit" id="saveEditBtn">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
  <script>
   const API_BASE = "https://moonlighter-web.fly.dev";
   const monthInput = document.getElementById("monthInput");
@@ -262,6 +345,15 @@
   const scheduleSection = document.getElementById("scheduleSection");
   const scheduleCalendar = document.getElementById("scheduleCalendar");
 
+  // Modal elements
+  const editModal = document.getElementById("editModal");
+  const closeModal = document.querySelector(".close");
+  const cancelEditBtn = document.getElementById("cancelEditBtn");
+  const saveEditBtn = document.getElementById("saveEditBtn");
+  const editProviderId = document.getElementById("editProviderId");
+  const editProviderName = document.getElementById("editProviderName");
+  const editProviderEmail = document.getElementById("editProviderEmail");
+
   function currentMonthString() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -269,6 +361,30 @@
 
   monthInput.value = currentMonthString();
   summaryMonthSpan.textContent = monthInput.value;
+
+  // Modal functions
+  function openEditModal(provider) {
+    editProviderId.value = provider.id;
+    editProviderName.value = provider.name;
+    editProviderEmail.value = provider.email || "";
+    editModal.style.display = "block";
+  }
+
+  function closeEditModal() {
+    editModal.style.display = "none";
+    editProviderId.value = "";
+    editProviderName.value = "";
+    editProviderEmail.value = "";
+  }
+
+  closeModal.onclick = closeEditModal;
+  cancelEditBtn.onclick = closeEditModal;
+
+  window.onclick = function(event) {
+    if (event.target == editModal) {
+      closeEditModal();
+    }
+  }
 
   async function loadProviders() {
     try {
@@ -285,7 +401,12 @@
           <td>${p.id}</td>
           <td>${p.name}</td>
           <td>${p.email || ""}</td>
-          <td><button class="danger" onclick="deleteProvider('${p.id}', '${p.name}')">Delete</button></td>
+          <td>
+            <div class="action-buttons">
+              <button class="edit" onclick="editProvider('${p.id}', '${p.name.replace(/'/g, "\\'")}', '${p.email || ""}')">Edit</button>
+              <button class="danger" onclick="deleteProvider('${p.id}', '${p.name.replace(/'/g, "\\'")}')">Delete</button>
+            </div>
+          </td>
         `;
         providersTbody.appendChild(tr);
       }
@@ -321,6 +442,40 @@
       document.getElementById("newProviderId").value = "";
       document.getElementById("newProviderName").value = "";
       document.getElementById("newProviderEmail").value = "";
+      await loadProviders();
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    }
+  }
+
+  window.editProvider = function(id, name, email) {
+    openEditModal({ id, name, email });
+  }
+
+  saveEditBtn.onclick = async function() {
+    const id = editProviderId.value;
+    const name = editProviderName.value.trim();
+    const email = editProviderEmail.value.trim();
+
+    if (!name) {
+      alert("Name is required");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/providers/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email: email || null })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || "Failed to update provider");
+      }
+
+      statusEl.textContent = `Provider '${name}' updated successfully`;
+      closeEditModal();
       await loadProviders();
     } catch (err) {
       alert(`Error: ${err.message}`);
