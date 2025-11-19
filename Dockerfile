@@ -16,16 +16,12 @@ COPY moonlighter_optimizer.py /app/moonlighter_optimizer.py
 # Copy faculty.csv so the app can seed providers
 COPY faculty.csv /app/faculty.csv
 
-# Copy all HTML, CSS, JS, and static files for the frontend
-# Use individual COPY commands to handle case-sensitive files
-COPY *.html /app/ 2>/dev/null || true
-COPY *.Html /app/ 2>/dev/null || true
-COPY *.css /app/
-COPY *.js /app/
-COPY *.json /app/
-COPY *.svg /app/ 2>/dev/null || true
-COPY *.ico /app/ 2>/dev/null || true
-COPY icons /app/icons 2>/dev/null || true
+# Copy all static files for the frontend
+# Copy HTML files (both .html and .Html extensions)
+COPY . /tmp/build/
+RUN find /tmp/build -maxdepth 1 -type f \( -iname "*.html" -o -iname "*.css" -o -iname "*.js" -o -iname "*.json" -o -iname "*.svg" -o -iname "*.ico" \) -exec cp {} /app/ \; && \
+    if [ -d /tmp/build/icons ]; then cp -r /tmp/build/icons /app/; fi && \
+    rm -rf /tmp/build
 
 # Create /data directory for volume mount
 RUN mkdir -p /data
