@@ -16,6 +16,9 @@ COPY moonlighter_optimizer.py /app/moonlighter_optimizer.py
 # Copy faculty.csv so the app can seed providers
 COPY faculty.csv /app/faculty.csv
 
+# Create /data directory for volume mount
+RUN mkdir -p /data
+
 ENV PYTHONUNBUFFERED=1
 
 # Fly expects the app to listen on port 8080
