@@ -135,158 +135,201 @@
     <div id="status"></div>
   </div>
 
-  <script>
-    // ----- Configuration -----
-    const API_BASE = "https://moonlighter-web.fly.dev";  // backend
-    const monthInput = document.getElementById("monthInput");
-    const refreshBtn = document.getElementById("refreshBtn");
-    const runOptimizerBtn = document.getElementById("runOptimizerBtn");
-    const downloadCsvBtn = document.getElementById("downloadCsvBtn");
-    const providerCountLabel = document.getElementById("providerCountLabel");
-    const summaryMonthSpan = document.getElementById("summaryMonth");
-    const summaryText = document.getElementById("summaryText");
-    const signupsTbody = document.getElementById("signupsTbody");
-    const statusEl = document.getElementById("status");
+ <script>
+  // ----- Configuration -----
+  const API_BASE = "https://moonlighter-web.fly.dev";  // backend
+  const monthInput = document.getElementById("monthInput");
+  const refreshBtn = document.getElementById("refreshBtn");
+  const runOptimizerBtn = document.getElementById("runOptimizerBtn");
+  const downloadCsvBtn = document.getElementById("downloadCsvBtn");
+  const providerCountLabel = document.getElementById("providerCountLabel");
+  const summaryMonthSpan = document.getElementById("summaryMonth");
+  const summaryText = document.getElementById("summaryText");
+  const signupsTbody = document.getElementById("signupsTbody");
+  const statusEl = document.getElementById("status");
 
-    function currentMonthString() {
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = String(now.getMonth() + 1).padStart(2, "0");
-      return `${y}-${m}`;
+  function currentMonthString() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    return `${y}-${m}`;
+  }
+
+  monthInput.value = currentMonthString();
+  summaryMonthSpan.textContent = monthInput.value;
+
+  async function loadProvidersCount() {
+    try {
+      const res = await fetch(`${API_BASE}/api/providers`);
+      console.log("GET /api/providers", res.status);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const providers = await res.json();
+      providerCountLabel.textContent = `${providers.length} providers in system`;
+    } catch (err) {
+      console.error("Error loading providers:", err);
+      providerCountLabel.textContent = "Unable to load providers.";
     }
+  }
 
-    monthInput.value = currentMonthString();
-    summaryMonthSpan.textContent = monthInput.value;
+  async function loadSignups() {
+    const month = monthInput.value;
+    if (!month) return;
+    summaryMonthSpan.textContent = month;
+    statusEl.textContent = "Loading signups...";
+    signupsTbody.innerHTML = "";
+    summaryText.textContent = "Loading...";
 
-    async function loadProvidersCount() {
-      try {
-        const res = await fetch(`${API_BASE}/api/providers`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const providers = await res.json();
-        providerCountLabel.textContent = `${providers.length} providers in system`;
-      } catch (err) {
-        console.error(err);
-        providerCountLabel.textContent = "Unable to load providers.";
+    try {
+      const url = `${API_BASE}/api/admin/signups?month=${encodeURIComponent(month)}`;
+      console.log("GET", url);
+      const res = await fetch(url);
+      console.log("GET /api/admin/signups status:", res.status);
+      if (!res.ok) {
+        const body = await res.text();
+        console.error("Signups error body:", body);
+        throw new Error(`HTTP ${res.status}`);
       }
-    }
+      const data = await res.json(); // array of SignupOut
+      console.log("Signups data:", data);
 
-    async function loadSignups() {
-      const month = monthInput.value;
-      if (!month) return;
-      summaryMonthSpan.textContent = month;
-      statusEl.textContent = "Loading signups...";
+      if (data.length === 0) {
+        summaryText.textContent = "No signups yet for this month.";
+        statusEl.textContent = "";
+        return;
+      }
+
+      // Group by provider_id
+      const byProvider = new Map();
+      for (const row of data) {
+        if (!byProvider.has(row.provider_id)) {
+          byProvider.set(row.provider_id, {
+            provider_id: row.provider_id,
+            provider_name: row.provider_name,
+            desired_nights: row.desired_nights,
+            dates: [],
+          });
+        }
+        byProvider.get(row.provider_id).dates.push(row.date);
+      }
+
+      const providerCount = byProvider.size;
+      const totalDates = data.length;
+      summaryText.textContent =
+        `${providerCount} providers have signed up, covering ${totalDates} provider-nights.`;
+
       signupsTbody.innerHTML = "";
-      summaryText.textContent = "Loading...";
+      const rows = Array.from(byProvider.values()).sort((a, b) =>
+        a.provider_name.localeCompare(b.provider_name)
+      );
 
-      try {
-        const url = `${API_BASE}/api/admin/signups?month=${encodeURIComponent(month)}`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json(); // array of SignupOut
+      for (const p of rows) {
+        const tr = document.createElement("tr");
 
-        if (data.length === 0) {
-          summaryText.textContent = "No signups yet for this month.";
-          statusEl.textContent = "";
-          return;
-        }
+        const tdName = document.createElement("td");
+        tdName.textContent = p.provider_name;
+        tr.appendChild(tdName);
 
-        // Group by provider_id
-        const byProvider = new Map();
-        for (const row of data) {
-          if (!byProvider.has(row.provider_id)) {
-            byProvider.set(row.provider_id, {
-              provider_id: row.provider_id,
-              provider_name: row.provider_name,
-              desired_nights: row.desired_nights,
-              dates: [],
-            });
-          }
-          byProvider.get(row.provider_id).dates.push(row.date);
-        }
+        const tdDates = document.createElement("td");
+        tdDates.textContent = p.dates.sort().join(", ");
+        tr.appendChild(tdDates);
 
-        // Fill summary
-        const providerCount = byProvider.size;
-        const totalDates = data.length;
-        summaryText.textContent =
-          `${providerCount} providers have signed up, covering ${totalDates} provider-nights.`;
+        const tdCount = document.createElement("td");
+        tdCount.textContent = p.dates.length.toString();
+        tr.appendChild(tdCount);
 
-        // Render table
-        signupsTbody.innerHTML = "";
-        const rows = Array.from(byProvider.values()).sort((a, b) =>
-          a.provider_name.localeCompare(b.provider_name)
-        );
+        const tdDesired = document.createElement("td");
+        tdDesired.textContent = p.desired_nights.toString();
+        tr.appendChild(tdDesired);
 
-        for (const p of rows) {
-          const tr = document.createElement("tr");
-
-          const tdName = document.createElement("td");
-          tdName.textContent = p.provider_name;
-          tr.appendChild(tdName);
-
-          const tdDates = document.createElement("td");
-          tdDates.textContent = p.dates.sort().join(", ");
-          tr.appendChild(tdDates);
-
-          const tdCount = document.createElement("td");
-          tdCount.textContent = p.dates.length.toString();
-          tr.appendChild(tdCount);
-
-          const tdDesired = document.createElement("td");
-          tdDesired.textContent = p.desired_nights.toString();
-          tr.appendChild(tdDesired);
-
-          signupsTbody.appendChild(tr);
-        }
-
-        statusEl.textContent = "Signups loaded.";
-      } catch (err) {
-        console.error(err);
-        summaryText.textContent = "Error loading signups.";
-        statusEl.textContent = "Error loading signups from backend.";
+        signupsTbody.appendChild(tr);
       }
+
+      statusEl.textContent = "Signups loaded.";
+    } catch (err) {
+      console.error("Error loading signups:", err);
+      summaryText.textContent = "Error loading signups.";
+      statusEl.textContent = "Error loading signups from backend.";
     }
+  }
 
-    async function runOptimizer() {
-      const month = monthInput.value;
-      if (!month) return;
+  async function runOptimizer() {
+    const month = monthInput.value;
+    if (!month) return;
 
-      statusEl.textContent = "Running optimizer...";
-      runOptimizerBtn.disabled = true;
+    statusEl.textContent = "Running optimizer...";
+    runOptimizerBtn.disabled = true;
 
-      try {
-        const params = new URLSearchParams({ month });
-        const res = await fetch(`${API_BASE}/api/admin/run_optimizer?${params.toString()}`, {
-          method: "POST",
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.detail || `HTTP ${res.status}`);
-        }
-        statusEl.textContent = `Optimizer finished for ${data.month}. Assigned shifts: ${data.assigned_shifts}.`;
-      } catch (err) {
-        console.error(err);
-        statusEl.textContent = "Error running optimizer.";
-      } finally {
-        runOptimizerBtn.disabled = false;
+    try {
+      const params = new URLSearchParams({ month });
+      const url = `${API_BASE}/api/admin/run_optimizer?${params.toString()}`;
+      console.log("POST", url);
+      const res = await fetch(url, { method: "POST" });
+      const text = await res.text();
+      console.log("Optimizer response status:", res.status, "body:", text);
+
+      if (!res.ok) {
+        throw new Error(text || `HTTP ${res.status}`);
       }
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = {};
+      }
+
+      statusEl.textContent =
+        `Optimizer finished for ${data.month || month}. Assigned shifts: ${data.assigned_shifts ?? "?"}.`;
+    } catch (err) {
+      console.error("Error running optimizer:", err);
+      statusEl.textContent = "Error running optimizer (check console).";
+    } finally {
+      runOptimizerBtn.disabled = false;
     }
+  }
 
-    function downloadCsv() {
-      const month = monthInput.value;
-      if (!month) return;
+  async function downloadCsv() {
+    const month = monthInput.value;
+    if (!month) return;
 
-      const url = `${API_BASE}/api/admin/signups_csv?month=${encodeURIComponent(month)}`;
-      // Simple browser download
-      window.open(url, "_blank");
+    const url = `${API_BASE}/api/admin/signups_csv?month=${encodeURIComponent(month)}`;
+    console.log("GET CSV", url);
+
+    try {
+      const res = await fetch(url);
+      console.log("CSV status:", res.status);
+
+      if (!res.ok) {
+        const body = await res.text();
+        console.error("CSV error body:", body);
+        alert(`Error downloading CSV: HTTP ${res.status}`);
+        return;
+      }
+
+      const text = await res.text();
+      const blob = new Blob([text], { type: "text/csv" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `signups_${month}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+
+      statusEl.textContent = "CSV downloaded.";
+    } catch (err) {
+      console.error("Error downloading CSV:", err);
+      alert("Network error downloading CSV (see console).");
     }
+  }
 
-    refreshBtn.addEventListener("click", loadSignups);
-    runOptimizerBtn.addEventListener("click", runOptimizer);
-    downloadCsvBtn.addEventListener("click", downloadCsv);
+  refreshBtn.addEventListener("click", loadSignups);
+  runOptimizerBtn.addEventListener("click", runOptimizer);
+  downloadCsvBtn.addEventListener("click", downloadCsv);
 
-    // Initial load
-    loadProvidersCount();
-    loadSignups();
-  </script>
+  // Initial load
+  loadProvidersCount();
+  loadSignups();
+</script>
 </body>
 </html>
