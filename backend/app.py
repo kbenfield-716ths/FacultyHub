@@ -1,5 +1,5 @@
 # backend/app.py
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
@@ -214,56 +214,6 @@ def list_signups(
     month: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
-    q = db.query(Signup).join(Signup.shift).join(Shift.month).join(Signup.provider)
-
-    if month:
-        year, mnum = map(int, month.split("-"))
-        q = q.filter(Month.year == year, Month.month == mnum)
-
-    signups = q.order_by(Provider.name, Shift.date).all()
-
-    # Manually shape into SignupOut
-    result: List[SignupOut] = []
-    for s in signups:
-        result.append(
-            SignupOut(
-                provider_id=s.provider_id,
-                provider_name=s.provider.name if s.provider else "",
-                date=s.shift.date,
-                month=f"{s.shift.month.year:04d}-{s.shift.month.month:02d}",
-                desired_nights=s.desired_nights,
-                locked=s.locked,
-            )
-        )
-    return result
-
-
-# ---------- Providers list (for dropdown) ----------
-
-@app.get("/api/providers", response_model=List[ProviderOut])
-def list_providers(db: Session = Depends(get_db)):
-    providers = db.query(Provider).order_by(Provider.name).all()
-    return providers
-
-# ---------- Admin: list signups ----------
-
-class SignupOut(BaseModel):
-    provider_id: str
-    provider_name: str
-    date: date
-    month: str
-    desired_nights: int
-    locked: bool
-
-    class Config:
-        from_attributes = True
-
-
-@app.get("/api/admin/signups", response_model=List[SignupOut])
-def list_signups(
-    month: Optional[str] = None,
-    db: Session = Depends(get_db),
-):
     """
     Return one row per provider-date signup:
     - provider_id, provider_name
@@ -309,28 +259,60 @@ def list_signups(
     return result
 
 
+# ---------- Providers list (for dropdown) ----------
+
+@app.get("/api/providers", response_model=List[ProviderOut])
+def list_providers(db: Session = Depends(get_db)):
+    providers = db.query(Provider).order_by(Provider.name).all()
+    return providers
+
+
 # ---------- Admin: run optimizer for a month ----------
 
 @app.post("/api/admin/run_optimizer")
 def run_optimizer_endpoint(
     month: str,
+    strategy: str = "balanced",
+    night_slots: int = 1,
     db: Session = Depends(get_db),
 ):
     """
     Run the scheduling optimizer for a given month ("YYYY-MM").
     """
-    # If run_optimizer_for_month isn't fully implemented yet,
-    # you can temporarily stub it out to just return [].
-    assignments = run_optimizer_for_month(month, db)
-    if assignments is None:
-        count = 0
-    else:
-        try:
-            count = len(assignments)
-        except TypeError:
-            count = 0
-
-    return {"status": "ok", "month": month, "assigned_shifts": count}
+    try:
+        year, month_num = map(int, month.split("-"))
+        month_row = (
+            db.query(Month)
+            .filter(Month.year == year, Month.month == month_num)
+            .first()
+        )
+        
+        if not month_row:
+            raise HTTPException(404, f"No signups found for month {month}")
+        
+        # Run optimizer
+        assignments = run_optimizer_for_month(db, month_row, strategy, night_slots)
+        
+        # Clear existing assignments for this month
+        shift_ids = [s.id for s in month_row.shifts]
+        db.query(Assignment).filter(Assignment.shift_id.in_(shift_ids)).delete(synchronize_session=False)
+        
+        # Save new assignments
+        for provider, shift in assignments:
+            assignment = Assignment(provider_id=provider.id, shift_id=shift.id)
+            db.add(assignment)
+        
+        db.commit()
+        
+        return {
+            "status": "ok",
+            "month": month,
+            "assigned_shifts": len(assignments),
+            "strategy": strategy
+        }
+    except Exception as e:
+        print(f"Optimizer error: {e}")
+        raise HTTPException(500, f"Optimizer failed: {str(e)}")
 
 
 # ---------- Admin: CSV export of signups ----------
@@ -341,20 +323,18 @@ def signups_csv(
     db: Session = Depends(get_db),
 ):
     """
-    Export all signups for a given month as CSV:
-    provider_id,provider_name,date,month,desired_nights,locked
+    Export all signups for a given month as CSV in optimizer format:
+    faculty_id,name,desired_nights,requested_dates,priority
     """
     year, mnum = map(int, month.split("-"))
 
+    # Get all signups for this month grouped by provider
     q = (
         db.query(
             Signup.provider_id,
-            Provider.name.label("provider_name"),
-            Shift.date.label("date"),
-            Month.year.label("year"),
-            Month.month.label("month_num"),
+            Provider.name,
+            Shift.date,
             Signup.desired_nights,
-            Signup.locked,
         )
         .join(Provider, Signup.provider_id == Provider.id)
         .join(Shift, Signup.shift_id == Shift.id)
@@ -364,24 +344,32 @@ def signups_csv(
     )
 
     rows = q.all()
+    
+    # Group by provider
+    from collections import defaultdict
+    providers_data = defaultdict(lambda: {"dates": [], "desired_nights": 0, "name": ""})
+    
+    for r in rows:
+        providers_data[r.provider_id]["name"] = r.name
+        providers_data[r.provider_id]["dates"].append(r.date.isoformat())
+        providers_data[r.provider_id]["desired_nights"] = r.desired_nights
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["provider_id", "provider_name", "date", "month", "desired_nights", "locked"])
+    writer.writerow(["faculty_id", "name", "desired_nights", "requested_dates", "priority"])
 
-    for r in rows:
-        month_str = f"{r.year:04d}-{r.month_num:02d}"
+    for faculty_id, data in sorted(providers_data.items()):
+        dates_str = ",".join(data["dates"])
         writer.writerow([
-            r.provider_id,
-            r.provider_name,
-            r.date.isoformat(),
-            month_str,
-            r.desired_nights,
-            int(bool(r.locked)),
+            faculty_id,
+            data["name"],
+            data["desired_nights"],
+            dates_str,
+            2  # Default priority
         ])
 
     csv_text = output.getvalue()
     headers = {
-        "Content-Disposition": f'attachment; filename="signups_{month}.csv"'
+        "Content-Disposition": f'attachment; filename="moonlighter_template_{month}.csv"'
     }
     return PlainTextResponse(csv_text, headers=headers)
