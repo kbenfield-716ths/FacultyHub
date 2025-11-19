@@ -6,58 +6,39 @@
   <meta name="theme-color" content="#232f3e">
   <title>IRPA Moonlighter Signup</title>
   <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
-  <style>
-    /* Back button styling */
-    .back-button {
-      background: rgba(0,82,204,0.1);
-      color: #0052cc;
-      border: 1px solid #0052cc;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.9rem;
-      text-decoration: none;
-      display: inline-block;
-      transition: all 0.2s;
-      margin-bottom: 16px;
-    }
-    
-    .back-button:hover {
-      background: #0052cc;
-      color: white;
-      transform: translateX(-2px);
-    }
-  </style>
 </head>
 <body>
 
-  <!-- Top header with back button -->
-  <header style="text-align:center; padding:12px 8px; font-weight:600; position: relative;">
-    <a href="Scheduling.html" class="back-button" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%);">← Back</a>
-    UVA Division of Pulmonary and Critical Care
+  <!-- Top header -->
+  <header style="background:#232f3e; color:white; padding:16px 20px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+    <div style="max-width:900px; margin:0 auto; display:flex; align-items:center; gap:16px;">
+      <a href="Scheduling.html" style="background:rgba(255,255,255,0.1); color:white; border:none; padding:8px 16px; border-radius:6px; text-decoration:none; font-size:0.9rem; transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">← Back</a>
+      <h1 style="margin:0; font-size:1.3rem; font-weight:600;">📅 Moonlighter Signup</h1>
+    </div>
   </header>
 
   <div id="signupContainer">
     <div id="signupHeader">
       <div>
-        <h1>IRPA Moonlighter Signup</h1>
-        <p id="providerInfo"></p>
+        <p id="providerInfo" style="margin:16px 0 8px 0;"></p>
       </div>
 
       <!-- Provider selection row -->
-      <div id="providerRow">
-        <label for="providerSelect">Provider:&nbsp;</label>
-        <select id="providerSelect">
+      <div id="providerRow" style="margin-bottom:16px;">
+        <label for="providerSelect" style="font-weight:500;">Provider:&nbsp;</label>
+        <select id="providerSelect" style="padding:6px 10px; border-radius:6px; border:1px solid #ccc; font-size:1rem;">
           <option value="">Select your name…</option>
         </select>
       </div>
 
-      <div id="monthPickerLabel">
-        Start month:&nbsp;
-        <input type="month" id="monthPicker">
-        &nbsp;Show:&nbsp;
-        <select id="monthsToShow">
+      <div id="monthPickerLabel" style="margin-bottom:20px; font-size:0.95rem;">
+        <label style="font-weight:500;">Start month:&nbsp;</label>
+        <input type="month" id="monthPicker" style="padding:6px 10px; border-radius:6px; border:1px solid #ccc;">
+        &nbsp;&nbsp;
+        <label style="font-weight:500;">Show:&nbsp;</label>
+        <select id="monthsToShow" style="padding:6px 10px; border-radius:6px; border:1px solid #ccc;">
           <option value="1">1 month</option>
           <option value="2" selected>2 months</option>
           <option value="3">3 months</option>
@@ -67,33 +48,25 @@
     </div>
 
     <!-- Weekday labels (shared for all months) -->
-    <div id="weekday-labels">
-      <div>Sun</div>
-      <div>Mon</div>
-      <div>Tue</div>
-      <div>Wed</div>
-      <div>Thu</div>
-      <div>Fri</div>
-      <div>Sat</div>
-    </div>
+    <div id="weekday-labels"></div>
 
     <!-- Calendar grid: will contain multiple months stacked vertically -->
     <div id="calendar"></div>
 
     <!-- Desired nights + Save -->
     <div id="controlsRow">
-      <label>
-        Desired nights per month (applied to each visible month on save):
+      <label style="font-weight:500;">
+        Desired nights per month:
         <input type="number" id="desired" min="0" max="20" value="4">
       </label>
 
-      <button id="saveBtn">Save My Signup</button>
+      <button id="saveBtn">💾 Save My Signup</button>
     </div>
   </div>
 
   <!-- Footer -->
-  <footer style="text-align:center; padding:16px 8px; font-size:0.85rem; color:#555;">
-    built by platypus inc.
+  <footer style="text-align:center; padding:24px 8px; font-size:0.85rem; color:#999;">
+    UVA Division of Pulmonary and Critical Care
   </footer>
 
   <script>
@@ -114,7 +87,7 @@
     const paramProviderName = params.get("provider_name") || "";
     let provider_id = paramProviderId;
     let provider_name = paramProviderName;
-    let monthStr = params.get("month") || currentMonthString();  // base "YYYY-MM"
+    let monthStr = params.get("month") || currentMonthString();
 
     // DOM references
     const providerInfoEl  = document.getElementById("providerInfo");
@@ -130,11 +103,10 @@
 
     function updateHeader() {
       const providerText = provider_name
-        ? `Signing up as ${provider_name}. `
-        : `Select your name to begin. `;
+        ? `Signing up as ${provider_name}`
+        : `Select your name to begin`;
 
-      providerInfoEl.textContent =
-        `${providerText}Start month: ${monthStr}. Showing ${monthsToShowEl.value} month(s).`;
+      providerInfoEl.innerHTML = `<strong>${providerText}</strong> • Start: ${monthStr} • Showing ${monthsToShowEl.value} month(s)`;
 
       monthPickerEl.value = monthStr;
     }
@@ -154,43 +126,48 @@
     }
 
     function monthKeyFromDateStr(dateStr) {
-      // "YYYY-MM-DD" -> "YYYY-MM"
       return dateStr.slice(0, 7);
     }
 
-    // Render the calendars for all visible months (stacked vertically)
     function renderCalendar() {
       calendarEl.innerHTML = "";
+      
+      // Add weekday headers
+      const weekdayLabelsEl = document.getElementById('weekday-labels');
+      weekdayLabelsEl.innerHTML = '<div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>';
 
       const visibleMonths = getVisibleMonths();
 
       for (const mKey of visibleMonths) {
         const [year, month] = mKey.split("-").map(Number);
         const firstDay = new Date(year, month - 1, 1);
-        const lastDay  = new Date(year, month, 0); // last day of month
-        const startWeekday = firstDay.getDay();    // 0–6
+        const lastDay  = new Date(year, month, 0);
+        const startWeekday = firstDay.getDay();
 
-        // Month label row spanning all 7 columns
+        // Month label
         const labelCell = document.createElement("div");
         labelCell.className = "month-label";
         labelCell.style.gridColumn = "1 / -1";
         labelCell.style.textAlign = "center";
-        labelCell.style.fontWeight = "600";
-        labelCell.style.marginTop = "8px";
+        labelCell.style.fontWeight = "700";
+        labelCell.style.fontSize = "1.1rem";
+        labelCell.style.marginTop = "24px";
+        labelCell.style.marginBottom = "12px";
+        labelCell.style.color = "#232f3e";
         labelCell.textContent = firstDay.toLocaleString("en-US", {
           month: "long",
           year: "numeric"
         });
         calendarEl.appendChild(labelCell);
 
-        // Leading empty cells so the 1st lands on the correct weekday
+        // Leading empty cells
         for (let i = 0; i < startWeekday; i++) {
           const emptyCell = document.createElement("div");
           emptyCell.className = "irpa-day-cell empty";
           calendarEl.appendChild(emptyCell);
         }
 
-        // Actual day cells
+        // Day cells
         for (let day = 1; day <= lastDay.getDate(); day++) {
           const dateStr = `${mKey}-${String(day).padStart(2, "0")}`;
 
@@ -218,7 +195,6 @@
       }
     }
 
-    // Start month changed
     monthPickerEl.addEventListener("change", () => {
       if (!monthPickerEl.value) return;
       monthStr = monthPickerEl.value;
@@ -226,13 +202,11 @@
       renderCalendar();
     });
 
-    // Number of months to show changed
     monthsToShowEl.addEventListener("change", () => {
       updateHeader();
       renderCalendar();
     });
 
-    // Provider selection changed
     providerSelectEl.addEventListener("change", () => {
       const id = providerSelectEl.value;
       const name = providerSelectEl.options[providerSelectEl.selectedIndex]?.text || "";
@@ -241,7 +215,6 @@
       updateHeader();
     });
 
-    // Save handler: sends one signup payload per VISIBLE month that has selections
     saveBtn.addEventListener("click", async () => {
       if (!provider_id || !provider_name) {
         alert("Please select your name before saving.");
@@ -257,7 +230,6 @@
       const visibleMonths = new Set(getVisibleMonths());
       const monthToDates = new Map();
 
-      // Group selected dates by month, but only for visible months
       for (const dateStr of selectedDates) {
         const mKey = monthKeyFromDateStr(dateStr);
         if (!visibleMonths.has(mKey)) continue;
@@ -295,14 +267,13 @@
           }
         }
 
-        alert("Signup saved successfully!");
+        alert("✅ Signup saved successfully!");
       } catch (err) {
         console.error(err);
-        alert("There was a problem saving your signup.");
+        alert("❌ There was a problem saving your signup.");
       }
     });
 
-    // Load providers from backend and populate dropdown
     async function loadProviders() {
       try {
         const res = await fetch(`${API_BASE}/api/providers`);
@@ -319,7 +290,6 @@
           providerSelectEl.appendChild(opt);
         });
 
-        // If provider was passed via URL, preselect
         if (paramProviderId) {
           providerSelectEl.value = paramProviderId;
         }
@@ -338,7 +308,6 @@
       }
     }
 
-    // Register service worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/Service_Worker.js')
@@ -346,7 +315,6 @@
       });
     }
 
-    // Initial render
     monthPickerEl.value = monthStr;
     updateHeader();
     renderCalendar();
