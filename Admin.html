@@ -19,7 +19,7 @@
       font-weight: 600;
     }
     #main {
-      max-width: 960px;
+      max-width: 1200px;
       margin: 16px auto;
       background: white;
       border-radius: 8px;
@@ -30,6 +30,11 @@
       margin-top: 0;
       margin-bottom: 4px;
       font-size: 1.4rem;
+    }
+    h2 {
+      font-size: 1.1rem;
+      margin-top: 24px;
+      margin-bottom: 12px;
     }
     #controls {
       display: flex;
@@ -89,6 +94,40 @@
       font-size: 0.85rem;
       color: #555;
     }
+    #scheduleSection {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 2px solid #e0e0e0;
+    }
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-top: 12px;
+    }
+    .calendar-day {
+      border: 1px solid #ddd;
+      padding: 8px;
+      min-height: 60px;
+      background: white;
+      font-size: 0.8rem;
+    }
+    .calendar-day-header {
+      font-weight: 600;
+      background: #f0f0f0;
+      text-align: center;
+      padding: 6px;
+    }
+    .calendar-day-number {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .calendar-day-empty {
+      background: #fafafa;
+    }
+    .calendar-day-assigned {
+      background: #e6f3ff;
+    }
   </style>
 </head>
 <body>
@@ -109,6 +148,7 @@
       </label>
       <button id="refreshBtn">Refresh signups</button>
       <button id="runOptimizerBtn">Run optimizer for month</button>
+      <button id="viewScheduleBtn" class="secondary">View schedule</button>
       <button id="downloadCsvBtn" class="secondary">Download signups CSV</button>
     </div>
 
@@ -118,6 +158,7 @@
     </div>
 
     <div id="tableContainer">
+      <h2>Signups</h2>
       <table id="signupsTable">
         <thead>
           <tr>
@@ -132,6 +173,11 @@
       </table>
     </div>
 
+    <div id="scheduleSection" style="display:none;">
+      <h2>Generated Schedule</h2>
+      <div id="scheduleCalendar"></div>
+    </div>
+
     <div id="status"></div>
   </div>
 
@@ -141,12 +187,15 @@
   const monthInput = document.getElementById("monthInput");
   const refreshBtn = document.getElementById("refreshBtn");
   const runOptimizerBtn = document.getElementById("runOptimizerBtn");
+  const viewScheduleBtn = document.getElementById("viewScheduleBtn");
   const downloadCsvBtn = document.getElementById("downloadCsvBtn");
   const providerCountLabel = document.getElementById("providerCountLabel");
   const summaryMonthSpan = document.getElementById("summaryMonth");
   const summaryText = document.getElementById("summaryText");
   const signupsTbody = document.getElementById("signupsTbody");
   const statusEl = document.getElementById("status");
+  const scheduleSection = document.getElementById("scheduleSection");
+  const scheduleCalendar = document.getElementById("scheduleCalendar");
 
   function currentMonthString() {
     const now = new Date();
@@ -161,7 +210,6 @@
   async function loadProvidersCount() {
     try {
       const res = await fetch(`${API_BASE}/api/providers`);
-      console.log("GET /api/providers", res.status);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const providers = await res.json();
       providerCountLabel.textContent = `${providers.length} providers in system`;
@@ -181,16 +229,9 @@
 
     try {
       const url = `${API_BASE}/api/admin/signups?month=${encodeURIComponent(month)}`;
-      console.log("GET", url);
       const res = await fetch(url);
-      console.log("GET /api/admin/signups status:", res.status);
-      if (!res.ok) {
-        const body = await res.text();
-        console.error("Signups error body:", body);
-        throw new Error(`HTTP ${res.status}`);
-      }
-      const data = await res.json(); // array of SignupOut
-      console.log("Signups data:", data);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
 
       if (data.length === 0) {
         summaryText.textContent = "No signups yet for this month.";
@@ -224,23 +265,18 @@
 
       for (const p of rows) {
         const tr = document.createElement("tr");
-
         const tdName = document.createElement("td");
         tdName.textContent = p.provider_name;
         tr.appendChild(tdName);
-
         const tdDates = document.createElement("td");
         tdDates.textContent = p.dates.sort().join(", ");
         tr.appendChild(tdDates);
-
         const tdCount = document.createElement("td");
         tdCount.textContent = p.dates.length.toString();
         tr.appendChild(tdCount);
-
         const tdDesired = document.createElement("td");
         tdDesired.textContent = p.desired_nights.toString();
         tr.appendChild(tdDesired);
-
         signupsTbody.appendChild(tr);
       }
 
@@ -262,24 +298,16 @@
     try {
       const params = new URLSearchParams({ month });
       const url = `${API_BASE}/api/admin/run_optimizer?${params.toString()}`;
-      console.log("POST", url);
       const res = await fetch(url, { method: "POST" });
       const text = await res.text();
-      console.log("Optimizer response status:", res.status, "body:", text);
 
-      if (!res.ok) {
-        throw new Error(text || `HTTP ${res.status}`);
-      }
+      if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
 
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        data = {};
-      }
-
-      statusEl.textContent =
-        `Optimizer finished for ${data.month || month}. Assigned shifts: ${data.assigned_shifts ?? "?"}.`;
+      const data = JSON.parse(text);
+      statusEl.textContent = `Optimizer finished for ${data.month}. Assigned ${data.assigned_shifts} shifts. Click 'View schedule' to see results.`;
+      
+      // Auto-load schedule
+      await viewSchedule();
     } catch (err) {
       console.error("Error running optimizer:", err);
       statusEl.textContent = "Error running optimizer (check console).";
@@ -288,20 +316,86 @@
     }
   }
 
+  async function viewSchedule() {
+    const month = monthInput.value;
+    if (!month) return;
+
+    try {
+      const url = `${API_BASE}/api/admin/assignments?month=${encodeURIComponent(month)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      if (data.length === 0) {
+        scheduleSection.style.display = "none";
+        statusEl.textContent = "No schedule generated yet. Run optimizer first.";
+        return;
+      }
+
+      // Show schedule
+      scheduleSection.style.display = "block";
+      
+      // Build calendar
+      const [year, monthNum] = month.split("-").map(Number);
+      const firstDay = new Date(year, monthNum - 1, 1);
+      const lastDay = new Date(year, monthNum, 0);
+      
+      // Group assignments by date
+      const assignmentsByDate = {};
+      for (const a of data) {
+        if (!assignmentsByDate[a.date]) {
+          assignmentsByDate[a.date] = [];
+        }
+        assignmentsByDate[a.date].push(a.provider_name);
+      }
+
+      // Build calendar HTML
+      let html = '<div class="calendar-grid">';
+      
+      // Headers
+      ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(day => {
+        html += `<div class="calendar-day-header">${day}</div>`;
+      });
+
+      // Empty cells before first day
+      const startDay = firstDay.getDay();
+      for (let i = 0; i < startDay; i++) {
+        html += '<div class="calendar-day calendar-day-empty"></div>';
+      }
+
+      // Days
+      for (let day = 1; day <= lastDay.getDate(); day++) {
+        const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const providers = assignmentsByDate[dateStr] || [];
+        const hasAssignments = providers.length > 0;
+        
+        html += `<div class="calendar-day ${hasAssignments ? 'calendar-day-assigned' : ''}">`;
+        html += `<div class="calendar-day-number">${day}</div>`;
+        if (hasAssignments) {
+          html += providers.map(name => `<div>${name}</div>`).join('');
+        }
+        html += '</div>';
+      }
+
+      html += '</div>';
+      scheduleCalendar.innerHTML = html;
+      statusEl.textContent = `Schedule loaded: ${data.length} assignments.`;
+
+    } catch (err) {
+      console.error("Error loading schedule:", err);
+      statusEl.textContent = "Error loading schedule.";
+    }
+  }
+
   async function downloadCsv() {
     const month = monthInput.value;
     if (!month) return;
 
     const url = `${API_BASE}/api/admin/signups_csv?month=${encodeURIComponent(month)}`;
-    console.log("GET CSV", url);
 
     try {
       const res = await fetch(url);
-      console.log("CSV status:", res.status);
-
       if (!res.ok) {
-        const body = await res.text();
-        console.error("CSV error body:", body);
         alert(`Error downloading CSV: HTTP ${res.status}`);
         return;
       }
@@ -325,6 +419,7 @@
 
   refreshBtn.addEventListener("click", loadSignups);
   runOptimizerBtn.addEventListener("click", runOptimizer);
+  viewScheduleBtn.addEventListener("click", viewSchedule);
   downloadCsvBtn.addEventListener("click", downloadCsv);
 
   // Initial load
