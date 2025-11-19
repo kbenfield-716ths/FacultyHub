@@ -17,11 +17,15 @@ COPY moonlighter_optimizer.py /app/moonlighter_optimizer.py
 COPY faculty.csv /app/faculty.csv
 
 # Copy all HTML, CSS, JS, and static files for the frontend
-COPY *.html /app/
+# Use individual COPY commands to handle case-sensitive files
+COPY *.html /app/ 2>/dev/null || true
+COPY *.Html /app/ 2>/dev/null || true
 COPY *.css /app/
 COPY *.js /app/
 COPY *.json /app/
-COPY icons /app/icons
+COPY *.svg /app/ 2>/dev/null || true
+COPY *.ico /app/ 2>/dev/null || true
+COPY icons /app/icons 2>/dev/null || true
 
 # Create /data directory for volume mount
 RUN mkdir -p /data
