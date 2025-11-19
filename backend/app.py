@@ -1,7 +1,8 @@
 # backend/app.py
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import date
@@ -20,14 +21,15 @@ from .notion_integration import get_notion_kb
 
 app = FastAPI()
 
-@app.get("/")
-def root():
-    return {"status": "ok"}
+# Serve static files (HTML, CSS, JS, icons, manifest)
+# The parent directory of backend/ contains all the HTML files
+STATIC_DIR = Path(__file__).resolve().parent.parent
+app.mount("/icons", StaticFiles(directory=str(STATIC_DIR / "icons")), name="icons")
 
-# Allow calls from your GitHub Pages site (you can tighten this later)
+# Allow calls from anywhere (since we're serving the frontend too now)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # later: ["https://kbenfield-716ths.github.io"]
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -166,6 +168,58 @@ def startup_event():
         seed_providers_from_csv(db)
     finally:
         db.close()
+
+
+# ---------- Static file routes ----------
+
+@app.get("/")
+async def serve_index():
+    """Serve the main index.html (renamed from pwa-index.html)"""
+    index_path = STATIC_DIR / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path)
+    return {"status": "ok", "message": "No index.html found"}
+
+@app.get("/manifest.json")
+async def serve_manifest():
+    manifest_path = STATIC_DIR / "manifest.json"
+    if manifest_path.exists():
+        return FileResponse(manifest_path)
+    return {"error": "manifest.json not found"}
+
+@app.get("/Service_Worker.js")
+async def serve_service_worker():
+    sw_path = STATIC_DIR / "Service_Worker.js"
+    if sw_path.exists():
+        return FileResponse(sw_path)
+    return {"error": "Service_Worker.js not found"}
+
+@app.get("/style.css")
+async def serve_style():
+    css_path = STATIC_DIR / "style.css"
+    if css_path.exists():
+        return FileResponse(css_path)
+    return {"error": "style.css not found"}
+
+@app.get("/{filename}.html")
+async def serve_html_file(filename: str):
+    """Serve any HTML file"""
+    # Handle both cases: Scheduling.html and scheduling.html
+    html_path = STATIC_DIR / f"{filename}.html"
+    if html_path.exists():
+        return FileResponse(html_path)
+    
+    # Try capitalized versions
+    html_path = STATIC_DIR / f"{filename.capitalize()}.html"
+    if html_path.exists():
+        return FileResponse(html_path)
+    
+    # Try with capital first letter for files like Resources.Html
+    for file in STATIC_DIR.glob("*.html"):
+        if file.stem.lower() == filename.lower():
+            return FileResponse(file)
+    
+    return {"error": f"{filename}.html not found"}
 
 
 # ---------- Signup endpoint ----------
