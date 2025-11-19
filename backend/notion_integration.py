@@ -6,6 +6,7 @@ Requires: pip install notion-client
 
 from typing import List, Dict, Optional
 import os
+import re
 from datetime import datetime
 
 try:
@@ -26,7 +27,13 @@ class NotionKnowledgeBase:
             database_id: Notion database ID (or set NOTION_DATABASE_ID env var)
         """
         self.token = notion_token or os.getenv('NOTION_TOKEN')
-        self.database_id = database_id or os.getenv('NOTION_DATABASE_ID')
+        raw_db_id = database_id or os.getenv('NOTION_DATABASE_ID')
+        
+        # Normalize database ID - remove hyphens and format correctly
+        if raw_db_id:
+            self.database_id = self._normalize_database_id(raw_db_id)
+        else:
+            self.database_id = None
         
         if not NOTION_AVAILABLE:
             self.client = None
@@ -34,9 +41,36 @@ class NotionKnowledgeBase:
             
         if self.token:
             self.client = Client(auth=self.token)
+            print(f"✓ Notion client initialized with database ID: {self.database_id}")
         else:
             self.client = None
             print("Warning: NOTION_TOKEN not set. Notion integration disabled.")
+
+    def _normalize_database_id(self, db_id: str) -> str:
+        """
+        Normalize database ID to proper UUID format.
+        Notion expects: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+        
+        Input can be:
+        - 2afaf82dc5b880e68548f9955d760d0e (32 chars, no hyphens)
+        - 2afaf82d-c5b8-80e6-8548-f9955d760d0e (with hyphens)
+        - Any URL containing the ID
+        """
+        # Remove any URL parts, spaces, and extract just the ID
+        db_id = db_id.strip().split('?')[0].split('/')[-1]
+        
+        # Remove all hyphens first
+        clean_id = db_id.replace('-', '')
+        
+        # Must be exactly 32 hex characters
+        if len(clean_id) != 32 or not re.match(r'^[a-f0-9]{32}$', clean_id, re.IGNORECASE):
+            print(f"Warning: Invalid database ID format: {db_id}")
+            return db_id
+        
+        # Format as UUID: 8-4-4-4-12
+        formatted_id = f"{clean_id[0:8]}-{clean_id[8:12]}-{clean_id[12:16]}-{clean_id[16:20]}-{clean_id[20:32]}"
+        print(f"Formatted database ID: {formatted_id}")
+        return formatted_id
 
     def get_all_articles(self) -> Dict:
         """
@@ -46,9 +80,12 @@ class NotionKnowledgeBase:
             Dict with articles and categories
         """
         if not self.client or not self.database_id:
+            print(f"Cannot fetch articles: client={bool(self.client)}, db_id={bool(self.database_id)}")
             return self._get_fallback_data()
 
         try:
+            print(f"Querying Notion database: {self.database_id}")
+            
             # Query the Notion database
             response = self.client.databases.query(
                 database_id=self.database_id,
@@ -59,6 +96,8 @@ class NotionKnowledgeBase:
                     }
                 ]
             )
+
+            print(f"Got {len(response.get('results', []))} pages from Notion")
 
             articles = []
             categories = set()
@@ -76,6 +115,8 @@ class NotionKnowledgeBase:
 
         except Exception as e:
             print(f"Error fetching from Notion: {e}")
+            import traceback
+            traceback.print_exc()
             return self._get_fallback_data()
 
     def get_article_by_id(self, article_id: str) -> Optional[Dict]:
@@ -133,9 +174,13 @@ class NotionKnowledgeBase:
         try:
             properties = page.get('properties', {})
             
-            # Extract title
+            # Extract title - try both "Title" and "Name" properties
             title_prop = properties.get('Title', {}) or properties.get('Name', {})
             title = self._extract_text(title_prop)
+            
+            if not title:
+                print(f"Warning: Page {page['id']} has no title")
+                return None
             
             # Extract category
             category_prop = properties.get('Category', {})
@@ -162,6 +207,8 @@ class NotionKnowledgeBase:
 
         except Exception as e:
             print(f"Error parsing page: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
     def _get_page_content(self, page_id: str) -> str:
