@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#232f3e">
   <title>Faculty Knowledge Base - IRPA</title>
+  <link rel="manifest" href="/manifest.json">
   <link rel="stylesheet" href="style.css">
   <style>
     body {
@@ -289,7 +290,7 @@
 </head>
 <body>
   <header>
-    <a href="index.html" class="back-button">← Back</a>
+    <a href="pwa-index.html" class="back-button">← Back</a>
     <h1>📚 Faculty Knowledge Base</h1>
     <div class="search-container">
       <span class="search-icon">🔍</span>
@@ -330,133 +331,21 @@
       const mainContent = document.getElementById('mainContent');
       
       try {
-        // Try to load from your backend API
         const response = await fetch(`${API_BASE}/api/knowledge-base`);
         
         if (response.ok) {
           const data = await response.json();
           allArticles = data.articles || [];
+          console.log('Loaded articles:', allArticles);
           displayArticleList(allArticles);
           populateCategories(data.categories || []);
         } else {
           throw new Error('Backend not ready');
         }
       } catch (error) {
-        console.log('Loading fallback content:', error);
-        // Fallback content while you set up the Notion API
-        loadFallbackContent();
+        console.log('Error loading from API:', error);
+        mainContent.innerHTML = '<p style="text-align:center;color:#999;padding:40px;">Unable to load articles. Please check Notion integration.</p>';
       }
-    }
-
-    function loadFallbackContent() {
-      // Temporary content until Notion API is integrated
-      allArticles = [
-        {
-          id: '1',
-          title: 'Getting Started with Moonlighter',
-          category: 'Scheduling',
-          summary: 'Learn how to submit your availability and understand the scheduling process.',
-          content: `
-            <h3>Welcome to Moonlighter</h3>
-            <p>This guide will help you get started with the moonlighter scheduling system.</p>
-            
-            <h4>Step 1: Access the System</h4>
-            <p>Navigate to the Scheduling page from the main hub. You'll see a calendar view where you can select your available dates.</p>
-            
-            <h4>Step 2: Select Your Dates</h4>
-            <p>Click on the dates you're available to work. Selected dates will be highlighted in blue.</p>
-            
-            <h4>Step 3: Set Preferences</h4>
-            <p>Indicate how many nights per month you'd like to work. The optimizer will try to match your preferences.</p>
-            
-            <h4>Step 4: Submit</h4>
-            <p>Review your selections and click Submit. You'll receive a confirmation email.</p>
-          `
-        },
-        {
-          id: '2',
-          title: 'Understanding the Schedule Optimizer',
-          category: 'Scheduling',
-          summary: 'How the automated scheduling system works and prioritizes assignments.',
-          content: `
-            <h3>How the Optimizer Works</h3>
-            <p>Our scheduling system uses advanced algorithms to create fair and balanced schedules.</p>
-            
-            <h4>Fairness Principles</h4>
-            <ul>
-              <li>Equal distribution of shifts among all providers</li>
-              <li>Respects individual preferences when possible</li>
-              <li>Minimizes consecutive night assignments</li>
-              <li>Accounts for locked/required dates</li>
-            </ul>
-            
-            <h4>Priority System</h4>
-            <p>The system prioritizes assignments based on:</p>
-            <ol>
-              <li>Locked dates (must be assigned)</li>
-              <li>Providers with fewer assignments</li>
-              <li>Date availability overlap</li>
-              <li>Desired nights per month</li>
-            </ol>
-          `
-        },
-        {
-          id: '3',
-          title: 'Contact Information & Support',
-          category: 'General',
-          summary: 'Who to contact for scheduling issues, technical problems, or general questions.',
-          content: `
-            <h3>Getting Help</h3>
-            <p>If you need assistance with the scheduling system, here's who to contact:</p>
-            
-            <h4>Scheduling Questions</h4>
-            <p>Contact the IRPA scheduling coordinator at <a href="mailto:irpa-scheduling@virginia.edu">irpa-scheduling@virginia.edu</a></p>
-            
-            <h4>Technical Issues</h4>
-            <p>For problems with the website or app, email <a href="mailto:support@virginia.edu">support@virginia.edu</a></p>
-            
-            <h4>Policy Questions</h4>
-            <p>For questions about moonlighting policies, contact the department administrator.</p>
-          `
-        },
-        {
-          id: '4',
-          title: 'Moonlighting Policies & Guidelines',
-          category: 'Policies',
-          summary: 'Important policies regarding moonlighting shifts, pay, and requirements.',
-          content: `
-            <h3>Moonlighting Policies</h3>
-            
-            <h4>Eligibility</h4>
-            <p>All faculty members in good standing are eligible for moonlighting shifts subject to availability.</p>
-            
-            <h4>Compensation</h4>
-            <ul>
-              <li>Standard rate: [Rate to be determined]</li>
-              <li>Holiday rate: [Rate to be determined]</li>
-              <li>Payment processed monthly</li>
-            </ul>
-            
-            <h4>Cancellation Policy</h4>
-            <p>If you need to cancel an assigned shift:</p>
-            <ul>
-              <li>More than 7 days notice: No penalty</li>
-              <li>Less than 7 days: Must find replacement</li>
-              <li>Emergency cancellations: Contact scheduler immediately</li>
-            </ul>
-            
-            <h4>Requirements</h4>
-            <ul>
-              <li>Must maintain current medical license</li>
-              <li>Must complete mandatory training</li>
-              <li>Must maintain appropriate credentials</li>
-            </ul>
-          `
-        }
-      ];
-
-      displayArticleList(allArticles);
-      populateCategories(['Scheduling', 'Policies', 'General']);
     }
 
     function populateCategories(categories) {
@@ -483,10 +372,10 @@
       let html = '<ul class="article-list">';
       articles.forEach(article => {
         html += `
-          <li class="article-card" onclick="displayArticle('${article.id}')">
-            <h3>${article.title}</h3>
-            <p>${article.summary}</p>
-            <small style="color:#999;">Category: ${article.category}</small>
+          <li class="article-card" onclick="loadAndDisplayArticle('${article.id}')">
+            <h3>${article.title || 'Untitled'}</h3>
+            <p>${article.summary || 'No summary'}</p>
+            <small style="color:#999;">Category: ${article.category || 'General'}</small>
           </li>
         `;
       });
@@ -495,26 +384,57 @@
       mainContent.innerHTML = html;
     }
 
-    function displayArticle(articleId) {
-      const article = allArticles.find(a => a.id === articleId);
-      if (!article) return;
-
+    async function loadAndDisplayArticle(articleId) {
       const mainContent = document.getElementById('mainContent');
+      
+      // Show loading
       mainContent.innerHTML = `
-        <button onclick="displayArticleList(allArticles)" style="background:#e0e0e0;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;margin-bottom:20px;">
-          ← Back to Articles
-        </button>
-        <div class="article-header">
-          <h2>${article.title}</h2>
-          <div class="article-meta">Category: ${article.category}</div>
-        </div>
-        <div class="article-content">
-          ${article.content}
+        <div class="loading">
+          <div class="spinner"></div>
+          <p>Loading article...</p>
         </div>
       `;
-      
-      // Scroll to top
-      window.scrollTo(0, 0);
+
+      try {
+        // Fetch full article with content
+        const response = await fetch(`${API_BASE}/api/knowledge-base/article/${articleId}`);
+        
+        if (!response.ok) {
+          throw new Error('Article not found');
+        }
+
+        const article = await response.json();
+        console.log('Loaded article:', article);
+        
+        // Display the article
+        mainContent.innerHTML = `
+          <button onclick="displayArticleList(allArticles)" style="background:#e0e0e0;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;margin-bottom:20px;">
+            ← Back to Articles
+          </button>
+          <div class="article-header">
+            <h2>${article.title || 'Untitled'}</h2>
+            <div class="article-meta">Category: ${article.category || 'General'}</div>
+          </div>
+          <div class="article-content">
+            ${article.content || '<p>No content available for this article yet. Add content in Notion to see it here.</p>'}
+          </div>
+        `;
+        
+        // Scroll to top
+        window.scrollTo(0, 0);
+
+      } catch (error) {
+        console.error('Error loading article:', error);
+        mainContent.innerHTML = `
+          <button onclick="displayArticleList(allArticles)" style="background:#e0e0e0;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;margin-bottom:20px;">
+            ← Back to Articles
+          </button>
+          <div class="error">
+            <strong>Error loading article</strong><br>
+            ${error.message}
+          </div>
+        `;
+      }
     }
 
     function filterByCategory(category) {
@@ -557,12 +477,19 @@
 
       const lowerQuery = query.toLowerCase();
       const filtered = allArticles.filter(article => 
-        article.title.toLowerCase().includes(lowerQuery) ||
-        article.summary.toLowerCase().includes(lowerQuery) ||
-        article.content.toLowerCase().includes(lowerQuery)
+        (article.title && article.title.toLowerCase().includes(lowerQuery)) ||
+        (article.summary && article.summary.toLowerCase().includes(lowerQuery))
       );
 
       displayArticleList(filtered);
+    }
+
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/Service_Worker.js')
+          .catch(err => console.log('Service Worker registration failed', err));
+      });
     }
   </script>
 </body>
