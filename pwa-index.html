@@ -4,16 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#232f3e">
-  <meta name="description" content="Faculty Hub - Scheduling and Resources">
+  <meta name="description" content="IRPA Faculty Hub - Scheduling and Resources">
   
-  <title>Faculty Hub</title>
+  <title>IRPA Faculty Hub</title>
   
   <!-- PWA Manifest -->
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="/manifest.json">
   
   <!-- Icons -->
-  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/android-chrome-192x192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/icons/android-chrome-512x512.png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
   
   <link rel="stylesheet" href="style.css">
   
@@ -195,7 +196,7 @@
 
   <header>
     <div class="header-content">
-      <h1>🏥 Faculty Hub</h1>
+      <h1>🏥 IRPA Faculty Hub</h1>
       <button class="install-button" id="installButton">
         📱 Install App
       </button>
@@ -204,20 +205,20 @@
 
   <main>
     <div class="welcome">
-      <h2>Welcome to the Faculty Hub</h2>
+      <h2>Welcome to the IRPA Faculty Hub</h2>
       <p>Your central hub for scheduling, resources, and faculty information. Select a tool below to get started.</p>
     </div>
 
     <div class="cards-grid">
       <!-- Primary Card: Scheduling -->
-      <a href="scheduling.html" class="card primary">
+      <a href="Scheduling.html" class="card primary">
         <span class="card-icon">📅</span>
         <h3>Moonlighter Scheduling</h3>
         <p>Submit your availability for moonlighting shifts and view the generated schedule.</p>
       </a>
 
       <!-- Faculty Resources -->
-      <a href="resources.html" class="card">
+      <a href="Resources.Html" class="card">
         <span class="card-icon">📚</span>
         <h3>Faculty Knowledge Base</h3>
         <p>Access FAQs, policies, procedures, and helpful resources for faculty members.</p>
@@ -286,12 +287,11 @@
     // Register service worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js')
-          .then(reg => console.log('Service Worker registered'))
-          .catch(err => console.log('Service Worker registration failed', err));
+        navigator.serviceWorker.register('/Service_Worker.js')
+          .then(reg => console.log('Service Worker registered:', reg.scope))
+          .catch(err => console.error('Service Worker registration failed:', err));
       });
     }
   </script>
 </body>
-</html>
 </html>
