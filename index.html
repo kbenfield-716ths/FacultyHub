@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🌙 IRPA Optimizer by Platypus Inc.</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="icon" href="favicon.ico" />
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>🌙 IRPA Optimizer</h1>
+      <div id="pyStatus" class="status not-ready">🟠 Python: Not Ready</div>
+    </header>
+
+    <p>Upload your <code>moonlighter_template.csv</code> file, then click <strong>Run Optimizer</strong> once Python is ready.</p>
+
+    <div class="controls">
+      <label class="upload-btn">
+        📁 Upload CSV
+        <input type="file" id="csvFile" accept=".csv" hidden>
+      </label>
+      <span id="fileName" class="file-name"></span>
+
+      <label>Strategy:
+        <select id="strategy">
+          <option value="balanced" selected>Balanced</option>
+          <option value="coverage">Coverage-first</option>
+          <option value="satisfaction">Satisfaction-first</option>
+        </select>
+      </label>
+
+      <label>People per night:
+        <input type="number" id="slots" value="1" min="1" step="1">
+      </label>
+
+      <button id="runBtn" disabled>Run Optimizer</button>
+      <button id="resetBtn" class="secondary">Reset</button>
+    </div>
+
+    <div id="output" class="results"></div>
+    <canvas id="coverageChart"></canvas>
+  </div>
+
+  <script type="module">
+    const runBtn = document.getElementById("runBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const fileInput = document.getElementById("csvFile");
+    const fileNameDisplay = document.getElementById("fileName");
+    const outputDiv = document.getElementById("output");
+    const strategySel = document.getElementById("strategy");
+    const slotsInput = document.getElementById("slots");
+    const statusIndicator = document.getElementById("pyStatus");
+    let pyodide;
+
+    // ===== PYODIDE INITIALIZATION =====
+    async function initPyodide() {
+      statusIndicator.textContent = "🟠 Python: Loading...";
+      outputDiv.innerHTML = "<p>Loading Python environment... please wait.</p>";
+
+      pyodide = await loadPyodide();
+      await pyodide.loadPackage(["pandas", "micropip"]);
+
+      const optimizerPy = await fetch("moonlighter_optimizer.py").then(r => r.text());
+      const runnerPy = await fetch("run_moonlighter.py").then(r => r.text());
+      pyodide.FS.writeFile("moonlighter_optimizer.py", optimizerPy);
+      pyodide.FS.writeFile("run_moonlighter.py", runnerPy);
+
+      statusIndicator.textContent = "🟢 Python: Ready";
+      statusIndicator.classList.replace("not-ready", "ready");
+      outputDiv.innerHTML = "<p>Environment ready. Upload CSV and click Run.</p>";
+      runBtn.disabled = false;
+    }
+    initPyodide();
+
+    // ===== FILE INPUT HANDLER =====
+    fileInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        fileNameDisplay.textContent = `📄 Loaded: ${file.name}`;
+      } else {
+        fileNameDisplay.textContent = "";
+      }
+    });
+
+    // ===== RUN OPTIMIZER =====
+    runBtn.addEventListener("click", async () => {
+      const file = fileInput.files[0];
+      if (!file) { alert("Please upload a CSV first."); return; }
+
+      const csvText = await file.text();
+      const encoder = new TextEncoder();
+      pyodide.FS.writeFile("moonlighter_template.csv", encoder.encode(csvText));
+
+      outputDiv.innerHTML = "<p>Running optimization... please wait.</p>";
+      const strategy = strategySel.value;
+      const slots = parseInt(slotsInput.value || "1", 10);
+
+      try {
+        const result = await pyodide.runPythonAsync(`
+from run_moonlighter import run_optimizer
+import json
+output = run_optimizer('moonlighter_template.csv', night_slots=${slots}, strategy='${strategy}')
+json.dumps(output)
+        `);
+        const data = JSON.parse(result);
+        renderResults(data);
+      } catch (err) {
+        outputDiv.innerHTML = `
+          <div class="error-box">
+            ⚠️ <strong>Could not process CSV:</strong><br>
+            <pre>${err}</pre>
+          </div>`;
+      }
+    });
+
+    // ===== RESET BUTTON =====
+    resetBtn.addEventListener("click", () => {
+      fileInput.value = "";
+      fileNameDisplay.textContent = "";
+      outputDiv.innerHTML = "";
+      if (window._coverageChart) {
+        window._coverageChart.destroy();
+        window._coverageChart = null;
+      }
+      statusIndicator.textContent = "🟢 Python: Ready";
+    });
+
+    // ===== RENDER RESULTS =====
+    function renderResults(data) {
+      const { metrics, summary, schedule } = data;
+
+      // ----- Summary table -----
+      const rows = (summary || []).map(s => `
+        <tr>
+          <td>${s.name || ""}</td>
+          <td>${s.desired ?? ""}</td>
+          <td>${s.assigned ?? ""}</td>
+          <td>${s.fulfillment ?? ""}</td>
+        </tr>`).join("");
+
+      outputDiv.innerHTML = `
+        <h2>Results</h2>
+        <p><strong>Coverage:</strong> ${metrics.coverage_rate}%</p>
+        <p><strong>Average Satisfaction:</strong> ${metrics.avg_satisfaction}%</p>
+        <table>
+          <tr><th>Faculty</th><th>Desired</th><th>Assigned</th><th>Fulfillment (%)</th></tr>
+          ${rows}
+        </table>
+      `;
+
+      // ----- Chart -----
+      const ctx = document.getElementById("coverageChart").getContext("2d");
+      if (window._coverageChart) window._coverageChart.destroy();
+
+      window._coverageChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: (summary || []).map(s => s.name),
+          datasets: [{
+            label: "Fulfillment %",
+            data: (summary || []).map(s => s.fulfillment),
+            backgroundColor: "rgba(37, 99, 235, 0.7)"
+          }]
+        },
+        options: { scales: { y: { beginAtZero: true, max: 120 } } }
+      });
+
+      // ----- Convert faculty IDs to names -----
+      const idToName = {};
+      (summary || []).forEach(s => {
+        if (s.id && s.name) idToName[s.id] = s.name;
+      });
+
+      const scheduleWithNames = {};
+      for (const [date, fids] of Object.entries(schedule || {})) {
+        scheduleWithNames[date] = fids.map(fid => idToName[fid] || fid);
+      }
+
+      // ----- Build automatic month calendar(s) -----
+      const allMonths = [...new Set(Object.keys(scheduleWithNames).map(d => d.slice(0,7)))];
+      for (const ym of allMonths) {
+        const [year, month] = ym.split("-").map(Number);
+        const calendarHTML = buildCalendar(scheduleWithNames, year, month);
+        const title = new Date(year, month - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+        outputDiv.innerHTML += `<h3>📅 ${title}</h3>${calendarHTML}`;
+      }
+    }
+
+    function buildCalendar(schedule, year, month) {
+      const firstDay = new Date(year, month - 1, 1);
+      const lastDay = new Date(year, month, 0);
+      const weeks = [];
+      let current = new Date(firstDay);
+      let week = new Array(7).fill("");
+
+      // Fill initial blanks
+      for (let i = 0; i < current.getDay(); i++) week[i] = "";
+
+      while (current <= lastDay) {
+        const day = current.getDate();
+        const dateStr = `${year}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+        const names = schedule[dateStr] ? schedule[dateStr].join(", ") : "";
+        week[current.getDay()] = names
+          ? `<div class="day-content"><strong>${day}</strong><br>${names}</div>`
+          : `<div class="day-content"><strong>${day}</strong></div>`;
+
+        if (current.getDay() === 6 || day === lastDay.getDate()) {
+          weeks.push(week);
+          week = new Array(7).fill("");
+        }
+
+        current.setDate(current.getDate() + 1);
+      }
+
+      const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      return `
+        <table class="calendar">
+          <tr>${weekdays.map(d => `<th>${d}</th>`).join("")}</tr>
+          ${weeks.map(w => `<tr>${w.map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}
+        </table>
+      `;
+    }
+  </script>
+</body>
+</html>
