@@ -17,6 +17,10 @@ from .optimizer_bridge import run_optimizer_for_month
 
 app = FastAPI()
 
+@app.get("/")
+def root():
+    return {"status": "ok"}
+
 # Allow calls from your GitHub Pages site (you can tighten this later)
 app.add_middleware(
     CORSMiddleware,
