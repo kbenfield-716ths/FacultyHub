@@ -16,7 +16,6 @@ from .models import (
     Provider, Month, Shift, Signup, Assignment
 )
 from .optimizer_bridge import run_optimizer_for_month
-from .notion_integration import get_notion_kb
 
 app = FastAPI()
 
@@ -575,35 +574,3 @@ def signups_csv(
         "Content-Disposition": f'attachment; filename="moonlighter_template_{month}.csv"'
     }
     return PlainTextResponse(csv_text, headers=headers)
-# Notion
-@app.get("/api/knowledge-base")
-def get_knowledge_base():
-    """
-    Get all articles from the knowledge base (Notion integration)
-    """
-    notion_kb = get_notion_kb()
-    return notion_kb.get_all_articles()
-
-
-@app.get("/api/knowledge-base/article/{article_id}")
-def get_article(article_id: str):
-    """
-    Get a specific article with full content
-    """
-    notion_kb = get_notion_kb()
-    article = notion_kb.get_article_by_id(article_id)
-    
-    if not article:
-        raise HTTPException(404, "Article not found")
-    
-    return article
-
-
-@app.get("/api/knowledge-base/search")
-def search_knowledge_base(q: str):
-    """
-    Search articles by query
-    """
-    notion_kb = get_notion_kb()
-    articles = notion_kb.search_articles(q)
-    return {"articles": articles}
