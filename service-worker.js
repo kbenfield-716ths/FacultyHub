@@ -1,13 +1,17 @@
-// service-worker.js
+// service-worker.js - CORRECTED VERSION
 const CACHE_NAME = 'irpa-hub-v1';
 const urlsToCache = [
   '/',
-  '/index.html',
-  '/scheduling.html',
-  '/resources.html',
+  '/pwa-index.html',
+  '/Scheduling.html',      // Capital S - matches actual filename
+  '/Resources.Html',       // Capital R and H - matches actual filename  
   '/signup.html',
+  '/Admin.html',           // Capital A - matches actual filename
   '/style.css',
-  '/manifest.json'
+  '/manifest.json',
+  '/icons/android-chrome-192x192.png',
+  '/icons/android-chrome-512x512.png',
+  '/icons/apple-touch-icon.png'
 ];
 
 // Install event - cache resources
@@ -73,7 +77,7 @@ self.addEventListener('fetch', (event) => {
         }).catch(() => {
           // Network failed, return offline page if it's an HTML request
           if (event.request.headers.get('accept').includes('text/html')) {
-            return caches.match('/index.html');
+            return caches.match('/pwa-index.html');
           }
         });
       })
@@ -98,8 +102,8 @@ async function syncSignups() {
 self.addEventListener('push', (event) => {
   const options = {
     body: event.data ? event.data.text() : 'New update available',
-    icon: '/icons/icon-192.png',
-    badge: '/icons/icon-72.png',
+    icon: '/icons/android-chrome-192x192.png',
+    badge: '/icons/favicon-32x32.png',
     vibrate: [200, 100, 200]
   };
 
