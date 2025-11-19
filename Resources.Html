@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#232f3e">
+  <title>Faculty Knowledge Base - IRPA</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f6f6f9;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background: #232f3e;
+      color: white;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .back-button {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      text-decoration: none;
+      display: inline-block;
+      transition: background 0.2s;
+    }
+
+    .back-button:hover {
+      background: rgba(255,255,255,0.2);
+    }
+
+    h1 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      flex: 1;
+    }
+
+    .search-container {
+      position: relative;
+      flex: 0 0 300px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 8px 12px 8px 36px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      background: rgba(255,255,255,0.9);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1rem;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 0 16px;
+      display: grid;
+      grid-template-columns: 250px 1fr;
+      gap: 20px;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      background: white;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      height: fit-content;
+      position: sticky;
+      top: 20px;
+    }
+
+    .sidebar h2 {
+      font-size: 1rem;
+      margin: 0 0 12px 0;
+      color: #232f3e;
+    }
+
+    .category-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .category-item {
+      padding: 10px 12px;
+      margin-bottom: 4px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #666;
+      font-size: 0.9rem;
+      border-left: 3px solid transparent;
+    }
+
+    .category-item:hover {
+      background: #f0f0f0;
+      color: #232f3e;
+    }
+
+    .category-item.active {
+      background: #e6f3ff;
+      color: #0052cc;
+      border-left-color: #0052cc;
+      font-weight: 500;
+    }
+
+    /* Main Content */
+    .main-content {
+      background: white;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      min-height: 500px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+    }
+
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #0052cc;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .error {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 6px;
+      padding: 16px;
+      margin-bottom: 20px;
+      color: #856404;
+    }
+
+    /* Article styles */
+    .article-header {
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid #e0e0e0;
+    }
+
+    .article-header h2 {
+      font-size: 1.8rem;
+      margin: 0 0 8px 0;
+      color: #232f3e;
+    }
+
+    .article-meta {
+      color: #999;
+      font-size: 0.85rem;
+    }
+
+    .article-content {
+      line-height: 1.8;
+      color: #333;
+    }
+
+    .article-content h3 {
+      font-size: 1.3rem;
+      margin: 32px 0 12px 0;
+      color: #232f3e;
+    }
+
+    .article-content h4 {
+      font-size: 1.1rem;
+      margin: 24px 0 8px 0;
+      color: #444;
+    }
+
+    .article-content p {
+      margin-bottom: 16px;
+    }
+
+    .article-content ul, .article-content ol {
+      margin-bottom: 16px;
+      padding-left: 28px;
+    }
+
+    .article-content li {
+      margin-bottom: 8px;
+    }
+
+    .article-content code {
+      background: #f4f4f4;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9em;
+    }
+
+    .article-content pre {
+      background: #f4f4f4;
+      padding: 16px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin-bottom: 16px;
+    }
+
+    .article-content blockquote {
+      border-left: 4px solid #0052cc;
+      padding-left: 16px;
+      margin: 16px 0;
+      color: #666;
+      font-style: italic;
+    }
+
+    .article-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .article-card {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border-left: 4px solid transparent;
+    }
+
+    .article-card:hover {
+      background: #e6f3ff;
+      border-left-color: #0052cc;
+      transform: translateX(4px);
+    }
+
+    .article-card h3 {
+      margin: 0 0 8px 0;
+      font-size: 1.1rem;
+      color: #232f3e;
+    }
+
+    .article-card p {
+      margin: 0;
+      color: #666;
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+      }
+
+      .search-container {
+        flex: 1;
+      }
+
+      header {
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="index.html" class="back-button">← Back</a>
+    <h1>📚 Faculty Knowledge Base</h1>
+    <div class="search-container">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-input" id="searchInput" placeholder="Search articles...">
+    </div>
+  </header>
+
+  <div class="container">
+    <aside class="sidebar">
+      <h2>Categories</h2>
+      <ul class="category-list" id="categoryList">
+        <li class="category-item active" data-category="all">📋 All Articles</li>
+        <!-- Categories will be loaded dynamically -->
+      </ul>
+    </aside>
+
+    <main class="main-content" id="mainContent">
+      <div class="loading">
+        <div class="spinner"></div>
+        <p>Loading knowledge base...</p>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const API_BASE = "https://moonlighter-web.fly.dev";
+    
+    let allArticles = [];
+    let currentCategory = 'all';
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadKnowledgeBase();
+      setupEventListeners();
+    });
+
+    async function loadKnowledgeBase() {
+      const mainContent = document.getElementById('mainContent');
+      
+      try {
+        // Try to load from your backend API
+        const response = await fetch(`${API_BASE}/api/knowledge-base`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          allArticles = data.articles || [];
+          displayArticleList(allArticles);
+          populateCategories(data.categories || []);
+        } else {
+          throw new Error('Backend not ready');
+        }
+      } catch (error) {
+        console.log('Loading fallback content:', error);
+        // Fallback content while you set up the Notion API
+        loadFallbackContent();
+      }
+    }
+
+    function loadFallbackContent() {
+      // Temporary content until Notion API is integrated
+      allArticles = [
+        {
+          id: '1',
+          title: 'Getting Started with Moonlighter',
+          category: 'Scheduling',
+          summary: 'Learn how to submit your availability and understand the scheduling process.',
+          content: `
+            <h3>Welcome to Moonlighter</h3>
+            <p>This guide will help you get started with the moonlighter scheduling system.</p>
+            
+            <h4>Step 1: Access the System</h4>
+            <p>Navigate to the Scheduling page from the main hub. You'll see a calendar view where you can select your available dates.</p>
+            
+            <h4>Step 2: Select Your Dates</h4>
+            <p>Click on the dates you're available to work. Selected dates will be highlighted in blue.</p>
+            
+            <h4>Step 3: Set Preferences</h4>
+            <p>Indicate how many nights per month you'd like to work. The optimizer will try to match your preferences.</p>
+            
+            <h4>Step 4: Submit</h4>
+            <p>Review your selections and click Submit. You'll receive a confirmation email.</p>
+          `
+        },
+        {
+          id: '2',
+          title: 'Understanding the Schedule Optimizer',
+          category: 'Scheduling',
+          summary: 'How the automated scheduling system works and prioritizes assignments.',
+          content: `
+            <h3>How the Optimizer Works</h3>
+            <p>Our scheduling system uses advanced algorithms to create fair and balanced schedules.</p>
+            
+            <h4>Fairness Principles</h4>
+            <ul>
+              <li>Equal distribution of shifts among all providers</li>
+              <li>Respects individual preferences when possible</li>
+              <li>Minimizes consecutive night assignments</li>
+              <li>Accounts for locked/required dates</li>
+            </ul>
+            
+            <h4>Priority System</h4>
+            <p>The system prioritizes assignments based on:</p>
+            <ol>
+              <li>Locked dates (must be assigned)</li>
+              <li>Providers with fewer assignments</li>
+              <li>Date availability overlap</li>
+              <li>Desired nights per month</li>
+            </ol>
+          `
+        },
+        {
+          id: '3',
+          title: 'Contact Information & Support',
+          category: 'General',
+          summary: 'Who to contact for scheduling issues, technical problems, or general questions.',
+          content: `
+            <h3>Getting Help</h3>
+            <p>If you need assistance with the scheduling system, here's who to contact:</p>
+            
+            <h4>Scheduling Questions</h4>
+            <p>Contact the IRPA scheduling coordinator at <a href="mailto:irpa-scheduling@virginia.edu">irpa-scheduling@virginia.edu</a></p>
+            
+            <h4>Technical Issues</h4>
+            <p>For problems with the website or app, email <a href="mailto:support@virginia.edu">support@virginia.edu</a></p>
+            
+            <h4>Policy Questions</h4>
+            <p>For questions about moonlighting policies, contact the department administrator.</p>
+          `
+        },
+        {
+          id: '4',
+          title: 'Moonlighting Policies & Guidelines',
+          category: 'Policies',
+          summary: 'Important policies regarding moonlighting shifts, pay, and requirements.',
+          content: `
+            <h3>Moonlighting Policies</h3>
+            
+            <h4>Eligibility</h4>
+            <p>All faculty members in good standing are eligible for moonlighting shifts subject to availability.</p>
+            
+            <h4>Compensation</h4>
+            <ul>
+              <li>Standard rate: [Rate to be determined]</li>
+              <li>Holiday rate: [Rate to be determined]</li>
+              <li>Payment processed monthly</li>
+            </ul>
+            
+            <h4>Cancellation Policy</h4>
+            <p>If you need to cancel an assigned shift:</p>
+            <ul>
+              <li>More than 7 days notice: No penalty</li>
+              <li>Less than 7 days: Must find replacement</li>
+              <li>Emergency cancellations: Contact scheduler immediately</li>
+            </ul>
+            
+            <h4>Requirements</h4>
+            <ul>
+              <li>Must maintain current medical license</li>
+              <li>Must complete mandatory training</li>
+              <li>Must maintain appropriate credentials</li>
+            </ul>
+          `
+        }
+      ];
+
+      displayArticleList(allArticles);
+      populateCategories(['Scheduling', 'Policies', 'General']);
+    }
+
+    function populateCategories(categories) {
+      const categoryList = document.getElementById('categoryList');
+      
+      categories.forEach(cat => {
+        const li = document.createElement('li');
+        li.className = 'category-item';
+        li.dataset.category = cat.toLowerCase();
+        li.textContent = `📁 ${cat}`;
+        li.onclick = () => filterByCategory(cat.toLowerCase());
+        categoryList.appendChild(li);
+      });
+    }
+
+    function displayArticleList(articles) {
+      const mainContent = document.getElementById('mainContent');
+      
+      if (articles.length === 0) {
+        mainContent.innerHTML = '<p style="text-align:center;color:#999;padding:40px;">No articles found.</p>';
+        return;
+      }
+
+      let html = '<ul class="article-list">';
+      articles.forEach(article => {
+        html += `
+          <li class="article-card" onclick="displayArticle('${article.id}')">
+            <h3>${article.title}</h3>
+            <p>${article.summary}</p>
+            <small style="color:#999;">Category: ${article.category}</small>
+          </li>
+        `;
+      });
+      html += '</ul>';
+      
+      mainContent.innerHTML = html;
+    }
+
+    function displayArticle(articleId) {
+      const article = allArticles.find(a => a.id === articleId);
+      if (!article) return;
+
+      const mainContent = document.getElementById('mainContent');
+      mainContent.innerHTML = `
+        <button onclick="displayArticleList(allArticles)" style="background:#e0e0e0;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;margin-bottom:20px;">
+          ← Back to Articles
+        </button>
+        <div class="article-header">
+          <h2>${article.title}</h2>
+          <div class="article-meta">Category: ${article.category}</div>
+        </div>
+        <div class="article-content">
+          ${article.content}
+        </div>
+      `;
+      
+      // Scroll to top
+      window.scrollTo(0, 0);
+    }
+
+    function filterByCategory(category) {
+      currentCategory = category;
+      
+      // Update active state
+      document.querySelectorAll('.category-item').forEach(item => {
+        item.classList.remove('active');
+        if (item.dataset.category === category) {
+          item.classList.add('active');
+        }
+      });
+
+      // Filter articles
+      let filtered = allArticles;
+      if (category !== 'all') {
+        filtered = allArticles.filter(a => a.category.toLowerCase() === category);
+      }
+      
+      displayArticleList(filtered);
+    }
+
+    function setupEventListeners() {
+      const searchInput = document.getElementById('searchInput');
+      let searchTimeout;
+      
+      searchInput.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+          searchArticles(e.target.value);
+        }, 300);
+      });
+    }
+
+    function searchArticles(query) {
+      if (!query.trim()) {
+        filterByCategory(currentCategory);
+        return;
+      }
+
+      const lowerQuery = query.toLowerCase();
+      const filtered = allArticles.filter(article => 
+        article.title.toLowerCase().includes(lowerQuery) ||
+        article.summary.toLowerCase().includes(lowerQuery) ||
+        article.content.toLowerCase().includes(lowerQuery)
+      );
+
+      displayArticleList(filtered);
+    }
+  </script>
+</body>
+</html>
