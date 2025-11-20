@@ -2,7 +2,7 @@
 from datetime import datetime, date
 from sqlalchemy import (
     Column, Integer, String, Boolean, Date, DateTime,
-    ForeignKey, create_engine
+    ForeignKey, create_engine, text
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 import os
@@ -82,13 +82,16 @@ def init_db():
     print("[Database] Creating tables and indexes...")
     Base.metadata.create_all(bind=engine)
     
-    # Database optimizations
-    with engine.connect() as conn:
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA cache_size=-20000")  # 20MB cache
-        conn.execute("PRAGMA mmap_size=10485760")  # 10MB memory-mapped
-        conn.execute("PRAGMA synchronous=NORMAL")
-        conn.execute("ANALYZE")
-        conn.commit()
-    
-    print("[Database] Initialization complete with optimizations")
+    # Database optimizations using text() for raw SQL
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("PRAGMA journal_mode=WAL"))
+            conn.execute(text("PRAGMA cache_size=-20000"))
+            conn.execute(text("PRAGMA mmap_size=10485760"))
+            conn.execute(text("PRAGMA synchronous=NORMAL"))
+            conn.execute(text("ANALYZE"))
+            conn.commit()
+        print("[Database] Initialization complete with optimizations")
+    except Exception as e:
+        print(f"[Database] Warning: Could not apply optimizations: {e}")
+        print("[Database] Initialization complete (without optimizations)")
