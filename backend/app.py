@@ -213,12 +213,36 @@ async def serve_manifest():
         return response
     return {"error": "manifest.json not found"}
 
-@app.get("/Service_Worker.js")
+# ===== FIX: Serve service-worker.js (with hyphen, lowercase) =====
+@app.get("/service-worker.js")
 async def serve_service_worker():
-    sw_path = STATIC_DIR / "Service_Worker.js"
+    """Serve the service worker file"""
+    sw_path = STATIC_DIR / "service-worker.js"
     if sw_path.exists():
-        return FileResponse(sw_path)
-    return {"error": "Service_Worker.js not found"}
+        response = FileResponse(sw_path, media_type="application/javascript")
+        response.headers["Cache-Control"] = "no-cache"  # Service workers should not be cached
+        response.headers["Service-Worker-Allowed"] = "/"
+        return response
+    return {"error": "service-worker.js not found"}
+
+# Legacy route for old capitalized filename (in case any old code references it)
+@app.get("/Service_Worker.js")
+async def serve_service_worker_legacy():
+    """Legacy route - redirect to correct service-worker.js"""
+    sw_path = STATIC_DIR / "service-worker.js"
+    if sw_path.exists():
+        response = FileResponse(sw_path, media_type="application/javascript")
+        response.headers["Cache-Control"] = "no-cache"
+        response.headers["Service-Worker-Allowed"] = "/"
+        return response
+    # Try old filename just in case
+    old_sw_path = STATIC_DIR / "Service_Worker.js"
+    if old_sw_path.exists():
+        response = FileResponse(old_sw_path, media_type="application/javascript")
+        response.headers["Cache-Control"] = "no-cache"
+        response.headers["Service-Worker-Allowed"] = "/"
+        return response
+    return {"error": "Service worker not found"}
 
 @app.get("/style.css")
 async def serve_style():
