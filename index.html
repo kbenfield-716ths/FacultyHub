@@ -320,12 +320,6 @@ window.addEventListener('offline', () => {
     window.addEventListener('offline', updateOnlineStatus);
     updateOnlineStatus();
 
-    // Register service worker
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/Service_Worker.js')
-          .then(reg => console.log('Service Worker registered:', reg.scope))
-          .catch(err => console.error('Service Worker registration failed:', err));
       });
     }
   </script>
