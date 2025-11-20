@@ -21,8 +21,8 @@ SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 class Provider(Base):
     __tablename__ = "providers"
 
-    id = Column(String, primary_key=True, index=True)  # e.g. email or slug
-    name = Column(String, nullable=False)
+    id = Column(String, primary_key=True, index=True)
+    name = Column(String, nullable=False, index=True)
     email = Column(String, nullable=True)
 
     signups = relationship("Signup", back_populates="provider")
@@ -56,8 +56,8 @@ class Signup(Base):
     __tablename__ = "signups"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    provider_id = Column(String, ForeignKey("providers.id"), nullable=False)
-    shift_id = Column(Integer, ForeignKey("shifts.id"), nullable=False)
+    provider_id = Column(String, ForeignKey("providers.id"), nullable=False, index=True)
+    shift_id = Column(Integer, ForeignKey("shifts.id"), nullable=False, index=True)
     desired_nights = Column(Integer, nullable=False)
     locked = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -77,25 +77,12 @@ class Assignment(Base):
     provider = relationship("Provider", back_populates="assignments")
     shift = relationship("Shift", back_populates="assignments")
 
-class Provider(Base):
-    __tablename__ = "providers"
-    id = Column(String, primary_key=True, index=True)
-    name = Column(String, nullable=False, index=True)  # <-- Add index=True
-    email = Column(String, nullable=True)
-    # ... rest of your code
-
-class Signup(Base):
-    __tablename__ = "signups"
-    id = Column(Integer, primary_key=True, index=True)
-    provider_id = Column(String, ForeignKey("providers.id"), nullable=False, index=True)  # <-- Add index=True
-    shift_id = Column(Integer, ForeignKey("shifts.id"), nullable=False, index=True)  # <-- Add index=True
-    # ... rest of your code
 
 def init_db():
     print("[Database] Creating tables and indexes...")
     Base.metadata.create_all(bind=engine)
     
-    # ADD THESE OPTIMIZATIONS
+    # Database optimizations
     with engine.connect() as conn:
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA cache_size=-20000")  # 20MB cache
