@@ -49,7 +49,7 @@
       "name": "Knowledge Base",
       "short_name": "Resources",
       "description": "View faculty resources and FAQs",
-      "url": "/Resources.Html",
+      "url": "/resources.html",
       "icons": [{ "src": "/icons/android-chrome-192x192.png", "sizes": "192x192" }]
     }
   ]
