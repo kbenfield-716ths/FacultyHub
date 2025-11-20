@@ -1,120 +1,153 @@
-// service-worker.js - CORRECTED VERSION
-const CACHE_NAME = 'irpa-hub-v1';
-const urlsToCache = [
+// service-worker.js - Enhanced PWA Service Worker
+const CACHE_VERSION = 'pccm-v1.2';
+const STATIC_CACHE = `${CACHE_VERSION}-static`;
+const API_CACHE = `${CACHE_VERSION}-api`;
+const IMAGE_CACHE = `${CACHE_VERSION}-images`;
+
+// Files to cache immediately on install
+const STATIC_ASSETS = [
   '/',
-  '/pwa-index.html',
-  '/Scheduling.html',      // Capital S - matches actual filename
-  '/Resources.Html',       // Capital R and H - matches actual filename  
+  '/index.html',
   '/signup.html',
-  '/Admin.html',           // Capital A - matches actual filename
+  '/Admin.html',
+  '/Scheduling.html',
+  '/resources.html',
   '/style.css',
-  '/manifest.json',
-  '/icons/android-chrome-192x192.png',
-  '/icons/android-chrome-512x512.png',
-  '/icons/apple-touch-icon.png'
+  '/favicon.svg',
+  '/favicon.ico',
+  '/manifest.json'
 ];
 
-// Install event - cache resources
+// Install event - cache static assets
 self.addEventListener('install', (event) => {
+  console.log('[ServiceWorker] Installing version', CACHE_VERSION);
+  
   event.waitUntil(
-    caches.open(CACHE_NAME)
+    caches.open(STATIC_CACHE)
       .then((cache) => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
+        console.log('[ServiceWorker] Caching static assets');
+        return cache.addAll(STATIC_ASSETS);
       })
+      .then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
-// Activate event - clean up old caches
+// Activate event - clean old caches
 self.addEventListener('activate', (event) => {
+  console.log('[ServiceWorker] Activating version', CACHE_VERSION);
+  
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
-  );
-  return self.clients.claim();
-});
-
-// Fetch event - serve from cache, fallback to network
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Cache hit - return response
-        if (response) {
-          return response;
-        }
-
-        // Clone the request
-        const fetchRequest = event.request.clone();
-
-        return fetch(fetchRequest).then((response) => {
-          // Check if valid response
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-
-          // Clone the response
-          const responseToCache = response.clone();
-
-          // Only cache GET requests
-          if (event.request.method === 'GET') {
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
-          }
-
-          return response;
-        }).catch(() => {
-          // Network failed, return offline page if it's an HTML request
-          if (event.request.headers.get('accept').includes('text/html')) {
-            return caches.match('/pwa-index.html');
-          }
-        });
+    caches.keys()
+      .then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((cacheName) => {
+            if (!cacheName.startsWith(CACHE_VERSION)) {
+              console.log('[ServiceWorker] Deleting old cache:', cacheName);
+              return caches.delete(cacheName);
+            }
+          })
+        );
       })
+      .then(() => self.clients.claim())
   );
 });
 
-// Background sync for offline form submissions
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-signups') {
-    event.waitUntil(syncSignups());
+// Fetch event - intelligent caching strategy
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // API requests: Network first with cache fallback
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(networkFirstStrategy(request, API_CACHE));
+  }
+  // Images: Cache first with network fallback
+  else if (request.destination === 'image') {
+    event.respondWith(cacheFirstStrategy(request, IMAGE_CACHE));
+  }
+  // HTML pages: Network first (always fresh)
+  else if (request.destination === 'document' || request.url.endsWith('.html')) {
+    event.respondWith(networkFirstStrategy(request, STATIC_CACHE));
+  }
+  // Static assets (CSS, JS): Cache first
+  else {
+    event.respondWith(cacheFirstStrategy(request, STATIC_CACHE));
   }
 });
 
-async function syncSignups() {
-  // Get pending signups from IndexedDB
-  // Submit them when back online
-  // This is a placeholder - implement based on your needs
-  console.log('Syncing offline signups');
+// Network first strategy (for API calls and HTML)
+async function networkFirstStrategy(request, cacheName) {
+  try {
+    const networkResponse = await fetch(request);
+    
+    // Cache successful responses
+    if (networkResponse.ok) {
+      const cache = await caches.open(cacheName);
+      cache.put(request, networkResponse.clone());
+    }
+    
+    return networkResponse;
+  } catch (error) {
+    console.log('[ServiceWorker] Network failed, trying cache:', request.url);
+    const cachedResponse = await caches.match(request);
+    
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+    
+    // Return offline page for HTML requests
+    if (request.destination === 'document') {
+      return new Response(
+        `<!DOCTYPE html>
+        <html>
+        <head>
+          <title>Offline - PCCM Scheduler</title>
+          <style>
+            body { font-family: sans-serif; text-align: center; padding: 50px; }
+            h1 { color: #667eea; }
+          </style>
+        </head>
+        <body>
+          <h1>📡 You're Offline</h1>
+          <p>Please check your internet connection and try again.</p>
+          <button onclick="location.reload()">Retry</button>
+        </body>
+        </html>`,
+        {
+          headers: { 'Content-Type': 'text/html' }
+        }
+      );
+    }
+    
+    throw error;
+  }
 }
 
-// Push notification support (for future use)
-self.addEventListener('push', (event) => {
-  const options = {
-    body: event.data ? event.data.text() : 'New update available',
-    icon: '/icons/android-chrome-192x192.png',
-    badge: '/icons/favicon-32x32.png',
-    vibrate: [200, 100, 200]
-  };
+// Cache first strategy (for static assets)
+async function cacheFirstStrategy(request, cacheName) {
+  const cachedResponse = await caches.match(request);
+  
+  if (cachedResponse) {
+    // Update cache in background
+    fetch(request).then((networkResponse) => {
+      if (networkResponse.ok) {
+        caches.open(cacheName).then((cache) => {
+          cache.put(request, networkResponse);
+        });
+      }
+    }).catch(() => {});
+    
+    return cachedResponse;
+  }
+  
+  const networkResponse = await fetch(request);
+  
+  if (networkResponse.ok) {
+    const cache = await caches.open(cacheName);
+    cache.put(request, networkResponse.clone());
+  }
+  
+  return networkResponse;
+}
 
-  event.waitUntil(
-    self.registration.showNotification('IRPA Faculty Hub', options)
-  );
-});
-
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  event.waitUntil(
-    clients.openWindow('/')
-  );
-});
+console.log('[ServiceWorker] Loaded version', CACHE_VERSION);

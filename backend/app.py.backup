@@ -18,12 +18,8 @@ from .models import (
 )
 from .optimizer_bridge import run_optimizer_for_month
 from .notion_integration import get_notion_kb
-from fastapi.middleware.gzip import GZipMiddleware
-
-# Add this after creating app
 
 app = FastAPI()
-app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Serve static files (HTML, CSS, JS, icons, manifest)
 # The parent directory of backend/ contains all the HTML files
@@ -200,7 +196,6 @@ async def serve_favicon_svg():
     favicon_path = STATIC_DIR / "favicon.svg"
     if favicon_path.exists():
         return FileResponse(favicon_path, media_type="image/svg+xml")
-        response.headers["Cache-Control"] = "public, max-age=86400" 
     return {"error": "favicon.svg not found"}
 
 @app.get("/manifest.json")
@@ -208,7 +203,6 @@ async def serve_manifest():
     manifest_path = STATIC_DIR / "manifest.json"
     if manifest_path.exists():
         return FileResponse(manifest_path)
-        response.headers["Cache-Control"] = "public, max-age=3600" 
     return {"error": "manifest.json not found"}
 
 @app.get("/Service_Worker.js")
@@ -223,7 +217,6 @@ async def serve_style():
     css_path = STATIC_DIR / "style.css"
     if css_path.exists():
         return FileResponse(css_path)
-        response.headers["Cache-Control"] = "public, max-age=3600" 
     return {"error": "style.css not found"}
 
 @app.get("/{filename}.html")
@@ -233,7 +226,6 @@ async def serve_html_file(filename: str):
     html_path = STATIC_DIR / f"{filename}.html"
     if html_path.exists():
         return FileResponse(html_path)
-        response.headers["Cache-Control"] = "public, max-age=3600" 
     
     # Try case-insensitive search (for files like Resources.Html)
     for file in STATIC_DIR.glob("*.html"):

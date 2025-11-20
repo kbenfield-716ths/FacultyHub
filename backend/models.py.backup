@@ -77,31 +77,6 @@ class Assignment(Base):
     provider = relationship("Provider", back_populates="assignments")
     shift = relationship("Shift", back_populates="assignments")
 
-class Provider(Base):
-    __tablename__ = "providers"
-    id = Column(String, primary_key=True, index=True)
-    name = Column(String, nullable=False, index=True)  # <-- Add index=True
-    email = Column(String, nullable=True)
-    # ... rest of your code
-
-class Signup(Base):
-    __tablename__ = "signups"
-    id = Column(Integer, primary_key=True, index=True)
-    provider_id = Column(String, ForeignKey("providers.id"), nullable=False, index=True)  # <-- Add index=True
-    shift_id = Column(Integer, ForeignKey("shifts.id"), nullable=False, index=True)  # <-- Add index=True
-    # ... rest of your code
 
 def init_db():
-    print("[Database] Creating tables and indexes...")
     Base.metadata.create_all(bind=engine)
-    
-    # ADD THESE OPTIMIZATIONS
-    with engine.connect() as conn:
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA cache_size=-20000")  # 20MB cache
-        conn.execute("PRAGMA mmap_size=10485760")  # 10MB memory-mapped
-        conn.execute("PRAGMA synchronous=NORMAL")
-        conn.execute("ANALYZE")
-        conn.commit()
-    
-    print("[Database] Initialization complete with optimizations")
