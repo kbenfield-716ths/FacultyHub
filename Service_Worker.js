@@ -5,7 +5,7 @@ const urlsToCache = [
   '/pwa-index.html',
   '/index.html',
   '/Scheduling.html',
-  '/Resources.Html',
+  '/resources.html',
   '/signup.html',
   '/Admin.html',
   '/style.css',
