@@ -199,16 +199,18 @@ async def serve_favicon_ico():
 async def serve_favicon_svg():
     favicon_path = STATIC_DIR / "favicon.svg"
     if favicon_path.exists():
-        return FileResponse(favicon_path, media_type="image/svg+xml")
-        response.headers["Cache-Control"] = "public, max-age=86400" 
+        response = FileResponse(favicon_path, media_type="image/svg+xml")
+        response.headers["Cache-Control"] = "public, max-age=86400"
+        return response 
     return {"error": "favicon.svg not found"}
 
 @app.get("/manifest.json")
 async def serve_manifest():
     manifest_path = STATIC_DIR / "manifest.json"
     if manifest_path.exists():
-        return FileResponse(manifest_path)
-        response.headers["Cache-Control"] = "public, max-age=3600" 
+        response = FileResponse(manifest_path)
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        return response
     return {"error": "manifest.json not found"}
 
 @app.get("/Service_Worker.js")
@@ -222,8 +224,9 @@ async def serve_service_worker():
 async def serve_style():
     css_path = STATIC_DIR / "style.css"
     if css_path.exists():
-        return FileResponse(css_path)
-        response.headers["Cache-Control"] = "public, max-age=3600" 
+        response = FileResponse(css_path)
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        return response
     return {"error": "style.css not found"}
 
 @app.get("/{filename}.html")
@@ -232,17 +235,22 @@ async def serve_html_file(filename: str):
     # Try exact match first
     html_path = STATIC_DIR / f"{filename}.html"
     if html_path.exists():
-        return FileResponse(html_path)
-        response.headers["Cache-Control"] = "public, max-age=3600" 
+        response = FileResponse(html_path)
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        return response
     
     # Try case-insensitive search (for files like Resources.Html)
     for file in STATIC_DIR.glob("*.html"):
         if file.stem.lower() == filename.lower():
-            return FileResponse(file)
+            response = FileResponse(file)
+            response.headers["Cache-Control"] = "public, max-age=3600"
+            return response
     
     for file in STATIC_DIR.glob("*.Html"):
         if file.stem.lower() == filename.lower():
-            return FileResponse(file)
+            response = FileResponse(file)
+            response.headers["Cache-Control"] = "public, max-age=3600"
+            return response
     
     return {"error": f"{filename}.html not found"}
 
