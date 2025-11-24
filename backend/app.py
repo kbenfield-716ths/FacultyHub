@@ -213,15 +213,6 @@ async def serve_service_worker_legacy():
         return response
     return {"error": "Service worker not found"}
 
-@app.get("/style.css")
-async def serve_style():
-    css_path = STATIC_DIR / "style.css"
-    if css_path.exists():
-        response = FileResponse(css_path)
-        response.headers["Cache-Control"] = "public, max-age=3600"
-        return response
-    return {"error": "style.css not found"}
-
 @app.get("/{filename}.html")
 async def serve_html_file(filename: str):
     """Serve any HTML file"""
@@ -241,7 +232,7 @@ async def serve_style():
         return response
     return {"error": "style.css not found"}
 
-    @app.get("/cache-manager.js")
+@app.get("/cache-manager.js")
 async def serve_cache_manager():
     cache_path = STATIC_DIR / "cache-manager.js"
     if cache_path.exists():
@@ -249,6 +240,16 @@ async def serve_cache_manager():
         response.headers["Cache-Control"] = "public, max-age=3600"
         return response
     return {"error": "cache-manager.js not found"}
+
+@app.get("/{filename}.html")
+async def serve_html_file(filename: str):
+    """Serve any HTML file"""
+    # Try exact match first
+    html_path = STATIC_DIR / f"{filename}.html"
+    if html_path.exists():
+        response = FileResponse(html_path)
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        return response
     
     # Try case-insensitive search (for files like Resources.Html)
     for file in STATIC_DIR.glob("*.html"):
