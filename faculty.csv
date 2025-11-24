@@ -1,25 +1,25 @@
-faculty_id,name,email
-IN2C,Imre Noth  (Chief),in2c@uvahealth.org
-AJB5D,Andrew Barros,ajb5d@uvahealth.org
-JK6JB,John Kim,jk6jb@uvahealth.org
-YBM8RK,"Katarine """"Kat"""" Von Lang Egressy",ybm8rk@uvahealth.org
-JMS3HK,"Jeffrey """"Jeff"""" Sturek",jms3hk@uvahealth.org
-YSS6N,"Y. Michael """"Mike"""" Shim",yss6n@uvahealth.org
-JLM6RE,Jamie MacLeod,jlm6re@uvahealth.org
-KMW7Z,Katie Waybill,kmw7z@uvahealth.org
-TKP4N,Tessy Paul,tkp4n@uvahealth.org
-ADM7S,Andrew Mihalek,adm7s@uvahealth.org
-TS5VJ,"Timothy """"Tim"""" Scialla",ts5vj@uvahealth.org
-TEST1,Test Faculty,testfaculty@example.com
-DA9ZJ,Dana Albon,da9zj@uvahealth.org
-NM6XP,Numaan Malik,nm6xp@uvahealth.org
-TDB4C,Taison Bell,tdb4c@uvahealth.org
-PSW7ST,Nelson Mandrell,psw7st@uvahealth.org
-CB6DW,"Catherine """"Cathy""""  Bonham",cb6dw@uvahealth.org
-EMD9B,Eric Davis,emd9b@uvahealth.org
-AK5SC,Alex Kadl,ak5sc@uvahealth.org
-DH3MX,Drew Harris,dh3mx@uvahealth.org
-GNN7TX,Scott Schecter,gnn7tx@uvahealth.org
-KE4Z,Kyle Enfield,ke4z@uvahealth.org
-HHP3N,"Hitesh """"Heath"""" Patel",hhp3n@uvahealth.org
-LL7Y,Lindsay Somerville,ll7y@uvahealth.org
+id,name,email,rank,clinical_effort_pct,base_points,bonus_points,active,is_admin
+IN2C,Imre Noth (Chief),in2c@uvahealth.org,full,20,50,0,TRUE,FALSE
+AJB5D,Andrew Barros,ajb5d@uvahealth.org,assistant,25,25,0,TRUE,FALSE
+JK6JB,John Kim,jk6jb@uvahealth.org,assistant,25,25,0,TRUE,FALSE
+YBM8RK,Katarine "Kat" Von Lang Egressy,ybm8rk@uvahealth.org,associate,80,140,0,TRUE,FALSE
+JMS3HK,Jeffrey "Jeff" Sturek,jms3hk@uvahealth.org,associate,25,44,0,TRUE,FALSE
+YSS6N,Y. Michael "Mike" Shim,yss6n@uvahealth.org,full,20,50,0,TRUE,FALSE
+JLM6RE,Jamie MacLeod,jlm6re@uvahealth.org,assistant,40,40,0,TRUE,FALSE
+KMW7Z,Katie Waybill,kmw7z@uvahealth.org,assistant,75,75,0,TRUE,FALSE
+TKP4N,Tessy Paul,tkp4n@uvahealth.org,assistant,60,60,0,TRUE,FALSE
+ADM7S,Andrew Mihalek,adm7s@uvahealth.org,associate,50,88,0,TRUE,FALSE
+TS5VJ,Timothy "Tim" Scialla,ts5vj@uvahealth.org,associate,40,70,0,TRUE,FALSE
+TEST1,Test Faculty,testfaculty@example.com,assistant,100,100,0,TRUE,FALSE
+DA9ZJ,Dana Albon,da9zj@uvahealth.org,full,50,125,0,TRUE,FALSE
+NM6XP,Numaan Malik,nm6xp@uvahealth.org,associate,50,88,0,TRUE,FALSE
+TDB4C,Taison Bell,tdb4c@uvahealth.org,associate,25,44,0,TRUE,FALSE
+PSW7ST,Nelson Mandrell,psw7st@uvahealth.org,assistant,75,75,0,TRUE,FALSE
+CB6DW,Catherine "Cathy" Bonham,cb6dw@uvahealth.org,associate,50,88,0,TRUE,FALSE
+EMD9B,Eric Davis,emd9b@uvahealth.org,associate,60,105,0,TRUE,FALSE
+AK5SC,Alex Kadl,ak5sc@uvahealth.org,associate,40,70,0,TRUE,FALSE
+DH3MX,Drew Harris,dh3mx@uvahealth.org,assistant,80,80,0,TRUE,FALSE
+GNN7TX,Scott Schecter,gnn7tx@uvahealth.org,assistant,75,75,0,TRUE,FALSE
+KE4Z,Kyle Enfield,ke4z@uvahealth.org,full,20,50,0,TRUE,TRUE
+HHP3N,Hitesh "Heath" Patel,hhp3n@uvahealth.org,assistant,40,40,0,TRUE,FALSE
+LL7Y,Lindsay Somerville,ll7y@uvahealth.org,assistant,60,60,0,TRUE,FALSE
