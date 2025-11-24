@@ -161,33 +161,7 @@ class Availability(Base):
     faculty = relationship("Faculty", back_populates="availabilities")
     week = relationship("Week", back_populates="availabilities")
 
-#VacationWeeks Table
-class VacationWeek(Base):
-    __tablename__ = "vacation_weeks"
-    
-    id = Column(String, primary_key=True)
-    week_number = Column(Integer, nullable=False)
-    label = Column(String)
-    start_date = Column(Date, nullable=False)
-    end_date = Column(Date, nullable=False)
-    week_type = Column(String)  # regular, summer, spring_break, thanksgiving, christmas
-    point_cost_off = Column(Integer)
-    point_reward_work = Column(Integer)
-    min_staff_required = Column(Integer, default=5)
-    year = Column(Integer)
 
-class VacationRequest(Base):
-    __tablename__ = "vacation_requests"
-    
-    id = Column(String, primary_key=True)
-    faculty_id = Column(String, ForeignKey('faculty.id'))
-    week_id = Column(String, ForeignKey('vacation_weeks.id'))
-    status = Column(String)  # unavailable, available, requested
-    points_spent = Column(Integer)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    faculty = relationship("Faculty")
-    week = relationship("VacationWeek")
 # ==========================================
 # DATABASE INITIALIZATION
 # ==========================================
