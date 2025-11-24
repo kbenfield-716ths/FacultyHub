@@ -44,6 +44,20 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
 
     h1 {
@@ -51,10 +65,16 @@
       font-weight: 600;
     }
 
+    .user-name {
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.9);
+    }
+
+    .logout-button,
+    .login-button,
     .install-button {
-      display: none;
-      background: white;
-      color: #232f3e;
+      background: rgba(255,255,255,0.1);
+      color: white;
       border: none;
       padding: 8px 16px;
       border-radius: 6px;
@@ -62,15 +82,23 @@
       font-weight: 500;
       cursor: pointer;
       transition: all 0.2s;
+      text-decoration: none;
+      display: inline-block;
     }
 
+    .logout-button:hover,
+    .login-button:hover,
     .install-button:hover {
-      background: #e8e8e8;
+      background: rgba(255,255,255,0.2);
       transform: translateY(-1px);
     }
 
+    .install-button {
+      display: none;
+    }
+
     .install-button.show {
-      display: block;
+      display: inline-block;
     }
 
     main {
@@ -152,6 +180,16 @@
       color: white;
     }
 
+    .card.admin {
+      background: linear-gradient(135deg, #ff5722 0%, #e64a19 100%);
+      color: white;
+    }
+
+    .card.admin h3,
+    .card.admin p {
+      color: white;
+    }
+
     .footer {
       text-align: center;
       padding: 32px 20px;
@@ -174,7 +212,6 @@
       }
     }
 
-    /* Offline indicator */
     .offline-indicator {
       display: none;
       background: #ff9800;
@@ -196,20 +233,27 @@
 
   <header>
     <div class="header-content">
-      <h1>🏥 Faculty Hub</h1>
-      <button class="install-button" id="installButton">
-        📱 Install App
-      </button>
+      <div class="header-left">
+        <h1>🏥 Faculty Hub</h1>
+      </div>
+      <div class="header-right">
+        <span class="user-name" id="userName" style="display:none;"></span>
+        <a href="/login.html" class="login-button" id="loginButton" style="display:none;">Sign In</a>
+        <button class="logout-button" id="logoutButton" style="display:none;">Sign Out</button>
+        <button class="install-button" id="installButton">
+          📱 Install App
+        </button>
+      </div>
     </div>
   </header>
 
   <main>
     <div class="welcome">
-      <h2>Welcome to the Faculty Hub</h2>
+      <h2 id="welcomeTitle">Welcome to the Faculty Hub</h2>
       <p>Your central hub for scheduling, resources, and faculty information. Select a tool below to get started.</p>
     </div>
 
-    <div class="cards-grid">
+    <div class="cards-grid" id="cardsGrid">
       <!-- Primary Card: Scheduling -->
       <a href="Scheduling.html" class="card primary">
         <span class="card-icon">📅</span>
@@ -222,6 +266,13 @@
         <span class="card-icon">📚</span>
         <h3>Faculty Knowledge Base</h3>
         <p>Access FAQs, policies, procedures, and helpful resources for faculty members.</p>
+      </a>
+
+      <!-- Admin Card (hidden by default, shown for admins) -->
+      <a href="Admin.html" class="card admin" id="adminCard" style="display:none;">
+        <span class="card-icon">🔑</span>
+        <h3>Admin Dashboard</h3>
+        <p>Manage faculty, view signups, run optimizer, and generate schedules.</p>
       </a>
 
       <!-- Placeholder for future features -->
@@ -244,6 +295,62 @@
   </footer>
 
   <script>
+    const API_URL = window.location.origin;
+
+    // Check authentication status and update UI
+    async function checkAuth() {
+      try {
+        const response = await fetch(`${API_URL}/api/auth/check`, {
+          credentials: 'include'
+        });
+        const data = await response.json();
+        
+        if (data.authenticated) {
+          // User is logged in
+          document.getElementById('userName').textContent = `Welcome, ${data.faculty_name}!`;
+          document.getElementById('userName').style.display = 'inline';
+          document.getElementById('logoutButton').style.display = 'inline-block';
+          document.getElementById('loginButton').style.display = 'none';
+          
+          // Update welcome message
+          document.getElementById('welcomeTitle').textContent = `Welcome back, ${data.faculty_name}!`;
+          
+          // Show admin card if user is admin
+          if (data.is_admin) {
+            document.getElementById('adminCard').style.display = 'block';
+          }
+        } else {
+          // User is not logged in
+          document.getElementById('loginButton').style.display = 'inline-block';
+          document.getElementById('logoutButton').style.display = 'none';
+          document.getElementById('userName').style.display = 'none';
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        // Show login button on error
+        document.getElementById('loginButton').style.display = 'inline-block';
+      }
+    }
+
+    // Logout handler
+    document.getElementById('logoutButton').addEventListener('click', async () => {
+      try {
+        await fetch(`${API_URL}/api/auth/logout`, {
+          method: 'POST',
+          credentials: 'include'
+        });
+        localStorage.removeItem('currentUser');
+        window.location.reload();
+      } catch (error) {
+        console.error('Logout failed:', error);
+        // Reload anyway
+        window.location.reload();
+      }
+    });
+
+    // Check auth on page load
+    checkAuth();
+
     // Service Worker Registration
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', async () => {
