@@ -109,12 +109,6 @@ class AssignmentOut(BaseModel):
 def startup_event():
     # make sure tables exist
     init_db()
-    # seed providers from CSV if needed
-    db = SessionLocal()
-    try:
-        seed_providers_from_csv(db)
-    finally:
-        db.close()
 
 
 # ---------- Static file routes ----------
