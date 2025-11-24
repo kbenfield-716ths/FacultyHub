@@ -19,11 +19,13 @@ from .models import (
 from .optimizer_bridge import run_optimizer_for_month
 from .notion_integration import get_notion_kb
 from fastapi.middleware.gzip import GZipMiddleware
+from .routes.admin_faculty import router as admin_faculty_router
 
 # Add this after creating app
 
 app = FastAPI()
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+app.include_router(admin_faculty_router)
 
 # Serve static files (HTML, CSS, JS, icons, manifest)
 # The parent directory of backend/ contains all the HTML files
