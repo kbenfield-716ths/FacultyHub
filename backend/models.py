@@ -55,7 +55,7 @@ class Shift(Base):
     
     month = relationship("Month", back_populates="shifts")
     signups = relationship("Signup", back_populates="shift")
-    assignments = relationship("Assignment", back_populates="assignments")
+    assignments = relationship("Assignment", back_populates="shift")
 
 
 class Signup(Base):
@@ -94,37 +94,38 @@ class Faculty(Base):
     """Faculty member with scheduling profile and authentication"""
     __tablename__ = "faculty"
     
-    # Core identity (uses same ID as Provider for seamless integration)
+    # Core identity (UVA computing ID: "KE4Z", "IN2C", etc.)
     id = Column(String, primary_key=True, index=True)
-    faculty_id = Column(String, unique=True, index=True)  # Display ID like "F001"
     name = Column(String, nullable=False, index=True)
     email = Column(String, unique=True, nullable=False)
     
     # Authentication
     password_hash = Column(String)
     password_changed = Column(Boolean, default=False)
-    registered = Column(Boolean, default=False)
+    registered = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
     
     # Scheduling profile
     rank = Column(String, nullable=False)  # assistant, associate, full
     clinical_effort_pct = Column(Integer, nullable=False)
     base_points = Column(Integer, nullable=False)
+    bonus_points = Column(Integer, default=0)  # Earned from volunteering
     active = Column(Boolean, default=True)
     
     # Relationships
-    availabilities = relationship("Availability", back_populates="faculty")
+    vacation_requests = relationship("VacationRequest", back_populates="faculty")
 
 
-class Week(Base):
-    """The 52 weeks of the academic year"""
-    __tablename__ = "weeks"
+class VacationWeek(Base):
+    """The 52 weeks of the academic year for vacation scheduling"""
+    __tablename__ = "vacation_weeks"
     
-    id = Column(String, primary_key=True, index=True)  # e.g., "W01", "W02"
+    id = Column(String, primary_key=True, index=True)  # "W01", "W02", etc.
     week_number = Column(Integer, nullable=False, unique=True)
-    label = Column(String, nullable=False)  # e.g., "Week 1 (Jul 7)"
+    label = Column(String, nullable=False)  # "Week 1 (Jul 7)"
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
+    year = Column(Integer, nullable=False)
     
     # Week characteristics
     week_type = Column(String, default="regular")  # regular, summer, spring_break, thanksgiving, christmas
@@ -133,16 +134,16 @@ class Week(Base):
     min_staff_required = Column(Integer, default=5)
     
     # Relationships
-    availabilities = relationship("Availability", back_populates="week")
+    vacation_requests = relationship("VacationRequest", back_populates="week")
 
 
-class Availability(Base):
-    """Faculty availability for vacation weeks"""
-    __tablename__ = "availabilities"
+class VacationRequest(Base):
+    """Faculty vacation requests for specific weeks"""
+    __tablename__ = "vacation_requests"
     
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    faculty_id = Column(String, ForeignKey("faculty.id"), nullable=False, index=True)
-    week_id = Column(String, ForeignKey("weeks.id"), nullable=False, index=True)
+    id = Column(String, primary_key=True, index=True)
+    faculty_id = Column(String, ForeignKey('faculty.id'), nullable=False, index=True)
+    week_id = Column(String, ForeignKey('vacation_weeks.id'), nullable=False, index=True)
     
     # Status: "unavailable" (wants off), "available" (volunteers), "assigned" (final)
     status = Column(String, nullable=False, default="unavailable")
@@ -158,8 +159,8 @@ class Availability(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    faculty = relationship("Faculty", back_populates="availabilities")
-    week = relationship("Week", back_populates="availabilities")
+    faculty = relationship("Faculty", back_populates="vacation_requests")
+    week = relationship("VacationWeek", back_populates="vacation_requests")
 
 
 # ==========================================
@@ -179,7 +180,7 @@ def init_db():
             conn.execute(text("PRAGMA mmap_size=10485760"))
             conn.execute(text("PRAGMA synchronous=NORMAL"))
             
-            # Add indexes for new faculty scheduling tables
+            # Add indexes for faculty scheduling tables
             conn.execute(text("""
                 CREATE INDEX IF NOT EXISTS idx_faculty_email ON faculty(email)
             """))
@@ -187,15 +188,20 @@ def init_db():
                 CREATE INDEX IF NOT EXISTS idx_faculty_active ON faculty(active)
             """))
             conn.execute(text("""
-                CREATE INDEX IF NOT EXISTS idx_availabilities_faculty_week 
-                ON availabilities(faculty_id, week_id)
+                CREATE INDEX IF NOT EXISTS idx_vacation_requests_faculty_week 
+                ON vacation_requests(faculty_id, week_id)
             """))
             conn.execute(text("""
-                CREATE INDEX IF NOT EXISTS idx_availabilities_status 
-                ON availabilities(status)
+                CREATE INDEX IF NOT EXISTS idx_vacation_requests_status 
+                ON vacation_requests(status)
             """))
             conn.execute(text("""
-                CREATE INDEX IF NOT EXISTS idx_weeks_number ON weeks(week_number)
+                CREATE INDEX IF NOT EXISTS idx_vacation_weeks_number 
+                ON vacation_weeks(week_number)
+            """))
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_vacation_weeks_year 
+                ON vacation_weeks(year)
             """))
             
             conn.execute(text("ANALYZE"))
