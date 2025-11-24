@@ -4,17 +4,11 @@ Rehash all passwords in the database from SHA256 to bcrypt.
 Run this once to fix the password hashing mismatch.
 
 Usage:
-    python backend/scripts/rehash_passwords.py
+    python3 -m backend.scripts.rehash_passwords
 """
 
-import sys
-from pathlib import Path
-
-# Add backend to path so we can import models
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from models import Faculty, SessionLocal
-from auth import hash_password
+from backend.models import Faculty, SessionLocal
+from backend.auth import hash_password
 
 DEFAULT_PASSWORD = "PCCM2025!"
 
