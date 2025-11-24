@@ -21,16 +21,12 @@
 
   <div id="signupContainer">
     <div id="signupHeader">
-      <div>
-        <p id="providerInfo" style="margin:16px 0 8px 0;"></p>
-      </div>
-
-      <!-- Provider selection row -->
-      <div id="providerRow" style="margin-bottom:16px;">
-        <label for="providerSelect" style="font-weight:500;">Provider:&nbsp;</label>
-        <select id="providerSelect" style="padding:6px 10px; border-radius:6px; border:1px solid #ccc; font-size:1rem;">
-          <option value="">Select your name…</option>
-        </select>
+      <!-- User display (no dropdown) -->
+      <div style="margin-bottom:20px; padding:16px; background:#f0f4f8; border-radius:8px; border-left:4px solid #0052cc;">
+        <p style="margin:0; font-size:1.1rem;">
+          <strong style="color:#232f3e;">Signing up as:</strong> 
+          <span id="providerName" style="color:#0052cc; font-weight:600;">Loading...</span>
+        </p>
       </div>
 
       <div id="monthPickerLabel" style="margin-bottom:20px; font-size:0.95rem;">
@@ -76,18 +72,9 @@
     // Helper to get NEXT month "YYYY-MM" (current month + 1)
     function nextMonthString() {
       const now = new Date();
-      // Add 1 to month (0-indexed, so this gives us next month)
       const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
       const y = nextMonth.getFullYear();
       const m = String(nextMonth.getMonth() + 1).padStart(2, "0");
-      return `${y}-${m}`;
-    }
-
-    // Helper to get current month "YYYY-MM"
-    function currentMonthString() {
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = String(now.getMonth() + 1).padStart(2, "0");
       return `${y}-${m}`;
     }
 
@@ -102,25 +89,24 @@
     let monthStr = params.get("month") || nextMonthString();
 
     // DOM references
-    const providerInfoEl  = document.getElementById("providerInfo");
-    const providerSelectEl = document.getElementById("providerSelect");
-    const monthPickerEl   = document.getElementById("monthPicker");
-    const monthsToShowEl  = document.getElementById("monthsToShow");
-    const calendarEl      = document.getElementById("calendar");
-    const desiredInput    = document.getElementById("desired");
-    const saveBtn         = document.getElementById("saveBtn");
+    const providerNameEl = document.getElementById("providerName");
+    const monthPickerEl = document.getElementById("monthPicker");
+    const monthsToShowEl = document.getElementById("monthsToShow");
+    const calendarEl = document.getElementById("calendar");
+    const desiredInput = document.getElementById("desired");
+    const saveBtn = document.getElementById("saveBtn");
 
     // Selected dates across ALL visible months (YYYY-MM-DD strings)
     const selectedDates = new Set();
 
-    function updateHeader() {
-      const providerText = provider_name
-        ? `Signing up as ${provider_name}`
-        : `Select your name to begin`;
-
-      providerInfoEl.innerHTML = `<strong>${providerText}</strong> • Start: ${monthStr} • Showing ${monthsToShowEl.value} month(s)`;
-
-      monthPickerEl.value = monthStr;
+    function updateProviderDisplay() {
+      if (provider_name) {
+        providerNameEl.textContent = provider_name;
+        providerNameEl.style.color = "#0052cc";
+      } else {
+        providerNameEl.textContent = "Please log in to sign up";
+        providerNameEl.style.color = "#d93025";
+      }
     }
 
     function getVisibleMonths() {
@@ -210,26 +196,17 @@
     monthPickerEl.addEventListener("change", () => {
       if (!monthPickerEl.value) return;
       monthStr = monthPickerEl.value;
-      updateHeader();
       renderCalendar();
     });
 
     monthsToShowEl.addEventListener("change", () => {
-      updateHeader();
       renderCalendar();
-    });
-
-    providerSelectEl.addEventListener("change", () => {
-      const id = providerSelectEl.value;
-      const name = providerSelectEl.options[providerSelectEl.selectedIndex]?.text || "";
-      provider_id = id;
-      provider_name = name;
-      updateHeader();
     });
 
     saveBtn.addEventListener("click", async () => {
       if (!provider_id || !provider_name) {
-        alert("Please select your name before saving.");
+        alert("You must be logged in to submit availability. Please log in first.");
+        window.location.href = "/login.html";
         return;
       }
 
@@ -286,49 +263,27 @@
       }
     });
 
-    async function loadProviders() {
-      try {
-        const res = await fetch(`${API_BASE}/api/providers`);
-        if (!res.ok) {
-          console.error("Failed to load providers", res.status);
-          return;
-        }
-        const providers = await res.json();
+    // Load user from localStorage
+    function loadCurrentUser() {
+      // Check URL params first
+      if (paramProviderId && paramProviderName) {
+        provider_id = paramProviderId;
+        provider_name = paramProviderName;
+        updateProviderDisplay();
+        return;
+      }
 
-        providers.forEach(p => {
-          const opt = document.createElement("option");
-          opt.value = p.id;
-          opt.textContent = p.name;
-          providerSelectEl.appendChild(opt);
-        });
-
-        // AUTO-SELECT LOGGED-IN USER
-        // Check if user is logged in and auto-select them
-        const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-        if (currentUser.faculty_id && !paramProviderId) {
-          // Try to find and select the current user
-          const userInList = providers.find(p => p.id === currentUser.faculty_id);
-          if (userInList) {
-            providerSelectEl.value = currentUser.faculty_id;
-            provider_id = currentUser.faculty_id;
-            provider_name = currentUser.faculty_name || userInList.name;
-            console.log(`Auto-selected logged-in user: ${provider_name} (${provider_id})`);
-          }
-        } else if (paramProviderId) {
-          providerSelectEl.value = paramProviderId;
-        }
-
-        if (providerSelectEl.value) {
-          const selected = providers.find(p => p.id === providerSelectEl.value);
-          if (selected) {
-            provider_id = selected.id;
-            provider_name = selected.name;
-          }
-        }
-
-        updateHeader();
-      } catch (err) {
-        console.error("Error loading providers", err);
+      // Check localStorage
+      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+      if (currentUser.faculty_id) {
+        provider_id = currentUser.faculty_id;
+        provider_name = currentUser.faculty_name;
+        console.log(`Loaded user from localStorage: ${provider_name} (${provider_id})`);
+        updateProviderDisplay();
+      } else {
+        // No user logged in
+        providerNameEl.textContent = "Not logged in";
+        providerNameEl.style.color = "#d93025";
       }
     }
 
@@ -340,9 +295,8 @@
     }
 
     monthPickerEl.value = monthStr;
-    updateHeader();
+    loadCurrentUser();
     renderCalendar();
-    loadProviders();
   </script>
 </body>
 </html>
