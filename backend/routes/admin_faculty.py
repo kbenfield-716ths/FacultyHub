@@ -7,9 +7,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel, EmailStr
-import hashlib
 
 from backend.models import Faculty, get_db
+from backend.auth import require_admin, hash_password
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -66,41 +66,19 @@ class PasswordReset(BaseModel):
 
 
 # ==========================================
-# HELPER FUNCTIONS
-# ==========================================
-
-def hash_password(password: str) -> str:
-    """Hash password using SHA256"""
-    return hashlib.sha256(password.encode()).hexdigest()
-
-
-def verify_admin(faculty_id: str, db: Session):
-    """Verify that the requesting user is an admin"""
-    faculty = db.query(Faculty).filter_by(id=faculty_id).first()
-    if not faculty or not faculty.is_admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin privileges required"
-        )
-    return faculty
-
-
-# ==========================================
 # ENDPOINTS
 # ==========================================
 
 @router.get("/faculty", response_model=List[FacultyResponse])
 def get_all_faculty(
-    admin_id: str,  # From auth middleware
     active_only: bool = False,
+    admin_user: Faculty = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     """
     Get all faculty members.
     Requires admin authentication.
     """
-    verify_admin(admin_id, db)
-    
     query = db.query(Faculty)
     if active_only:
         query = query.filter_by(active=True)
@@ -112,15 +90,13 @@ def get_all_faculty(
 @router.get("/faculty/{faculty_id}", response_model=FacultyResponse)
 def get_faculty(
     faculty_id: str,
-    admin_id: str,  # From auth middleware
+    admin_user: Faculty = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     """
     Get a specific faculty member by ID.
     Requires admin authentication.
     """
-    verify_admin(admin_id, db)
-    
     faculty = db.query(Faculty).filter_by(id=faculty_id).first()
     if not faculty:
         raise HTTPException(
@@ -134,15 +110,13 @@ def get_faculty(
 @router.post("/faculty", response_model=FacultyResponse, status_code=status.HTTP_201_CREATED)
 def create_faculty(
     faculty_data: FacultyCreate,
-    admin_id: str,  # From auth middleware
+    admin_user: Faculty = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     """
     Create a new faculty member.
     Requires admin authentication.
     """
-    verify_admin(admin_id, db)
-    
     # Check if faculty ID already exists
     existing = db.query(Faculty).filter_by(id=faculty_data.id).first()
     if existing:
@@ -194,15 +168,13 @@ def create_faculty(
 def update_faculty(
     faculty_id: str,
     faculty_data: FacultyUpdate,
-    admin_id: str,  # From auth middleware
+    admin_user: Faculty = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     """
     Update an existing faculty member.
     Requires admin authentication.
     """
-    verify_admin(admin_id, db)
-    
     faculty = db.query(Faculty).filter_by(id=faculty_id).first()
     if not faculty:
         raise HTTPException(
@@ -247,15 +219,13 @@ def update_faculty(
 @router.delete("/faculty/{faculty_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_faculty(
     faculty_id: str,
-    admin_id: str,  # From auth middleware
+    admin_user: Faculty = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     """
     Delete a faculty member (soft delete - sets active=False).
     Requires admin authentication.
     """
-    verify_admin(admin_id, db)
-    
     faculty = db.query(Faculty).filter_by(id=faculty_id).first()
     if not faculty:
         raise HTTPException(
@@ -274,15 +244,13 @@ def delete_faculty(
 def reset_faculty_password(
     faculty_id: str,
     password_data: PasswordReset,
-    admin_id: str,  # From auth middleware
+    admin_user: Faculty = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     """
     Reset a faculty member's password.
     Requires admin authentication.
     """
-    verify_admin(admin_id, db)
-    
     faculty = db.query(Faculty).filter_by(id=faculty_id).first()
     if not faculty:
         raise HTTPException(
@@ -309,15 +277,13 @@ def reset_faculty_password(
 @router.post("/faculty/{faculty_id}/toggle-admin", response_model=FacultyResponse)
 def toggle_admin_status(
     faculty_id: str,
-    admin_id: str,  # From auth middleware
+    admin_user: Faculty = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     """
     Toggle admin status for a faculty member.
     Requires admin authentication.
     """
-    verify_admin(admin_id, db)
-    
     faculty = db.query(Faculty).filter_by(id=faculty_id).first()
     if not faculty:
         raise HTTPException(
@@ -335,15 +301,13 @@ def toggle_admin_status(
 
 @router.get("/faculty/stats/summary")
 def get_faculty_stats(
-    admin_id: str,  # From auth middleware
+    admin_user: Faculty = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     """
     Get summary statistics about faculty.
     Requires admin authentication.
     """
-    verify_admin(admin_id, db)
-    
     total = db.query(Faculty).count()
     active = db.query(Faculty).filter_by(active=True).count()
     admins = db.query(Faculty).filter_by(is_admin=True).count()

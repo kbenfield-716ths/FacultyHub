@@ -20,11 +20,13 @@ from .optimizer_bridge import run_optimizer_for_month
 from .notion_integration import get_notion_kb
 from fastapi.middleware.gzip import GZipMiddleware
 from .routes.admin_faculty import router as admin_faculty_router
-
-# Add this after creating app
+from .routes.auth import router as auth_router
 
 app = FastAPI()
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# Include routers
+app.include_router(auth_router)
 app.include_router(admin_faculty_router)
 
 # Serve static files (HTML, CSS, JS, icons, manifest)
@@ -109,6 +111,36 @@ class AssignmentOut(BaseModel):
 def startup_event():
     # make sure tables exist
     init_db()
+    
+    # Create default admin user if none exists
+    from .models import Faculty, SessionLocal
+    from .auth import hash_password
+    
+    db = SessionLocal()
+    try:
+        admin_count = db.query(Faculty).filter_by(is_admin=True).count()
+        if admin_count == 0:
+            # Create default admin
+            admin = Faculty(
+                id="ADMIN",
+                name="Administrator",
+                email="admin@example.com",
+                rank="full",
+                clinical_effort_pct=0,
+                base_points=0,
+                is_admin=True,
+                password_hash=hash_password("PCCM2025!"),
+                password_changed=False,
+                registered=True,
+                active=True
+            )
+            db.add(admin)
+            db.commit()
+            print("[Startup] Created default admin user: ADMIN / PCCM2025!")
+    except Exception as e:
+        print(f"[Startup] Error creating admin user: {e}")
+    finally:
+        db.close()
 
 
 # ---------- Static file routes ----------
