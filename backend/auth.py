@@ -1,21 +1,20 @@
 """
 Authentication utilities for faculty login system.
 Provides password hashing, session management, and authentication dependencies.
+
+NOTE: Uses bcrypt directly instead of passlib due to version compatibility issues.
 """
 
 from datetime import datetime, timedelta
 from typing import Optional
 import secrets
+import bcrypt
 
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from .models import Faculty, get_db
-
-# Password hashing context using bcrypt
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # HTTP Basic Auth (for initial testing, we'll use sessions in production)
 security = HTTPBasic()
@@ -26,12 +25,21 @@ active_sessions = {}
 
 def hash_password(password: str) -> str:
     """Hash a password using bcrypt."""
-    return pwd_context.hash(password)
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against a hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode('utf-8'),
+            hashed_password.encode('utf-8')
+        )
+    except Exception as e:
+        print(f"Password verification error: {e}")
+        return False
 
 
 def create_session_token() -> str:
