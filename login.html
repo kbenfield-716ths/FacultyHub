@@ -231,23 +231,29 @@
   <script>
     const API_URL = window.location.origin;
 
-    // Check if already logged in
+    // Check if already logged in (silently - don't show errors)
     async function checkAuth() {
       try {
         const response = await fetch(`${API_URL}/api/auth/check`, {
           credentials: 'include'
         });
-        const data = await response.json();
         
-        if (data.authenticated) {
-          // Already logged in, redirect to home
-          window.location.href = '/';
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data.authenticated) {
+            // Already logged in, redirect to home
+            window.location.href = '/';
+          }
         }
+        // If not OK or not authenticated, just stay on login page silently
       } catch (error) {
-        console.error('Auth check failed:', error);
+        // Silently fail - backend may not be running yet
+        console.log('Auth check skipped - backend may not be ready');
       }
     }
 
+    // Run auth check on page load
     checkAuth();
 
     // Handle login form submission
@@ -307,13 +313,14 @@
             window.location.href = '/';
           }, 1000);
         } else {
-          // Error
+          // Error from server
           errorMessage.textContent = data.detail || 'Login failed. Please check your credentials.';
           errorMessage.classList.add('show');
           loginBtn.disabled = false;
           loginBtn.textContent = 'Sign In';
         }
       } catch (error) {
+        // Network/connection error
         console.error('Login error:', error);
         errorMessage.textContent = 'Connection error. Please try again.';
         errorMessage.classList.add('show');
