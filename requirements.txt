@@ -5,4 +5,7 @@ pydantic
 pandas
 orjson
 notion-client==2.2.1
-email-validator 
+email-validator
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart
