@@ -231,6 +231,24 @@ async def serve_html_file(filename: str):
         response = FileResponse(html_path)
         response.headers["Cache-Control"] = "public, max-age=3600"
         return response
+
+@app.get("/style.css")
+async def serve_style():
+    css_path = STATIC_DIR / "style.css"
+    if css_path.exists():
+        response = FileResponse(css_path)
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        return response
+    return {"error": "style.css not found"}
+
+    @app.get("/cache-manager.js")
+async def serve_cache_manager():
+    cache_path = STATIC_DIR / "cache-manager.js"
+    if cache_path.exists():
+        response = FileResponse(cache_path, media_type="application/javascript")
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        return response
+    return {"error": "cache-manager.js not found"}
     
     # Try case-insensitive search (for files like Resources.Html)
     for file in STATIC_DIR.glob("*.html"):
