@@ -9,7 +9,7 @@ from typing import List, Optional
 from pydantic import BaseModel, EmailStr
 import hashlib
 
-from models import Faculty, get_db
+from backend.models import Faculty, get_db
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
