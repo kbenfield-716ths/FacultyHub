@@ -8,7 +8,6 @@ Usage:
 """
 
 import csv
-import hashlib
 import sys
 from pathlib import Path
 
@@ -16,13 +15,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from models import Faculty, SessionLocal, engine, Base
+from auth import hash_password  # Use the same hash_password from auth.py
 
 DEFAULT_PASSWORD = "PCCM2025!"
-
-
-def hash_password(password: str) -> str:
-    """Hash password using SHA256 (for demo - use bcrypt in production)"""
-    return hashlib.sha256(password.encode()).hexdigest()
 
 
 def import_faculty_csv(csv_path: str):
@@ -62,7 +57,7 @@ def import_faculty_csv(csv_path: str):
                 active = row['active'].strip().upper() == 'TRUE'
                 is_admin = row['is_admin'].strip().upper() == 'TRUE'
                 
-                # Create Faculty record
+                # Create Faculty record with bcrypt-hashed password
                 faculty = Faculty(
                     id=faculty_id,
                     name=row['name'].strip(),
@@ -73,7 +68,7 @@ def import_faculty_csv(csv_path: str):
                     bonus_points=int(row['bonus_points']),
                     active=active,
                     is_admin=is_admin,
-                    password_hash=hash_password(DEFAULT_PASSWORD),
+                    password_hash=hash_password(DEFAULT_PASSWORD),  # Now uses bcrypt
                     password_changed=False,  # All start with default password
                     registered=True  # All in CSV are considered registered
                 )
