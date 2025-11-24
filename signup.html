@@ -73,6 +73,16 @@
     // Backend base URL
     const API_BASE = "https://moonlighter-web.fly.dev";
 
+    // Helper to get NEXT month "YYYY-MM" (current month + 1)
+    function nextMonthString() {
+      const now = new Date();
+      // Add 1 to month (0-indexed, so this gives us next month)
+      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      const y = nextMonth.getFullYear();
+      const m = String(nextMonth.getMonth() + 1).padStart(2, "0");
+      return `${y}-${m}`;
+    }
+
     // Helper to get current month "YYYY-MM"
     function currentMonthString() {
       const now = new Date();
@@ -87,7 +97,9 @@
     const paramProviderName = params.get("provider_name") || "";
     let provider_id = paramProviderId;
     let provider_name = paramProviderName;
-    let monthStr = params.get("month") || currentMonthString();
+    
+    // Default to NEXT month unless specified in URL
+    let monthStr = params.get("month") || nextMonthString();
 
     // DOM references
     const providerInfoEl  = document.getElementById("providerInfo");
@@ -290,7 +302,19 @@
           providerSelectEl.appendChild(opt);
         });
 
-        if (paramProviderId) {
+        // AUTO-SELECT LOGGED-IN USER
+        // Check if user is logged in and auto-select them
+        const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        if (currentUser.faculty_id && !paramProviderId) {
+          // Try to find and select the current user
+          const userInList = providers.find(p => p.id === currentUser.faculty_id);
+          if (userInList) {
+            providerSelectEl.value = currentUser.faculty_id;
+            provider_id = currentUser.faculty_id;
+            provider_name = currentUser.faculty_name || userInList.name;
+            console.log(`Auto-selected logged-in user: ${provider_name} (${provider_id})`);
+          }
+        } else if (paramProviderId) {
           providerSelectEl.value = paramProviderId;
         }
 
@@ -320,39 +344,5 @@
     renderCalendar();
     loadProviders();
   </script>
-  <!-- Load cache manager -->
-<script src="/cache-manager.js"></script>
-
-<script>
-// Initialize API with caching
-const API_URL = window.location.origin;
-const api = new CachedAPI(API_URL);
-
-// Service Worker Registration
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', async () => {
-    try {
-      const registration = await navigator.serviceWorker.register('/service-worker.js');
-      console.log('✅ Service Worker registered:', registration.scope);
-      
-      // Check for updates every hour
-      setInterval(() => {
-        registration.update();
-      }, 60 * 60 * 1000);
-    } catch (error) {
-      console.error('❌ Service Worker registration failed:', error);
-    }
-  });
-}
-
-// Offline detection
-window.addEventListener('online', () => {
-  console.log('✅ Back online');
-});
-
-window.addEventListener('offline', () => {
-  console.log('⚠️ Offline mode');
-});
-</script>
 </body>
 </html>
