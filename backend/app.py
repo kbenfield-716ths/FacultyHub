@@ -32,9 +32,13 @@ app.include_router(admin_faculty_router)
 app.include_router(admin_service_router)
 
 # Serve static files (HTML, CSS, JS, icons, manifest)
-# The parent directory of backend/ contains all the HTML files
-STATIC_DIR = Path(__file__).resolve().parent / "static"
-app.mount("/icons", StaticFiles(directory=str(STATIC_DIR / "icons")), name="icons") if (STATIC_DIR / "icons").exists() else None
+# HTML files are in the parent directory of backend/
+STATIC_DIR = Path(__file__).resolve().parent.parent  # Go up to root directory
+BACKEND_STATIC_DIR = Path(__file__).resolve().parent / "static"
+
+# Mount icons if they exist
+if (STATIC_DIR / "icons").exists():
+    app.mount("/icons", StaticFiles(directory=str(STATIC_DIR / "icons")), name="icons")
 
 # Allow calls from anywhere (since we're serving the frontend too now)
 app.add_middleware(
@@ -184,29 +188,26 @@ async def serve_manifest():
         return response
     return {"error": "manifest.json not found"}
 
-# ===== FIX: Serve service-worker.js (with hyphen, lowercase) =====
 @app.get("/service-worker.js")
 async def serve_service_worker():
     """Serve the service worker file"""
     sw_path = STATIC_DIR / "service-worker.js"
     if sw_path.exists():
         response = FileResponse(sw_path, media_type="application/javascript")
-        response.headers["Cache-Control"] = "no-cache"  # Service workers should not be cached
+        response.headers["Cache-Control"] = "no-cache"
         response.headers["Service-Worker-Allowed"] = "/"
         return response
     return {"error": "service-worker.js not found"}
 
-# Legacy route for old capitalized filename (in case any old code references it)
 @app.get("/Service_Worker.js")
 async def serve_service_worker_legacy():
-    """Legacy route - redirect to correct service-worker.js"""
+    """Legacy route"""
     sw_path = STATIC_DIR / "service-worker.js"
     if sw_path.exists():
         response = FileResponse(sw_path, media_type="application/javascript")
         response.headers["Cache-Control"] = "no-cache"
         response.headers["Service-Worker-Allowed"] = "/"
         return response
-    # Try old filename just in case
     old_sw_path = STATIC_DIR / "Service_Worker.js"
     if old_sw_path.exists():
         response = FileResponse(old_sw_path, media_type="application/javascript")
@@ -217,7 +218,7 @@ async def serve_service_worker_legacy():
 
 @app.get("/{filename}.html")
 async def serve_html_file(filename: str):
-    """Serve any HTML file"""
+    """Serve any HTML file from root directory"""
     # Try exact match first
     html_path = STATIC_DIR / f"{filename}.html"
     if html_path.exists():
@@ -225,7 +226,7 @@ async def serve_html_file(filename: str):
         response.headers["Cache-Control"] = "public, max-age=3600"
         return response
     
-    # Try case-insensitive search (for files like Resources.Html)
+    # Try case-insensitive search
     for file in STATIC_DIR.glob("*.html"):
         if file.stem.lower() == filename.lower():
             response = FileResponse(file)
@@ -237,6 +238,13 @@ async def serve_html_file(filename: str):
             response = FileResponse(file)
             response.headers["Cache-Control"] = "public, max-age=3600"
             return response
+    
+    # Also try backend/static directory
+    backend_html_path = BACKEND_STATIC_DIR / f"{filename}.html"
+    if backend_html_path.exists():
+        response = FileResponse(backend_html_path)
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        return response
     
     return {"error": f"{filename}.html not found"}
 
@@ -258,11 +266,10 @@ async def serve_cache_manager():
         return response
     return {"error": "cache-manager.js not found"}
 
-# Serve static CSS/JS for admin panel
 @app.get("/static/{path:path}")
 async def serve_static(path: str):
-    """Serve any static file"""
-    static_path = STATIC_DIR / path
+    """Serve any static file from backend/static"""
+    static_path = BACKEND_STATIC_DIR / path
     if static_path.exists() and static_path.is_file():
         return FileResponse(static_path)
     return {"error": f"Static file {path} not found"}
