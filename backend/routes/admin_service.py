@@ -14,7 +14,7 @@ from pydantic import BaseModel
 import uuid
 
 from backend.models import get_db, Faculty, VacationWeek, VacationRequest
-from backend.auth import get_current_faculty, require_admin
+from backend.auth import get_current_user, require_admin
 
 router = APIRouter(prefix="/api/admin", tags=["admin-service"])
 
@@ -48,7 +48,7 @@ class ServiceWeekResponse(BaseModel):
 async def get_service_weeks(
     year: int = 2026,
     db: Session = Depends(get_db),
-    current_faculty: Faculty = Depends(require_admin)
+    current_user: Faculty = Depends(require_admin)
 ):
     """Get all service availability weeks for a given year"""
     
@@ -81,7 +81,7 @@ async def get_service_weeks(
 async def generate_service_weeks(
     request: GenerateWeeksRequest,
     db: Session = Depends(get_db),
-    current_faculty: Faculty = Depends(require_admin)
+    current_user: Faculty = Depends(require_admin)
 ):
     """
     Generate 52 weeks for service availability scheduling.
@@ -181,7 +181,7 @@ async def generate_service_weeks(
 async def clear_service_weeks(
     year: Optional[int] = None,
     db: Session = Depends(get_db),
-    current_faculty: Faculty = Depends(require_admin)
+    current_user: Faculty = Depends(require_admin)
 ):
     """
     Clear all service availability weeks and associated requests.
@@ -215,7 +215,7 @@ async def get_service_requests(
     year: Optional[int] = None,
     faculty_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_faculty: Faculty = Depends(require_admin)
+    current_user: Faculty = Depends(require_admin)
 ):
     """Get all service availability requests with filters"""
     
@@ -250,7 +250,7 @@ async def get_service_requests(
 @router.get("/moonlighting-summary")
 async def get_moonlighting_summary(
     db: Session = Depends(get_db),
-    current_faculty: Faculty = Depends(require_admin)
+    current_user: Faculty = Depends(require_admin)
 ):
     """Get summary statistics for moonlighting periods"""
     
@@ -284,7 +284,7 @@ async def get_moonlighting_summary(
 @router.get("/months")
 async def get_months(
     db: Session = Depends(get_db),
-    current_faculty: Faculty = Depends(require_admin)
+    current_user: Faculty = Depends(require_admin)
 ):
     """Get all moonlighting months"""
     from backend.models import Month
