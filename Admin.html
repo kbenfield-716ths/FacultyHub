@@ -41,6 +41,22 @@
       padding-top: 24px;
       border-top: 2px solid #e0e0e0;
     }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid #0052cc;
+    }
+    .section-header h2 {
+      margin: 0;
+      flex: 1;
+      color: #0052cc;
+    }
+    .section-icon {
+      font-size: 1.4rem;
+    }
     #controls {
       display: flex;
       flex-wrap: wrap;
@@ -51,7 +67,7 @@
     #controls label {
       font-size: 0.9rem;
     }
-    input[type="month"], input[type="text"], input[type="email"] {
+    input[type="month"], input[type="text"], input[type="email"], input[type="number"] {
       padding: 4px 8px;
       border: 1px solid #ddd;
       border-radius: 4px;
@@ -77,9 +93,20 @@
       background: #28a745;
       color: white;
     }
+    button.back {
+      background: #666;
+      color: white;
+      padding: 8px 16px;
+    }
+    button.back:hover {
+      background: #555;
+    }
     button:disabled {
       opacity: 0.6;
       cursor: default;
+    }
+    button:hover:not(:disabled) {
+      opacity: 0.9;
     }
     #summary {
       margin-bottom: 16px;
@@ -143,6 +170,7 @@
       gap: 12px;
       align-items: end;
       margin-top: 12px;
+      flex-wrap: wrap;
     }
     .form-field {
       display: flex;
@@ -156,6 +184,39 @@
     .action-buttons {
       display: flex;
       gap: 6px;
+    }
+    
+    /* Unavailable weeks section styles */
+    .weeks-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .week-card {
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 12px;
+      background: #f9f9f9;
+    }
+    .week-card-header {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #333;
+    }
+    .week-dates {
+      font-size: 0.85rem;
+      color: #666;
+      margin-bottom: 8px;
+    }
+    .week-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .week-actions button {
+      flex: 1;
+      padding: 4px 8px;
+      font-size: 0.8rem;
     }
     
     /* Modal styles */
@@ -215,49 +276,15 @@
         <h1>Schedule Admin</h1>
         <div id="providerCountLabel" style="font-size:0.85rem;color:#555;"></div>
       </div>
+      <button id="backToHomeBtn" class="back">← Back to Home</button>
     </div>
 
-    <!-- Schedule Management -->
-    <div id="controls">
-      <label>
-        Month:
-        <input type="month" id="monthInput">
-      </label>
-      <button id="refreshBtn">Refresh signups</button>
-      <button id="runOptimizerBtn">Run optimizer</button>
-      <button id="viewScheduleBtn" class="secondary">View schedule</button>
-      <button id="downloadCsvBtn" class="secondary">Download CSV</button>
-      <button id="clearMonthBtn" class="danger">Clear month data</button>
-    </div>
-
-    <div id="summary">
-      <div><strong>Summary for <span id="summaryMonth"></span></strong></div>
-      <div id="summaryText">No data loaded yet.</div>
-    </div>
-
-    <div id="tableContainer">
-      <h2>Signups</h2>
-      <table id="signupsTable">
-        <thead>
-          <tr>
-            <th>Provider</th>
-            <th>Dates selected</th>
-            <th># Dates</th>
-            <th>Desired nights / mo</th>
-          </tr>
-        </thead>
-        <tbody id="signupsTbody"></tbody>
-      </table>
-    </div>
-
-    <div id="scheduleSection" style="display:none;" class="section">
-      <h2>Generated Schedule</h2>
-      <div id="scheduleCalendar"></div>
-    </div>
-
-    <!-- Provider Management -->
+    <!-- ========== SECTION 1: FACULTY MANAGEMENT ========== -->
     <div class="section">
-      <h2>Provider Management</h2>
+      <div class="section-header">
+        <span class="section-icon">👥</span>
+        <h2>Faculty Management</h2>
+      </div>
       
       <div class="provider-form">
         <div class="form-field">
@@ -272,7 +299,7 @@
           <label>Email (optional)</label>
           <input type="email" id="newProviderEmail" placeholder="smith@virginia.edu">
         </div>
-        <button id="addProviderBtn">Add Provider</button>
+        <button id="addProviderBtn">Add Faculty</button>
       </div>
 
       <table style="margin-top:20px;">
@@ -288,26 +315,108 @@
       </table>
     </div>
 
+    <!-- ========== SECTION 2: MOONLIGHTING ========== -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-icon">🌙</span>
+        <h2>Moonlighting Schedule</h2>
+      </div>
+
+      <div id="controls">
+        <label>
+          Month:
+          <input type="month" id="monthInput">
+        </label>
+        <button id="refreshBtn">Refresh Signups</button>
+        <button id="runOptimizerBtn">Run Optimizer</button>
+        <button id="viewScheduleBtn" class="secondary">View Schedule</button>
+        <button id="downloadCsvBtn" class="secondary">Download CSV</button>
+        <button id="clearMonthBtn" class="danger">Clear Month</button>
+      </div>
+
+      <div id="summary">
+        <div><strong>Summary for <span id="summaryMonth"></span></strong></div>
+        <div id="summaryText">No data loaded yet.</div>
+      </div>
+
+      <div id="tableContainer">
+        <h3>Signups</h3>
+        <table id="signupsTable">
+          <thead>
+            <tr>
+              <th>Faculty</th>
+              <th>Dates Selected</th>
+              <th># Dates</th>
+              <th>Desired Nights/Mo</th>
+            </tr>
+          </thead>
+          <tbody id="signupsTbody"></tbody>
+        </table>
+      </div>
+
+      <div id="scheduleSection" style="display:none;">
+        <h3>Generated Schedule</h3>
+        <div id="scheduleCalendar"></div>
+      </div>
+    </div>
+
+    <!-- ========== SECTION 3: YEARLY CALENDAR BUILD ========== -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-icon">📅</span>
+        <h2>Yearly Calendar Build</h2>
+      </div>
+      
+      <p style="font-size:0.9rem;color:#666;margin-bottom:16px;">
+        Define unavailable weeks across the year. These blocks represent periods when faculty are unavailable for moonlighting (e.g., vacation, conferences, research blocks).
+      </p>
+
+      <div class="provider-form">
+        <div class="form-field">
+          <label>Start Date</label>
+          <input type="date" id="weekStartDate">
+        </div>
+        <div class="form-field">
+          <label>End Date</label>
+          <input type="date" id="weekEndDate">
+        </div>
+        <div class="form-field">
+          <label>Label (e.g., "Summer Break")</label>
+          <input type="text" id="weekLabel" placeholder="e.g., Summer Break, Conference">
+        </div>
+        <button id="addWeekBtn">Add Unavailable Period</button>
+      </div>
+
+      <div id="unavailableWeeksContainer">
+        <h3>Unavailable Periods</h3>
+        <div id="unavailableWeeksList" class="weeks-grid">
+          <div style="grid-column: 1 / -1; text-align: center; color: #999; padding: 40px 20px;">
+            No unavailable periods defined yet.
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Danger Zone -->
     <div class="section">
       <h2 style="color:#dc3545;">⚠️ Danger Zone</h2>
       <p style="font-size:0.9rem;color:#666;">These actions cannot be undone.</p>
-      <button id="clearAllBtn" class="danger">Clear ALL data (keeps providers)</button>
+      <button id="clearAllBtn" class="danger">Clear ALL Data (keeps faculty)</button>
     </div>
 
     <div id="status"></div>
   </div>
 
-  <!-- Edit Provider Modal -->
+  <!-- Edit Faculty Modal -->
   <div id="editModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h2>Edit Provider</h2>
+        <h2>Edit Faculty</h2>
         <span class="close">&times;</span>
       </div>
       <div class="modal-body">
         <div class="form-field" style="margin-bottom: 12px;">
-          <label>Provider ID (cannot be changed)</label>
+          <label>Faculty ID (cannot be changed)</label>
           <input type="text" id="editProviderId" disabled style="background: #f0f0f0;">
         </div>
         <div class="form-field" style="margin-bottom: 12px;">
@@ -336,6 +445,8 @@
   const clearMonthBtn = document.getElementById("clearMonthBtn");
   const clearAllBtn = document.getElementById("clearAllBtn");
   const addProviderBtn = document.getElementById("addProviderBtn");
+  const backToHomeBtn = document.getElementById("backToHomeBtn");
+  const addWeekBtn = document.getElementById("addWeekBtn");
   const providerCountLabel = document.getElementById("providerCountLabel");
   const summaryMonthSpan = document.getElementById("summaryMonth");
   const summaryText = document.getElementById("summaryText");
@@ -344,6 +455,7 @@
   const statusEl = document.getElementById("status");
   const scheduleSection = document.getElementById("scheduleSection");
   const scheduleCalendar = document.getElementById("scheduleCalendar");
+  const unavailableWeeksList = document.getElementById("unavailableWeeksList");
 
   // Modal elements
   const editModal = document.getElementById("editModal");
@@ -354,6 +466,9 @@
   const editProviderName = document.getElementById("editProviderName");
   const editProviderEmail = document.getElementById("editProviderEmail");
 
+  // Unavailable weeks storage (in memory for now)
+  let unavailableWeeks = JSON.parse(localStorage.getItem("unavailableWeeks") || "[]");
+
   function currentMonthString() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -361,6 +476,11 @@
 
   monthInput.value = currentMonthString();
   summaryMonthSpan.textContent = monthInput.value;
+
+  // Back to Home button
+  backToHomeBtn.addEventListener("click", function() {
+    window.location.href = "/index.html";
+  });
 
   // Modal functions
   function openEditModal(provider) {
@@ -386,12 +506,115 @@
     }
   }
 
+  // ========== UNAVAILABLE WEEKS MANAGEMENT ==========
+
+  function saveUnavailableWeeks() {
+    localStorage.setItem("unavailableWeeks", JSON.stringify(unavailableWeeks));
+  }
+
+  function renderUnavailableWeeks() {
+    if (unavailableWeeks.length === 0) {
+      unavailableWeeksList.innerHTML = `
+        <div style="grid-column: 1 / -1; text-align: center; color: #999; padding: 40px 20px;">
+          No unavailable periods defined yet.
+        </div>
+      `;
+      return;
+    }
+
+    unavailableWeeksList.innerHTML = "";
+    
+    unavailableWeeks.forEach((week, index) => {
+      const card = document.createElement("div");
+      card.className = "week-card";
+      
+      const startDate = new Date(week.start);
+      const endDate = new Date(week.end);
+      const daysCount = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+      
+      const formatDate = (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      
+      card.innerHTML = `
+        <div class="week-card-header">${week.label}</div>
+        <div class="week-dates">
+          <strong>Duration:</strong> ${daysCount} days<br>
+          ${formatDate(startDate)} to ${formatDate(endDate)}
+        </div>
+        <div class="week-actions">
+          <button class="secondary" onclick="editWeek(${index})">Edit</button>
+          <button class="danger" onclick="deleteWeek(${index})">Delete</button>
+        </div>
+      `;
+      unavailableWeeksList.appendChild(card);
+    });
+  }
+
+  window.editWeek = function(index) {
+    const week = unavailableWeeks[index];
+    document.getElementById("weekStartDate").value = week.start;
+    document.getElementById("weekEndDate").value = week.end;
+    document.getElementById("weekLabel").value = week.label;
+    
+    // Mark for editing
+    addWeekBtn.dataset.editIndex = index;
+    addWeekBtn.textContent = "Update Period";
+  };
+
+  window.deleteWeek = function(index) {
+    if (confirm("Delete this unavailable period?")) {
+      unavailableWeeks.splice(index, 1);
+      saveUnavailableWeeks();
+      renderUnavailableWeeks();
+      statusEl.textContent = "Period deleted.";
+    }
+  };
+
+  addWeekBtn.addEventListener("click", function() {
+    const startDate = document.getElementById("weekStartDate").value;
+    const endDate = document.getElementById("weekEndDate").value;
+    const label = document.getElementById("weekLabel").value.trim();
+
+    if (!startDate || !endDate || !label) {
+      alert("All fields are required");
+      return;
+    }
+
+    if (new Date(startDate) > new Date(endDate)) {
+      alert("Start date must be before end date");
+      return;
+    }
+
+    const editIndex = addWeekBtn.dataset.editIndex;
+
+    if (editIndex !== undefined) {
+      // Update existing
+      unavailableWeeks[parseInt(editIndex)] = { start: startDate, end: endDate, label };
+      delete addWeekBtn.dataset.editIndex;
+      addWeekBtn.textContent = "Add Unavailable Period";
+      statusEl.textContent = "Period updated.";
+    } else {
+      // Add new
+      unavailableWeeks.push({ start: startDate, end: endDate, label });
+      statusEl.textContent = "Period added.";
+    }
+
+    saveUnavailableWeeks();
+    renderUnavailableWeeks();
+    
+    // Clear form
+    document.getElementById("weekStartDate").value = "";
+    document.getElementById("weekEndDate").value = "";
+    document.getElementById("weekLabel").value = "";
+  });
+
+  // ========== FACULTY MANAGEMENT ==========
+
   async function loadProviders() {
     try {
       const res = await fetch(`${API_BASE}/api/providers`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const providers = await res.json();
-      providerCountLabel.textContent = `${providers.length} providers in system`;
+      providerCountLabel.textContent = `${providers.length} faculty in system`;
       
       // Update providers table
       providersTbody.innerHTML = "";
@@ -403,8 +626,8 @@
           <td>${p.email || ""}</td>
           <td>
             <div class="action-buttons">
-              <button class="edit" onclick="editProvider('${p.id}', '${p.name.replace(/'/g, "\\'")}', '${p.email || ""}')">Edit</button>
-              <button class="danger" onclick="deleteProvider('${p.id}', '${p.name.replace(/'/g, "\\'")}')">Delete</button>
+              <button class="edit" onclick="editProvider('${p.id}', '${p.name.replace(/'/g, "\\'").replace(/"/g, "&quot;")}', '${(p.email || "").replace(/'/g, "\\'").replace(/"/g, "&quot;")}')">Edit</button>
+              <button class="danger" onclick="deleteProvider('${p.id}', '${p.name.replace(/'/g, "\\'").replace(/"/g, "&quot;")}')">Delete</button>
             </div>
           </td>
         `;
@@ -422,7 +645,7 @@
     const email = document.getElementById("newProviderEmail").value.trim();
 
     if (!id || !name) {
-      alert("Provider ID and Name are required");
+      alert("Faculty ID and Name are required");
       return;
     }
 
@@ -435,10 +658,10 @@
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.detail || "Failed to add provider");
+        throw new Error(err.detail || "Failed to add faculty");
       }
 
-      statusEl.textContent = `Provider '${name}' added successfully`;
+      statusEl.textContent = `Faculty '${name}' added successfully`;
       document.getElementById("newProviderId").value = "";
       document.getElementById("newProviderName").value = "";
       document.getElementById("newProviderEmail").value = "";
@@ -471,10 +694,10 @@
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.detail || "Failed to update provider");
+        throw new Error(err.detail || "Failed to update faculty");
       }
 
-      statusEl.textContent = `Provider '${name}' updated successfully`;
+      statusEl.textContent = `Faculty '${name}' updated successfully`;
       closeEditModal();
       await loadProviders();
     } catch (err) {
@@ -483,7 +706,7 @@
   }
 
   async function deleteProvider(id, name) {
-    if (!confirm(`Delete provider '${name}'?\n\nThis will also delete all their signups and assignments.`)) {
+    if (!confirm(`Delete faculty '${name}'?\n\nThis will also delete all their signups and assignments.`)) {
       return;
     }
 
@@ -494,12 +717,14 @@
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-      statusEl.textContent = `Provider '${name}' deleted`;
+      statusEl.textContent = `Faculty '${name}' deleted`;
       await loadProviders();
     } catch (err) {
-      alert(`Error deleting provider: ${err.message}`);
+      alert(`Error deleting faculty: ${err.message}`);
     }
   }
+
+  // ========== MOONLIGHTING MANAGEMENT ==========
 
   async function clearMonth() {
     const month = monthInput.value;
@@ -523,7 +748,7 @@
   }
 
   async function clearAll() {
-    const confirm1 = prompt("Type DELETE_ALL_DATA to confirm clearing ALL schedule data (keeps providers):");
+    const confirm1 = prompt("Type DELETE_ALL_DATA to confirm clearing ALL schedule data (keeps faculty):");
     if (confirm1 !== "DELETE_ALL_DATA") {
       alert("Cancelled");
       return;
@@ -577,7 +802,7 @@
         byProvider.get(row.provider_id).dates.push(row.date);
       }
 
-      summaryText.textContent = `${byProvider.size} providers, ${data.length} provider-nights`;
+      summaryText.textContent = `${byProvider.size} faculty, ${data.length} faculty-nights`;
 
       signupsTbody.innerHTML = "";
       const rows = Array.from(byProvider.values()).sort((a, b) =>
@@ -619,7 +844,7 @@
       if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
 
       const data = JSON.parse(text);
-      statusEl.textContent = `Optimizer finished: ${data.assigned_shifts} shifts assigned. Click 'View schedule'.`;
+      statusEl.textContent = `Optimizer finished: ${data.assigned_shifts} shifts assigned. Click 'View Schedule'.`;
       await viewSchedule();
     } catch (err) {
       console.error("Error running optimizer:", err);
@@ -721,11 +946,12 @@
   clearMonthBtn.addEventListener("click", clearMonth);
   clearAllBtn.addEventListener("click", clearAll);
   addProviderBtn.addEventListener("click", addProvider);
-  window.deleteProvider = deleteProvider; // Make available to inline onclick
+  window.deleteProvider = deleteProvider;
 
   // Initial load
   loadProviders();
   loadSignups();
+  renderUnavailableWeeks();
 </script>
 </body>
 </html>
