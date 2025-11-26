@@ -20,6 +20,7 @@ from .optimizer_bridge import run_optimizer_for_month
 from .notion_integration import get_notion_kb
 from fastapi.middleware.gzip import GZipMiddleware
 from .routes.admin_faculty import router as admin_faculty_router
+from .routes.admin_service import router as admin_service_router
 from .routes.auth import router as auth_router
 
 app = FastAPI()
@@ -28,11 +29,12 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 # Include routers
 app.include_router(auth_router)
 app.include_router(admin_faculty_router)
+app.include_router(admin_service_router)
 
 # Serve static files (HTML, CSS, JS, icons, manifest)
 # The parent directory of backend/ contains all the HTML files
-STATIC_DIR = Path(__file__).resolve().parent.parent
-app.mount("/icons", StaticFiles(directory=str(STATIC_DIR / "icons")), name="icons")
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+app.mount("/icons", StaticFiles(directory=str(STATIC_DIR / "icons")), name="icons") if (STATIC_DIR / "icons").exists() else None
 
 # Allow calls from anywhere (since we're serving the frontend too now)
 app.add_middleware(
@@ -222,6 +224,21 @@ async def serve_html_file(filename: str):
         response = FileResponse(html_path)
         response.headers["Cache-Control"] = "public, max-age=3600"
         return response
+    
+    # Try case-insensitive search (for files like Resources.Html)
+    for file in STATIC_DIR.glob("*.html"):
+        if file.stem.lower() == filename.lower():
+            response = FileResponse(file)
+            response.headers["Cache-Control"] = "public, max-age=3600"
+            return response
+    
+    for file in STATIC_DIR.glob("*.Html"):
+        if file.stem.lower() == filename.lower():
+            response = FileResponse(file)
+            response.headers["Cache-Control"] = "public, max-age=3600"
+            return response
+    
+    return {"error": f"{filename}.html not found"}
 
 @app.get("/style.css")
 async def serve_style():
@@ -241,30 +258,14 @@ async def serve_cache_manager():
         return response
     return {"error": "cache-manager.js not found"}
 
-@app.get("/{filename}.html")
-async def serve_html_file(filename: str):
-    """Serve any HTML file"""
-    # Try exact match first
-    html_path = STATIC_DIR / f"{filename}.html"
-    if html_path.exists():
-        response = FileResponse(html_path)
-        response.headers["Cache-Control"] = "public, max-age=3600"
-        return response
-    
-    # Try case-insensitive search (for files like Resources.Html)
-    for file in STATIC_DIR.glob("*.html"):
-        if file.stem.lower() == filename.lower():
-            response = FileResponse(file)
-            response.headers["Cache-Control"] = "public, max-age=3600"
-            return response
-    
-    for file in STATIC_DIR.glob("*.Html"):
-        if file.stem.lower() == filename.lower():
-            response = FileResponse(file)
-            response.headers["Cache-Control"] = "public, max-age=3600"
-            return response
-    
-    return {"error": f"{filename}.html not found"}
+# Serve static CSS/JS for admin panel
+@app.get("/static/{path:path}")
+async def serve_static(path: str):
+    """Serve any static file"""
+    static_path = STATIC_DIR / path
+    if static_path.exists() and static_path.is_file():
+        return FileResponse(static_path)
+    return {"error": f"Static file {path} not found"}
 
 
 # ---------- Signup endpoint ----------
