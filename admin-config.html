@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - Service Availability Configuration</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f7fa;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    h1 {
+      font-size: 28px;
+      color: #1a202c;
+      margin-bottom: 8px;
+    }
+    
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .card-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: #1a202c;
+    }
+    
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #4a5568;
+      margin-bottom: 6px;
+    }
+    
+    input, select {
+      padding: 10px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    
+    input:focus, select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #4a5568;
+    }
+    
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+    
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+    
+    .special-week-config {
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+      position: relative;
+    }
+    
+    .remove-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: #fee2e2;
+      color: #991b1b;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 8px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    
+    th {
+      background: #f7fafc;
+      padding: 12px;
+      text-align: left;
+      font-weight: 600;
+      color: #4a5568;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    
+    tr:hover {
+      background: #f7fafc;
+    }
+    
+    .editable-cell {
+      cursor: pointer;
+      position: relative;
+    }
+    
+    .editable-cell:hover {
+      background: #edf2f7;
+    }
+    
+    .editable-input {
+      width: 100%;
+      padding: 4px 8px;
+      border: 2px solid #667eea;
+      border-radius: 4px;
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    
+    .badge-regular { background: #e2e8f0; color: #4a5568; }
+    .badge-summer { background: #fef3c7; color: #92400e; }
+    .badge-holiday { background: #fee2e2; color: #991b1b; }
+    .badge-conference { background: #dbeafe; color: #1e40af; }
+    
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    
+    .alert.show { display: block; }
+    .alert-success { background: #d1fae5; color: #065f46; border-left: 4px solid #10b981; }
+    .alert-error { background: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444; }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #a0aec0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>⚙️ Service Availability Configuration</h1>
+      <p style="color: #718096; margin-top: 8px;">Configure special weeks and generate the 52-week schedule</p>
+    </div>
+    
+    <!-- Step 1: Configure Special Weeks -->
+    <div class="card">
+      <h2 class="card-title">Step 1: Configure Special Weeks</h2>
+      <div id="alert1" class="alert"></div>
+      
+      <div id="specialWeeksContainer"></div>
+      
+      <button class="btn btn-secondary btn-small" onclick="addSpecialWeek()" style="margin-bottom: 20px;">
+        + Add Special Week
+      </button>
+      
+      <div style="padding: 16px; background: #f7fafc; border-radius: 8px; margin-top: 20px;">
+        <strong>Preset Templates:</strong>
+        <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="btn btn-secondary btn-small" onclick="loadPreset('christmas')">Christmas (2 weeks)</button>
+          <button class="btn btn-secondary btn-small" onclick="loadPreset('thanksgiving')">Thanksgiving</button>
+          <button class="btn btn-secondary btn-small" onclick="loadPreset('spring_break')">Spring Break</button>
+          <button class="btn btn-secondary btn-small" onclick="loadPreset('ats')">ATS Conference</button>
+          <button class="btn btn-secondary btn-small" onclick="loadPreset('chest')">CHEST Conference</button>
+          <button class="btn btn-secondary btn-small" onclick="loadPreset('sccm')">SCCM Conference</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Step 2: Generate Weeks -->
+    <div class="card">
+      <h2 class="card-title">Step 2: Generate 52 Weeks</h2>
+      <div id="alert2" class="alert"></div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label>Academic Year</label>
+          <select id="academicYear">
+            <option value="2025">2025-2026</option>
+            <option value="2026" selected>2026-2027</option>
+            <option value="2027">2027-2028</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label>Start Date (First Tuesday of July)</label>
+          <input type="date" id="startDate" value="2026-07-07">
+        </div>
+      </div>
+      
+      <div style="display: flex; gap: 12px;">
+        <button class="btn btn-primary" onclick="generateWeeks()">Generate 52 Weeks</button>
+        <button class="btn btn-danger" onclick="clearWeeks()">Clear All Weeks</button>
+      </div>
+    </div>
+    
+    <!-- Step 3: Review and Edit -->
+    <div class="card">
+      <h2 class="card-title">Step 3: Review and Edit Weeks</h2>
+      <div id="alert3" class="alert"></div>
+      
+      <div style="margin-bottom: 16px; color: #718096; font-size: 14px;">
+        <strong>Tip:</strong> Click on any cell to edit. Press Enter to save or Escape to cancel.
+      </div>
+      
+      <div id="weeksLoading" class="loading">No weeks generated yet</div>
+      
+      <div id="weeksTable" style="display: none;">
+        <div style="overflow-x: auto;">
+          <table id="weeksDataTable">
+            <thead>
+              <tr>
+                <th style="width: 50px;">#</th>
+                <th>Label</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Type</th>
+                <th style="width: 100px;">Cost (Off)</th>
+                <th style="width: 100px;">Reward (Work)</th>
+                <th style="width: 80px;">Min Staff</th>
+                <th style="width: 80px;">Requests</th>
+              </tr>
+            </thead>
+            <tbody id="weeksTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let specialWeeksCount = 0;
+    let currentWeeks = [];
+    
+    // Preset configurations
+    const presets = {
+      christmas: { name: 'Christmas', date: '2026-12-22', duration_weeks: 2, point_cost: 15, point_reward: 20 },
+      thanksgiving: { name: 'Thanksgiving', date: '2026-11-26', duration_weeks: 1, point_cost: 15, point_reward: 20 },
+      spring_break: { name: 'Spring Break', date: '2027-03-15', duration_weeks: 1, point_cost: 12, point_reward: 15 },
+      ats: { name: 'ATS Conference', date: '2027-05-15', duration_weeks: 1, point_cost: 10, point_reward: 12 },
+      chest: { name: 'CHEST Conference', date: '2026-10-18', duration_weeks: 1, point_cost: 10, point_reward: 12 },
+      sccm: { name: 'SCCM Conference', date: '2027-01-24', duration_weeks: 1, point_cost: 10, point_reward: 12 }
+    };
+    
+    function addSpecialWeek(data = null) {
+      const id = specialWeeksCount++;
+      const container = document.getElementById('specialWeeksContainer');
+      
+      const div = document.createElement('div');
+      div.className = 'special-week-config';
+      div.id = `special-${id}`;
+      div.innerHTML = `
+        <button class="remove-btn" onclick="removeSpecialWeek(${id})">✕ Remove</button>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Name</label>
+            <input type="text" id="name-${id}" placeholder="e.g., Christmas" value="${data?.name || ''}">
+          </div>
+          <div class="form-group">
+            <label>Date (middle of period)</label>
+            <input type="date" id="date-${id}" value="${data?.date || ''}">
+          </div>
+          <div class="form-group">
+            <label>Duration (weeks)</label>
+            <input type="number" id="duration-${id}" min="1" max="4" value="${data?.duration_weeks || 1}">
+          </div>
+          <div class="form-group">
+            <label>Point Cost (unavailable)</label>
+            <input type="number" id="cost-${id}" min="0" value="${data?.point_cost || 15}">
+          </div>
+          <div class="form-group">
+            <label>Point Reward (volunteer)</label>
+            <input type="number" id="reward-${id}" min="0" value="${data?.point_reward || 20}">
+          </div>
+        </div>
+      `;
+      
+      container.appendChild(div);
+    }
+    
+    function removeSpecialWeek(id) {
+      document.getElementById(`special-${id}`).remove();
+    }
+    
+    function loadPreset(presetKey) {
+      const preset = presets[presetKey];
+      if (preset) {
+        addSpecialWeek(preset);
+      }
+    }
+    
+    function collectSpecialWeeks() {
+      const container = document.getElementById('specialWeeksContainer');
+      const configs = container.querySelectorAll('.special-week-config');
+      const specialWeeks = [];
+      
+      configs.forEach(config => {
+        const id = config.id.split('-')[1];
+        specialWeeks.push({
+          name: document.getElementById(`name-${id}`).value,
+          date: document.getElementById(`date-${id}`).value,
+          duration_weeks: parseInt(document.getElementById(`duration-${id}`).value),
+          point_cost: parseInt(document.getElementById(`cost-${id}`).value),
+          point_reward: parseInt(document.getElementById(`reward-${id}`).value)
+        });
+      });
+      
+      return specialWeeks.filter(w => w.name && w.date);
+    }
+    
+    async function generateWeeks() {
+      const specialWeeks = collectSpecialWeeks();
+      const year = parseInt(document.getElementById('academicYear').value);
+      const startDate = document.getElementById('startDate').value;
+      
+      if (!startDate) {
+        showAlert('alert2', 'Please select a start date', 'error');
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/admin/generate-service-weeks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            year: year,
+            start_date: startDate,
+            special_weeks: specialWeeks
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          showAlert('alert2', `Successfully generated ${data.weeks_created} weeks!`, 'success');
+          await loadWeeks();
+        } else {
+          showAlert('alert2', data.detail || 'Failed to generate weeks', 'error');
+        }
+      } catch (error) {
+        showAlert('alert2', 'Error: ' + error.message, 'error');
+      }
+    }
+    
+    async function clearWeeks() {
+      if (!confirm('Are you sure you want to delete all weeks? This will also remove all requests.')) {
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/admin/service-weeks', { method: 'DELETE' });
+        
+        if (response.ok) {
+          showAlert('alert2', 'All weeks cleared', 'success');
+          document.getElementById('weeksLoading').style.display = 'block';
+          document.getElementById('weeksTable').style.display = 'none';
+          currentWeeks = [];
+        } else {
+          showAlert('alert2', 'Failed to clear weeks', 'error');
+        }
+      } catch (error) {
+        showAlert('alert2', 'Error: ' + error.message, 'error');
+      }
+    }
+    
+    async function loadWeeks() {
+      const year = parseInt(document.getElementById('academicYear').value);
+      
+      try {
+        const response = await fetch(`/api/admin/service-weeks?year=${year}`);
+        const weeks = await response.json();
+        
+        if (weeks.length === 0) {
+          document.getElementById('weeksLoading').textContent = 'No weeks generated yet';
+          document.getElementById('weeksLoading').style.display = 'block';
+          document.getElementById('weeksTable').style.display = 'none';
+          return;
+        }
+        
+        currentWeeks = weeks;
+        renderWeeksTable();
+        
+        document.getElementById('weeksLoading').style.display = 'none';
+        document.getElementById('weeksTable').style.display = 'block';
+      } catch (error) {
+        console.error('Error loading weeks:', error);
+      }
+    }
+    
+    function renderWeeksTable() {
+      const tbody = document.getElementById('weeksTableBody');
+      tbody.innerHTML = '';
+      
+      currentWeeks.forEach(week => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${week.week_number}</td>
+          <td class="editable-cell" data-field="label" data-id="${week.id}">${week.label}</td>
+          <td class="editable-cell" data-field="start_date" data-id="${week.id}">${formatDate(week.start_date)}</td>
+          <td class="editable-cell" data-field="end_date" data-id="${week.id}">${formatDate(week.end_date)}</td>
+          <td>${getWeekTypeBadge(week.week_type)}</td>
+          <td class="editable-cell" data-field="point_cost_off" data-id="${week.id}">-${week.point_cost_off} pts</td>
+          <td class="editable-cell" data-field="point_reward_work" data-id="${week.id}">+${week.point_reward_work} pts</td>
+          <td class="editable-cell" data-field="min_staff_required" data-id="${week.id}">${week.min_staff_required}</td>
+          <td>${week.request_count || 0}</td>
+        `;
+        tbody.appendChild(row);
+      });
+      
+      // Add click handlers for editable cells
+      document.querySelectorAll('.editable-cell').forEach(cell => {
+        cell.addEventListener('click', makeEditable);
+      });
+    }
+    
+    function makeEditable(e) {
+      const cell = e.target;
+      const field = cell.dataset.field;
+      const weekId = cell.dataset.id;
+      const currentValue = cell.textContent.replace(' pts', '').replace('-', '').replace('+', '');
+      
+      // Create input
+      const input = document.createElement('input');
+      input.className = 'editable-input';
+      input.value = currentValue;
+      
+      if (field.includes('date')) {
+        input.type = 'date';
+        input.value = cell.textContent; // ISO format
+      } else if (field.includes('point') || field === 'min_staff_required') {
+        input.type = 'number';
+      } else {
+        input.type = 'text';
+      }
+      
+      cell.textContent = '';
+      cell.appendChild(input);
+      input.focus();
+      
+      input.addEventListener('blur', () => saveEdit(cell, field, weekId, input.value));
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') saveEdit(cell, field, weekId, input.value);
+        if (e.key === 'Escape') loadWeeks();
+      });
+    }
+    
+    async function saveEdit(cell, field, weekId, value) {
+      try {
+        const payload = {};
+        payload[field] = field.includes('point') || field === 'min_staff_required' ? parseInt(value) : value;
+        
+        const response = await fetch(`/api/admin/service-weeks/${weekId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        
+        if (response.ok) {
+          showAlert('alert3', 'Week updated successfully', 'success');
+          await loadWeeks();
+        } else {
+          showAlert('alert3', 'Failed to update week', 'error');
+          await loadWeeks();
+        }
+      } catch (error) {
+        showAlert('alert3', 'Error: ' + error.message, 'error');
+        await loadWeeks();
+      }
+    }
+    
+    function getWeekTypeBadge(type) {
+      const badges = {
+        regular: '<span class="badge badge-regular">Regular</span>',
+        summer: '<span class="badge badge-summer">Summer</span>',
+        christmas: '<span class="badge badge-holiday">Christmas</span>',
+        thanksgiving: '<span class="badge badge-holiday">Thanksgiving</span>',
+        spring_break: '<span class="badge badge-holiday">Spring Break</span>',
+        ats_conference: '<span class="badge badge-conference">ATS Conference</span>',
+        chest_conference: '<span class="badge badge-conference">CHEST Conference</span>',
+        sccm_conference: '<span class="badge badge-conference">SCCM Conference</span>'
+      };
+      return badges[type] || `<span class="badge">${type}</span>`;
+    }
+    
+    function formatDate(dateStr) {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    
+    function showAlert(elementId, message, type) {
+      const alert = document.getElementById(elementId);
+      alert.textContent = message;
+      alert.className = `alert alert-${type} show`;
+      setTimeout(() => alert.classList.remove('show'), 5000);
+    }
+    
+    // Initialize
+    window.addEventListener('DOMContentLoaded', () => {
+      loadWeeks();
+      addSpecialWeek(); // Start with one empty config
+    });
+  </script>
+</body>
+</html>
