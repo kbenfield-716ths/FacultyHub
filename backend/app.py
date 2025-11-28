@@ -274,6 +274,30 @@ async def serve_static(path: str):
         return FileResponse(static_path)
     return {"error": f"Static file {path} not found"}
 
+# Catch-all route for paths without extensions (e.g., /dashboard)
+@app.get("/{path:path}")
+async def serve_catch_all(path: str):
+    """Catch-all for paths without extensions - try adding .html"""
+    # Skip API routes
+    if path.startswith("api/"):
+        return {"error": "Not found"}
+    
+    # Try as .html file
+    html_path = STATIC_DIR / f"{path}.html"
+    if html_path.exists():
+        response = FileResponse(html_path)
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        return response
+    
+    # Try in backend/static
+    backend_html_path = BACKEND_STATIC_DIR / f"{path}.html"
+    if backend_html_path.exists():
+        response = FileResponse(backend_html_path)
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        return response
+    
+    return {"error": f"{path} not found"}
+
 
 # ---------- Signup endpoint ----------
 
