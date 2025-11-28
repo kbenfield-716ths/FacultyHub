@@ -4,12 +4,36 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Panel - PCCM Faculty Hub</title>
-  <link rel="stylesheet" href="/static/style.css">
   <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f7fa;
+      padding: 20px;
+    }
+    
     .admin-container {
       max-width: 1400px;
       margin: 0 auto;
-      padding: 20px;
+    }
+    
+    .header {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 8px;
     }
     
     .admin-tabs {
@@ -17,10 +41,13 @@
       gap: 10px;
       margin-bottom: 30px;
       border-bottom: 2px solid #e5e7eb;
+      background: white;
+      padding: 0 20px;
+      border-radius: 12px 12px 0 0;
     }
     
     .tab-btn {
-      padding: 12px 24px;
+      padding: 16px 24px;
       background: transparent;
       border: none;
       border-bottom: 3px solid transparent;
@@ -28,19 +55,26 @@
       font-weight: 600;
       color: #6b7280;
       transition: all 0.2s;
+      font-size: 15px;
     }
     
     .tab-btn:hover {
       color: #1f2937;
+      background: #f9fafb;
     }
     
     .tab-btn.active {
       color: #667eea;
       border-bottom-color: #667eea;
+      background: #f9fafb;
     }
     
     .tab-content {
       display: none;
+      background: white;
+      padding: 30px;
+      border-radius: 0 0 12px 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
     
     .tab-content.active {
@@ -57,13 +91,13 @@
     .stat-card {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
-      padding: 20px;
+      padding: 24px;
       border-radius: 12px;
       text-align: center;
     }
     
     .stat-value {
-      font-size: 36px;
+      font-size: 42px;
       font-weight: 700;
       margin-bottom: 8px;
     }
@@ -73,56 +107,112 @@
       opacity: 0.9;
     }
     
-    .admin-card {
-      background: white;
+    .card {
+      background: #f9fafb;
       border-radius: 12px;
       padding: 24px;
       margin-bottom: 24px;
-      border: 1px solid #e5e7eb;
-    }
-    
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-      padding-bottom: 15px;
-      border-bottom: 2px solid #e5e7eb;
     }
     
     .card-title {
       font-size: 20px;
       font-weight: 700;
       color: #1f2937;
+      margin-bottom: 20px;
     }
     
-    .table-container {
-      overflow-x: auto;
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
     }
     
-    .data-table {
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 6px;
+    }
+    
+    input, select {
+      padding: 10px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    
+    input:focus, select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #4a5568;
+    }
+    
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+    
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+    
+    table {
       width: 100%;
       border-collapse: collapse;
+      margin-top: 16px;
     }
     
-    .data-table th {
-      background: #f9fafb;
+    th {
+      background: #f7fafc;
       padding: 12px;
       text-align: left;
       font-weight: 600;
-      color: #6b7280;
-      font-size: 12px;
+      color: #4a5568;
+      border-bottom: 2px solid #e2e8f0;
+      font-size: 13px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
     
-    .data-table td {
+    td {
       padding: 12px;
-      border-bottom: 1px solid #f3f4f6;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 14px;
     }
     
-    .data-table tr:hover {
-      background: #f9fafb;
+    tr:hover {
+      background: #f7fafc;
     }
     
     .badge {
@@ -137,101 +227,84 @@
     .badge-warning { background: #fef3c7; color: #92400e; }
     .badge-danger { background: #fee2e2; color: #991b1b; }
     .badge-info { background: #e0e7ff; color: #3730a3; }
-    
-    .form-group {
-      margin-bottom: 20px;
-    }
-    
-    .form-group label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: 600;
-      color: #374151;
-    }
-    
-    .form-group input,
-    .form-group select {
-      width: 100%;
-      padding: 10px;
-      border: 2px solid #e5e7eb;
-      border-radius: 8px;
-      font-size: 14px;
-    }
-    
-    .form-group input:focus,
-    .form-group select:focus {
-      outline: none;
-      border-color: #667eea;
-    }
-    
-    .btn-primary {
-      padding: 10px 20px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-    }
-    
-    .btn-danger {
-      padding: 10px 20px;
-      background: #ef4444;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-    }
+    .badge-regular { background: #e2e8f0; color: #4a5568; }
+    .badge-summer { background: #fef3c7; color: #92400e; }
+    .badge-holiday { background: #fee2e2; color: #991b1b; }
+    .badge-conference { background: #dbeafe; color: #1e40af; }
     
     .alert {
       padding: 12px 16px;
       border-radius: 8px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
       display: none;
     }
     
-    .alert.show {
-      display: block;
-    }
-    
-    .alert-success {
-      background: #d1fae5;
-      color: #065f46;
-      border-left: 4px solid #10b981;
-    }
-    
-    .alert-error {
-      background: #fee2e2;
-      color: #991b1b;
-      border-left: 4px solid #ef4444;
-    }
+    .alert.show { display: block; }
+    .alert-success { background: #d1fae5; color: #065f46; border-left: 4px solid #10b981; }
+    .alert-error { background: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444; }
     
     .loading {
       text-align: center;
       padding: 40px;
       color: #6b7280;
     }
+    
+    .special-week-config {
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+      position: relative;
+      background: white;
+    }
+    
+    .remove-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: #fee2e2;
+      color: #991b1b;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 8px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    
+    .editable-cell {
+      cursor: pointer;
+      position: relative;
+    }
+    
+    .editable-cell:hover {
+      background: #edf2f7;
+    }
+    
+    .editable-input {
+      width: 100%;
+      padding: 4px 8px;
+      border: 2px solid #667eea;
+      border-radius: 4px;
+    }
+    
+    .preset-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
   </style>
 </head>
 <body>
   <div class="admin-container">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+    <div class="header">
       <div>
-        <h1 style="font-size: 32px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">
-          ⚙️ Admin Panel
-        </h1>
-        <p style="color: #6b7280;">Manage faculty, moonlighting, and service availability</p>
+        <h1>⚙️ Admin Panel</h1>
+        <p style="color: #718096;">Manage faculty, moonlighting, and service availability</p>
       </div>
-      <a href="/dashboard" class="btn-primary">← Back to Dashboard</a>
+      <a href="/index.html" class="btn btn-secondary">← Back to Home</a>
     </div>
     
-    <!-- Tabs -->
     <div class="admin-tabs">
       <button class="tab-btn active" onclick="showTab('overview')">📊 Overview</button>
       <button class="tab-btn" onclick="showTab('faculty')">👥 Faculty</button>
@@ -260,111 +333,125 @@
         </div>
       </div>
       
-      <div class="admin-card">
-        <div class="card-header">
-          <h2 class="card-title">Recent Activity</h2>
-        </div>
+      <div class="card">
+        <h2 class="card-title">Recent Activity</h2>
         <div id="recentActivity" class="loading">Loading...</div>
       </div>
     </div>
     
     <!-- FACULTY TAB -->
     <div id="tab-faculty" class="tab-content">
-      <div class="admin-card">
-        <div class="card-header">
-          <h2 class="card-title">Add New Faculty</h2>
-        </div>
+      <div class="card">
+        <h2 class="card-title">Add New Faculty</h2>
         <div id="facultyAlert" class="alert"></div>
         <form id="addFacultyForm">
-          <div class="form-group">
-            <label>Computing ID (e.g., KE4Z)</label>
-            <input type="text" id="facultyId" required>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Computing ID (e.g., KE4Z)</label>
+              <input type="text" id="facultyId" required>
+            </div>
+            <div class="form-group">
+              <label>Name</label>
+              <input type="text" id="facultyName" required>
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" id="facultyEmail" required>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Name</label>
-            <input type="text" id="facultyName" required>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Rank</label>
+              <select id="facultyRank" required>
+                <option value="assistant">Assistant Professor</option>
+                <option value="associate">Associate Professor</option>
+                <option value="full">Full Professor</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Clinical Effort %</label>
+              <input type="number" id="facultyEffort" min="0" max="100" required>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" id="facultyEmail" required>
-          </div>
-          <div class="form-group">
-            <label>Rank</label>
-            <select id="facultyRank" required>
-              <option value="assistant">Assistant Professor</option>
-              <option value="associate">Associate Professor</option>
-              <option value="full">Full Professor</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Clinical Effort %</label>
-            <input type="number" id="facultyEffort" min="0" max="100" required>
-          </div>
-          <button type="submit" class="btn-primary">Add Faculty</button>
+          <button type="submit" class="btn btn-primary">Add Faculty</button>
         </form>
       </div>
       
-      <div class="admin-card">
-        <div class="card-header">
-          <h2 class="card-title">Faculty List</h2>
-        </div>
+      <div class="card">
+        <h2 class="card-title">Faculty List</h2>
         <div id="facultyLoading" class="loading">Loading...</div>
         <div id="facultyTable" style="display: none;">
-          <div class="table-container">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Rank</th>
-                  <th>Clinical %</th>
-                  <th>Base Points</th>
-                  <th>Status</th>
-                  <th>Admin</th>
-                </tr>
-              </thead>
-              <tbody id="facultyTableBody"></tbody>
-            </table>
-          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Rank</th>
+                <th>Clinical %</th>
+                <th>Base Points</th>
+                <th>Status</th>
+                <th>Admin</th>
+              </tr>
+            </thead>
+            <tbody id="facultyTableBody"></tbody>
+          </table>
         </div>
       </div>
     </div>
     
     <!-- MOONLIGHTING TAB -->
     <div id="tab-moonlighting" class="tab-content">
-      <div class="admin-card">
-        <div class="card-header">
-          <h2 class="card-title">Moonlighting Periods</h2>
-        </div>
+      <div class="card">
+        <h2 class="card-title">Moonlighting Periods</h2>
         <div id="moonlightingLoading" class="loading">Loading...</div>
         <div id="moonlightingTable" style="display: none;">
-          <div class="table-container">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Period</th>
-                  <th>Total Shifts</th>
-                  <th>Signups</th>
-                  <th>Assignments</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody id="moonlightingTableBody"></tbody>
-            </table>
-          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Period</th>
+                <th>Total Shifts</th>
+                <th>Signups</th>
+                <th>Assignments</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="moonlightingTableBody"></tbody>
+          </table>
         </div>
       </div>
     </div>
     
     <!-- SERVICE AVAILABILITY TAB -->
     <div id="tab-service" class="tab-content">
-      <div class="admin-card">
-        <div class="card-header">
-          <h2 class="card-title">Generate Service Weeks</h2>
+      <div class="card">
+        <h2 class="card-title">Step 1: Configure Special Weeks</h2>
+        <div id="serviceAlert1" class="alert"></div>
+        
+        <div id="specialWeeksContainer"></div>
+        
+        <button class="btn btn-secondary btn-small" onclick="addSpecialWeek()" style="margin-bottom: 20px;">
+          + Add Special Week
+        </button>
+        
+        <div style="padding: 16px; background: #f7fafc; border-radius: 8px; margin-top: 20px;">
+          <strong>Preset Templates:</strong>
+          <div class="preset-buttons">
+            <button class="btn btn-secondary btn-small" onclick="loadPreset('christmas')">Christmas (2 weeks)</button>
+            <button class="btn btn-secondary btn-small" onclick="loadPreset('thanksgiving')">Thanksgiving</button>
+            <button class="btn btn-secondary btn-small" onclick="loadPreset('spring_break')">Spring Break</button>
+            <button class="btn btn-secondary btn-small" onclick="loadPreset('ats')">ATS Conference</button>
+            <button class="btn btn-secondary btn-small" onclick="loadPreset('chest')">CHEST Conference</button>
+            <button class="btn btn-secondary btn-small" onclick="loadPreset('sccm')">SCCM Conference</button>
+          </div>
         </div>
-        <div id="weeksAlert" class="alert"></div>
-        <form id="generateWeeksForm">
+      </div>
+      
+      <div class="card">
+        <h2 class="card-title">Step 2: Generate 52 Weeks</h2>
+        <div id="serviceAlert2" class="alert"></div>
+        
+        <div class="form-row">
           <div class="form-group">
             <label>Academic Year</label>
             <select id="weekYear">
@@ -377,34 +464,41 @@
             <label>Start Date (First Tuesday of July)</label>
             <input type="date" id="weekStartDate" value="2026-07-07">
           </div>
-          <button type="submit" class="btn-primary">Generate 52 Weeks</button>
-          <button type="button" class="btn-danger" onclick="clearWeeks()" style="margin-left: 10px;">Clear All Weeks</button>
-        </form>
+        </div>
+        
+        <div style="display: flex; gap: 12px;">
+          <button class="btn btn-primary" onclick="generateWeeks()">Generate 52 Weeks</button>
+          <button class="btn btn-danger" onclick="clearWeeks()">Clear All Weeks</button>
+        </div>
       </div>
       
-      <div class="admin-card">
-        <div class="card-header">
-          <h2 class="card-title">Service Availability Weeks</h2>
+      <div class="card">
+        <h2 class="card-title">Step 3: Review and Edit Weeks</h2>
+        <div id="serviceAlert3" class="alert"></div>
+        
+        <div style="margin-bottom: 16px; color: #718096; font-size: 14px;">
+          <strong>Tip:</strong> Click on any cell to edit. Press Enter to save or Escape to cancel.
         </div>
-        <div id="weeksLoading" class="loading">Loading...</div>
+        
+        <div id="weeksLoading" class="loading">No weeks generated yet</div>
+        
         <div id="weeksTable" style="display: none;">
-          <div class="table-container">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Label</th>
-                  <th>Start Date</th>
-                  <th>End Date</th>
-                  <th>Type</th>
-                  <th>Cost (Unavailable)</th>
-                  <th>Reward (Available)</th>
-                  <th>Requests</th>
-                </tr>
-              </thead>
-              <tbody id="weeksTableBody"></tbody>
-            </table>
-          </div>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 50px;">#</th>
+                <th>Label</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Type</th>
+                <th style="width: 120px;">Cost (Off)</th>
+                <th style="width: 120px;">Reward (Work)</th>
+                <th style="width: 100px;">Min Staff</th>
+                <th style="width: 80px;">Requests</th>
+              </tr>
+            </thead>
+            <tbody id="weeksTableBody"></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -413,39 +507,51 @@
   <script>
     let currentUser = null;
     let currentFaculty = null;
+    let specialWeeksCount = 0;
+    let currentWeeks = [];
     
-    // Initialize
+    const presets = {
+      christmas: { name: 'Christmas', date: '2026-12-22', duration_weeks: 2, point_cost: 15, point_reward: 20 },
+      thanksgiving: { name: 'Thanksgiving', date: '2026-11-26', duration_weeks: 1, point_cost: 15, point_reward: 20 },
+      spring_break: { name: 'Spring Break', date: '2027-03-15', duration_weeks: 1, point_cost: 12, point_reward: 15 },
+      ats: { name: 'ATS Conference', date: '2027-05-15', duration_weeks: 1, point_cost: 10, point_reward: 12 },
+      chest: { name: 'CHEST Conference', date: '2026-10-18', duration_weeks: 1, point_cost: 10, point_reward: 12 },
+      sccm: { name: 'SCCM Conference', date: '2027-01-24', duration_weeks: 1, point_cost: 10, point_reward: 12 }
+    };
+    
     window.addEventListener('DOMContentLoaded', async () => {
       await checkAuth();
       await loadOverview();
       await loadFaculty();
       await loadMoonlighting();
       await loadServiceWeeks();
+      addSpecialWeek(); // Start with one empty config
     });
     
     async function checkAuth() {
-      const response = await fetch('/api/auth/me');
-      if (!response.ok) {
+      try {
+        const response = await fetch('/api/auth/me');
+        if (!response.ok) {
+          window.location.href = '/';
+          return;
+        }
+        const data = await response.json();
+        currentUser = data;
+        currentFaculty = data;
+        
+        if (!data.is_admin) {
+          alert('Access denied. Admin privileges required.');
+          window.location.href = '/index.html';
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
         window.location.href = '/';
-        return;
-      }
-      const data = await response.json();
-      currentUser = data.user;
-      currentFaculty = data.faculty;
-      
-      if (!currentFaculty.is_admin) {
-        alert('Access denied. Admin privileges required.');
-        window.location.href = '/dashboard';
       }
     }
     
     function showTab(tabName) {
-      document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-      });
-      document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-      });
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
       
       document.getElementById('tab-' + tabName).classList.add('active');
       event.target.classList.add('active');
@@ -524,7 +630,6 @@
       const rank = document.getElementById('facultyRank').value;
       const effort = parseInt(document.getElementById('facultyEffort').value);
       
-      // Calculate base points: 100 * (effort/100) * rank_multiplier
       const rankMultiplier = rank === 'assistant' ? 1.0 : rank === 'associate' ? 1.75 : 2.5;
       const basePoints = Math.round(100 * (effort / 100) * rankMultiplier);
       
@@ -539,7 +644,7 @@
             rank: rank,
             clinical_effort_pct: effort,
             base_points: basePoints,
-            password: 'PCCM2025!'  // Default password
+            password: 'PCCM2025!'
           })
         });
         
@@ -592,117 +697,250 @@
       }
     }
     
-    // SERVICE WEEKS
-    async function loadServiceWeeks() {
+    // SERVICE WEEKS - SPECIAL WEEK CONFIGURATION
+    function addSpecialWeek(data = null) {
+      const id = specialWeeksCount++;
+      const container = document.getElementById('specialWeeksContainer');
+      
+      const div = document.createElement('div');
+      div.className = 'special-week-config';
+      div.id = `special-${id}`;
+      div.innerHTML = `
+        <button class="remove-btn" onclick="removeSpecialWeek(${id})">✕ Remove</button>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Name</label>
+            <input type="text" id="name-${id}" placeholder="e.g., Christmas" value="${data?.name || ''}">
+          </div>
+          <div class="form-group">
+            <label>Date (middle of period)</label>
+            <input type="date" id="date-${id}" value="${data?.date || ''}">
+          </div>
+          <div class="form-group">
+            <label>Duration (weeks)</label>
+            <input type="number" id="duration-${id}" min="1" max="4" value="${data?.duration_weeks || 1}">
+          </div>
+          <div class="form-group">
+            <label>Point Cost (unavailable)</label>
+            <input type="number" id="cost-${id}" min="0" value="${data?.point_cost || 15}">
+          </div>
+          <div class="form-group">
+            <label>Point Reward (volunteer)</label>
+            <input type="number" id="reward-${id}" min="0" value="${data?.point_reward || 20}">
+          </div>
+        </div>
+      `;
+      
+      container.appendChild(div);
+    }
+    
+    function removeSpecialWeek(id) {
+      document.getElementById(`special-${id}`).remove();
+    }
+    
+    function loadPreset(presetKey) {
+      const preset = presets[presetKey];
+      if (preset) addSpecialWeek(preset);
+    }
+    
+    function collectSpecialWeeks() {
+      const container = document.getElementById('specialWeeksContainer');
+      const configs = container.querySelectorAll('.special-week-config');
+      const specialWeeks = [];
+      
+      configs.forEach(config => {
+        const id = config.id.split('-')[1];
+        specialWeeks.push({
+          name: document.getElementById(`name-${id}`).value,
+          date: document.getElementById(`date-${id}`).value,
+          duration_weeks: parseInt(document.getElementById(`duration-${id}`).value),
+          point_cost: parseInt(document.getElementById(`cost-${id}`).value),
+          point_reward: parseInt(document.getElementById(`reward-${id}`).value)
+        });
+      });
+      
+      return specialWeeks.filter(w => w.name && w.date);
+    }
+    
+    async function generateWeeks() {
+      const specialWeeks = collectSpecialWeeks();
+      const year = parseInt(document.getElementById('weekYear').value);
+      const startDate = document.getElementById('weekStartDate').value;
+      
+      if (!startDate) {
+        showAlert('serviceAlert2', 'Please select a start date', 'error');
+        return;
+      }
+      
       try {
-        const response = await fetch('/api/admin/service-weeks');
+        const response = await fetch('/api/admin/generate-service-weeks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            year: year,
+            start_date: startDate,
+            special_weeks: specialWeeks
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          showAlert('serviceAlert2', `Successfully generated ${data.weeks_created} weeks!`, 'success');
+          await loadServiceWeeks();
+          await loadOverview();
+        } else {
+          showAlert('serviceAlert2', data.detail || 'Failed to generate weeks', 'error');
+        }
+      } catch (error) {
+        showAlert('serviceAlert2', 'Error: ' + error.message, 'error');
+      }
+    }
+    
+    async function clearWeeks() {
+      if (!confirm('Are you sure you want to delete all weeks? This will also remove all requests.')) {
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/admin/service-weeks', { method: 'DELETE' });
+        
+        if (response.ok) {
+          showAlert('serviceAlert2', 'All weeks cleared', 'success');
+          document.getElementById('weeksLoading').style.display = 'block';
+          document.getElementById('weeksTable').style.display = 'none';
+          currentWeeks = [];
+          await loadOverview();
+        } else {
+          showAlert('serviceAlert2', 'Failed to clear weeks', 'error');
+        }
+      } catch (error) {
+        showAlert('serviceAlert2', 'Error: ' + error.message, 'error');
+      }
+    }
+    
+    async function loadServiceWeeks() {
+      const year = parseInt(document.getElementById('weekYear').value);
+      
+      try {
+        const response = await fetch(`/api/admin/service-weeks?year=${year}`);
         const weeks = await response.json();
         
-        const tbody = document.getElementById('weeksTableBody');
-        tbody.innerHTML = '';
-        
         if (weeks.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: #6b7280;">No weeks generated yet.</td></tr>';
-        } else {
-          weeks.forEach(week => {
-            let typeBadge = '';
-            if (week.week_type === 'christmas') {
-              typeBadge = '<span class="badge badge-danger">Christmas</span>';
-            } else if (week.week_type === 'thanksgiving') {
-              typeBadge = '<span class="badge badge-warning">Thanksgiving</span>';
-            } else if (week.week_type === 'spring_break') {
-              typeBadge = '<span class="badge badge-success">Spring Break</span>';
-            } else if (week.week_type === 'summer') {
-              typeBadge = '<span class="badge badge-warning">Summer</span>';
-            } else {
-              typeBadge = '<span class="badge">Regular</span>';
-            }
-            
-            const row = document.createElement('tr');
-            row.innerHTML = `
-              <td>${week.week_number}</td>
-              <td>${week.label}</td>
-              <td>${formatDate(week.start_date)}</td>
-              <td>${formatDate(week.end_date)}</td>
-              <td>${typeBadge}</td>
-              <td>-${week.point_cost_off} pts</td>
-              <td>+${week.point_reward_work} pts</td>
-              <td>${week.request_count || 0}</td>
-            `;
-            tbody.appendChild(row);
-          });
+          document.getElementById('weeksLoading').textContent = 'No weeks generated yet';
+          document.getElementById('weeksLoading').style.display = 'block';
+          document.getElementById('weeksTable').style.display = 'none';
+          return;
         }
+        
+        currentWeeks = weeks;
+        renderWeeksTable();
         
         document.getElementById('weeksLoading').style.display = 'none';
         document.getElementById('weeksTable').style.display = 'block';
       } catch (error) {
         console.error('Error loading weeks:', error);
-        document.getElementById('weeksLoading').textContent = 'Failed to load weeks.';
       }
     }
     
-    document.getElementById('generateWeeksForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
+    function renderWeeksTable() {
+      const tbody = document.getElementById('weeksTableBody');
+      tbody.innerHTML = '';
       
-      try {
-        const response = await fetch('/api/admin/generate-service-weeks', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({
-            year: parseInt(document.getElementById('weekYear').value),
-            start_date: document.getElementById('weekStartDate').value
-          })
-        });
-        
-        if (response.ok) {
-          showAlert('weeksAlert', 'Successfully generated 52 weeks!', 'success');
-          await loadServiceWeeks();
-          await loadOverview();
-        } else {
-          const error = await response.json();
-          showAlert('weeksAlert', error.detail || 'Failed to generate weeks', 'error');
-        }
-      } catch (error) {
-        showAlert('weeksAlert', 'Error: ' + error.message, 'error');
-      }
-    });
+      currentWeeks.forEach(week => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${week.week_number}</td>
+          <td class="editable-cell" data-field="label" data-id="${week.id}">${week.label}</td>
+          <td class="editable-cell" data-field="start_date" data-id="${week.id}">${week.start_date}</td>
+          <td class="editable-cell" data-field="end_date" data-id="${week.id}">${week.end_date}</td>
+          <td>${getWeekTypeBadge(week.week_type)}</td>
+          <td class="editable-cell" data-field="point_cost_off" data-id="${week.id}">-${week.point_cost_off} pts</td>
+          <td class="editable-cell" data-field="point_reward_work" data-id="${week.id}">+${week.point_reward_work} pts</td>
+          <td class="editable-cell" data-field="min_staff_required" data-id="${week.id}">${week.min_staff_required}</td>
+          <td>${week.request_count || 0}</td>
+        `;
+        tbody.appendChild(row);
+      });
+      
+      document.querySelectorAll('.editable-cell').forEach(cell => {
+        cell.addEventListener('click', makeEditable);
+      });
+    }
     
-    async function clearWeeks() {
-      if (!confirm('Are you sure you want to delete all service weeks? This will also remove all availability requests.')) {
-        return;
+    function makeEditable(e) {
+      const cell = e.target;
+      const field = cell.dataset.field;
+      const weekId = cell.dataset.id;
+      const currentValue = cell.textContent.replace(' pts', '').replace('-', '').replace('+', '');
+      
+      const input = document.createElement('input');
+      input.className = 'editable-input';
+      input.value = currentValue;
+      
+      if (field.includes('date')) {
+        input.type = 'date';
+        input.value = cell.textContent;
+      } else if (field.includes('point') || field === 'min_staff_required') {
+        input.type = 'number';
+      } else {
+        input.type = 'text';
       }
       
+      cell.textContent = '';
+      cell.appendChild(input);
+      input.focus();
+      
+      input.addEventListener('blur', () => saveEdit(cell, field, weekId, input.value));
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') saveEdit(cell, field, weekId, input.value);
+        if (e.key === 'Escape') loadServiceWeeks();
+      });
+    }
+    
+    async function saveEdit(cell, field, weekId, value) {
       try {
-        const response = await fetch('/api/admin/service-weeks', {
-          method: 'DELETE'
+        const payload = {};
+        payload[field] = field.includes('point') || field === 'min_staff_required' ? parseInt(value) : value;
+        
+        const response = await fetch(`/api/admin/service-weeks/${weekId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
         });
         
         if (response.ok) {
-          showAlert('weeksAlert', 'All weeks cleared successfully', 'success');
+          showAlert('serviceAlert3', 'Week updated successfully', 'success');
           await loadServiceWeeks();
-          await loadOverview();
         } else {
-          showAlert('weeksAlert', 'Failed to clear weeks', 'error');
+          showAlert('serviceAlert3', 'Failed to update week', 'error');
+          await loadServiceWeeks();
         }
       } catch (error) {
-        showAlert('weeksAlert', 'Error: ' + error.message, 'error');
+        showAlert('serviceAlert3', 'Error: ' + error.message, 'error');
+        await loadServiceWeeks();
       }
     }
     
-    // HELPERS
-    function formatDate(dateStr) {
-      if (!dateStr) return '';
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    function getWeekTypeBadge(type) {
+      const badges = {
+        regular: '<span class="badge badge-regular">Regular</span>',
+        summer: '<span class="badge badge-summer">Summer</span>',
+        christmas: '<span class="badge badge-holiday">Christmas</span>',
+        thanksgiving: '<span class="badge badge-holiday">Thanksgiving</span>',
+        spring_break: '<span class="badge badge-holiday">Spring Break</span>',
+        ats_conference: '<span class="badge badge-conference">ATS</span>',
+        chest_conference: '<span class="badge badge-conference">CHEST</span>',
+        sccm_conference: '<span class="badge badge-conference">SCCM</span>'
+      };
+      return badges[type] || `<span class="badge">${type}</span>`;
     }
     
     function showAlert(elementId, message, type) {
       const alert = document.getElementById(elementId);
       alert.textContent = message;
-      alert.className = 'alert alert-' + type + ' show';
-      setTimeout(() => {
-        alert.classList.remove('show');
-      }, 5000);
+      alert.className = `alert alert-${type} show`;
+      setTimeout(() => alert.classList.remove('show'), 5000);
     }
   </script>
 </body>
