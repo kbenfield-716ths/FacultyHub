@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - PCCM Faculty Hub</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f7f8fc;
+    }
+    
+    .admin-container {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+    
+    .header h1 {
+      font-size: 32px;
+      font-weight: 700;
+      color: #1f2937;
+    }
+    
+    .header p {
+      color: #6b7280;
+      margin-top: 4px;
+    }
+    
+    .btn-primary {
+      padding: 10px 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-danger {
+      padding: 10px 20px;
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    
+    .btn-secondary {
+      padding: 8px 16px;
+      background: #6b7280;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: 500;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    
+    .admin-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 30px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    
+    .tab-btn {
+      padding: 12px 24px;
+      background: transparent;
+      border: none;
+      border-bottom: 3px solid transparent;
+      cursor: pointer;
+      font-weight: 600;
+      color: #6b7280;
+      transition: all 0.2s;
+    }
+    
+    .tab-btn:hover { color: #1f2937; }
+    .tab-btn.active {
+      color: #667eea;
+      border-bottom-color: #667eea;
+    }
+    
+    .tab-content {
+      display: none;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      border: 1px solid #e5e7eb;
+    }
+    
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    
+    .card-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1f2937;
+    }
+    
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #374151;
+      font-size: 14px;
+    }
+    
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    
+    .alert.show { display: block; }
+    .alert-success {
+      background: #d1fae5;
+      color: #065f46;
+      border-left: 4px solid #10b981;
+    }
+    
+    .alert-error {
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 4px solid #ef4444;
+    }
+    
+    .weeks-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    .weeks-table th {
+      background: #f9fafb;
+      padding: 12px;
+      text-align: left;
+      font-weight: 600;
+      color: #6b7280;
+      font-size: 12px;
+      text-transform: uppercase;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    
+    .weeks-table td {
+      padding: 12px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .weeks-table tr:hover {
+      background: #f9fafb;
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    
+    .badge-regular { background: #f3f4f6; color: #6b7280; }
+    .badge-summer { background: #fef3c7; color: #92400e; }
+    .badge-spring_break { background: #d1fae5; color: #065f46; }
+    .badge-thanksgiving { background: #fed7aa; color: #9a3412; }
+    .badge-christmas { background: #fecaca; color: #991b1b; }
+    .badge-ats { background: #dbeafe; color: #1e40af; }
+    .badge-chest { background: #e0e7ff; color: #3730a3; }
+    .badge-sccm { background: #fce7f3; color: #9f1239; }
+    
+    .editable-cell {
+      cursor: pointer;
+      position: relative;
+    }
+    
+    .editable-cell:hover {
+      background: #f3f4f6;
+    }
+    
+    .editable-cell input {
+      padding: 4px 8px;
+      border: 2px solid #667eea;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #6b7280;
+    }
+    
+    .action-buttons {
+      display: flex;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="admin-container">
+    <div class="header">
+      <div>
+        <h1>⚙️ Admin Panel</h1>
+        <p>Manage service availability and special periods</p>
+      </div>
+      <a href="/dashboard" class="btn-primary">← Back to Dashboard</a>
+    </div>
+    
+    <div class="admin-tabs">
+      <button class="tab-btn active" onclick="showTab('overview')">📊 Overview</button>
+      <button class="tab-btn" onclick="showTab('configure')">⚙️ Configure Periods</button>
+      <button class="tab-btn" onclick="showTab('weeks')">📅 Manage Weeks</button>
+    </div>
+    
+    <!-- OVERVIEW TAB -->
+    <div id="tab-overview" class="tab-content active">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">System Status</h2>
+        </div>
+        <div id="overviewContent">
+          <p style="color: #6b7280;">No weeks generated yet. Configure periods and generate weeks to get started.</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- CONFIGURE PERIODS TAB -->
+    <div id="tab-configure" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Define Special Periods</h2>
+        </div>
+        <div id="configAlert" class="alert"></div>
+        
+        <form id="configForm">
+          <div class="form-group">
+            <label>Academic Year</label>
+            <select id="configYear">
+              <option value="2025">2025-2026</option>
+              <option value="2026" selected>2026-2027</option>
+              <option value="2027">2027-2028</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>Start Date (First Tuesday of July)</label>
+            <input type="date" id="configStartDate" value="2026-07-07" required>
+          </div>
+          
+          <h3 style="margin: 30px 0 20px; color: #1f2937; font-size: 18px;">Special Periods</h3>
+          
+          <div class="form-grid">
+            <div class="form-group">
+              <label>🏖️ Summer Start Date</label>
+              <input type="date" id="summerStart" value="2026-06-01">
+              <small style="color: #6b7280; font-size: 12px;">Summer typically June-August</small>
+            </div>
+            
+            <div class="form-group">
+              <label>🏖️ Summer End Date</label>
+              <input type="date" id="summerEnd" value="2026-08-31">
+            </div>
+          </div>
+          
+          <div class="form-grid">
+            <div class="form-group">
+              <label>🌸 Spring Break Start</label>
+              <input type="date" id="springBreak">
+            </div>
+            
+            <div class="form-group">
+              <label>🦃 Thanksgiving Week</label>
+              <input type="date" id="thanksgiving">
+            </div>
+            
+            <div class="form-group">
+              <label>🎄 Christmas Week Start</label>
+              <input type="date" id="christmas">
+              <small style="color: #6b7280; font-size: 12px;">Will cover 2 weeks</small>
+            </div>
+          </div>
+          
+          <h3 style="margin: 30px 0 20px; color: #1f2937; font-size: 18px;">Conferences</h3>
+          
+          <div class="form-grid">
+            <div class="form-group">
+              <label>🫁 ATS Conference</label>
+              <input type="date" id="atsConference">
+              <small style="color: #6b7280; font-size: 12px;">American Thoracic Society</small>
+            </div>
+            
+            <div class="form-group">
+              <label>🫁 CHEST Conference</label>
+              <input type="date" id="chestConference">
+              <small style="color: #6b7280; font-size: 12px;">CHEST Annual Meeting</small>
+            </div>
+            
+            <div class="form-group">
+              <label>🏥 SCCM Conference</label>
+              <input type="date" id="sccmConference">
+              <small style="color: #6b7280; font-size: 12px;">Society of Critical Care Medicine</small>
+            </div>
+          </div>
+          
+          <div style="margin-top: 30px; display: flex; gap: 12px;">
+            <button type="submit" class="btn-primary">Generate 52 Weeks with Configuration</button>
+            <button type="button" class="btn-danger" onclick="clearAllWeeks()">Clear All Weeks</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    
+    <!-- MANAGE WEEKS TAB -->
+    <div id="tab-weeks" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Edit Weeks</h2>
+          <button class="btn-secondary" onclick="loadWeeks()">🔄 Refresh</button>
+        </div>
+        
+        <div id="weeksLoading" class="loading">Loading weeks...</div>
+        
+        <div id="weeksContent" style="display: none;">
+          <div style="overflow-x: auto;">
+            <table class="weeks-table">
+              <thead>
+                <tr>
+                  <th style="width: 50px;">#</th>
+                  <th>Label</th>
+                  <th>Start Date</th>
+                  <th>End Date</th>
+                  <th>Type</th>
+                  <th style="width: 120px;">Cost (Off)</th>
+                  <th style="width: 120px;">Reward (Work)</th>
+                  <th style="width: 100px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="weeksTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let allWeeks = [];
+    
+    window.addEventListener('DOMContentLoaded', async () => {
+      await checkAuth();
+      await loadOverview();
+      await loadWeeks();
+    });
+    
+    async function checkAuth() {
+      const response = await fetch('/api/auth/me');
+      if (!response.ok) {
+        window.location.href = '/';
+        return;
+      }
+      const data = await response.json();
+      if (!data.faculty.is_admin) {
+        alert('Access denied. Admin privileges required.');
+        window.location.href = '/dashboard';
+      }
+    }
+    
+    function showTab(tabName) {
+      document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      
+      document.getElementById('tab-' + tabName).classList.add('active');
+      event.target.classList.add('active');
+    }
+    
+    async function loadOverview() {
+      try {
+        const response = await fetch('/api/admin/service-weeks');
+        const weeks = await response.json();
+        
+        const content = document.getElementById('overviewContent');
+        if (weeks.length === 0) {
+          content.innerHTML = '<p style="color: #6b7280;">No weeks generated yet. Configure periods and generate weeks to get started.</p>';
+        } else {
+          const types = {};
+          weeks.forEach(w => {
+            types[w.week_type] = (types[w.week_type] || 0) + 1;
+          });
+          
+          let html = `<p style="margin-bottom: 16px;"><strong>${weeks.length} weeks</strong> generated for academic year ${weeks[0].start_date.substring(0, 4)}</p>`;
+          html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">';
+          
+          for (const [type, count] of Object.entries(types)) {
+            html += `
+              <div style="padding: 16px; background: #f9fafb; border-radius: 8px;">
+                <div style="font-size: 24px; font-weight: 700; color: #1f2937;">${count}</div>
+                <div style="font-size: 13px; color: #6b7280; text-transform: capitalize;">${type.replace('_', ' ')} weeks</div>
+              </div>
+            `;
+          }
+          html += '</div>';
+          content.innerHTML = html;
+        }
+      } catch (error) {
+        console.error('Error loading overview:', error);
+      }
+    }
+    
+    async function loadWeeks() {
+      try {
+        const response = await fetch('/api/admin/service-weeks');
+        allWeeks = await response.json();
+        
+        const tbody = document.getElementById('weeksTableBody');
+        tbody.innerHTML = '';
+        
+        if (allWeeks.length === 0) {
+          document.getElementById('weeksLoading').innerHTML = '<p style="color: #6b7280;">No weeks generated. Go to Configure Periods tab to create weeks.</p>';
+          return;
+        }
+        
+        allWeeks.forEach(week => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${week.week_number}</td>
+            <td class="editable-cell" onclick="editCell(this, '${week.id}', 'label', 'text')">${week.label}</td>
+            <td class="editable-cell" onclick="editCell(this, '${week.id}', 'start_date', 'date')">${formatDate(week.start_date)}</td>
+            <td class="editable-cell" onclick="editCell(this, '${week.id}', 'end_date', 'date')">${formatDate(week.end_date)}</td>
+            <td>
+              <select onchange="updateWeekType('${week.id}', this.value)" style="padding: 4px 8px; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 12px;">
+                <option value="regular" ${week.week_type === 'regular' ? 'selected' : ''}>Regular</option>
+                <option value="summer" ${week.week_type === 'summer' ? 'selected' : ''}>Summer</option>
+                <option value="spring_break" ${week.week_type === 'spring_break' ? 'selected' : ''}>Spring Break</option>
+                <option value="thanksgiving" ${week.week_type === 'thanksgiving' ? 'selected' : ''}>Thanksgiving</option>
+                <option value="christmas" ${week.week_type === 'christmas' ? 'selected' : ''}>Christmas</option>
+                <option value="ats" ${week.week_type === 'ats' ? 'selected' : ''}>ATS</option>
+                <option value="chest" ${week.week_type === 'chest' ? 'selected' : ''}>CHEST</option>
+                <option value="sccm" ${week.week_type === 'sccm' ? 'selected' : ''}>SCCM</option>
+              </select>
+            </td>
+            <td class="editable-cell" onclick="editCell(this, '${week.id}', 'point_cost_off', 'number')">${week.point_cost_off} pts</td>
+            <td class="editable-cell" onclick="editCell(this, '${week.id}', 'point_reward_work', 'number')">${week.point_reward_work} pts</td>
+            <td>
+              <button class="btn-danger" onclick="deleteWeek('${week.id}')" style="padding: 6px 12px; font-size: 12px;">Delete</button>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+        
+        document.getElementById('weeksLoading').style.display = 'none';
+        document.getElementById('weeksContent').style.display = 'block';
+      } catch (error) {
+        console.error('Error loading weeks:', error);
+        document.getElementById('weeksLoading').innerHTML = '<p style="color: #ef4444;">Failed to load weeks.</p>';
+      }
+    }
+    
+    function editCell(cell, weekId, field, type) {
+      const currentValue = cell.textContent.replace(' pts', '').trim();
+      const input = document.createElement('input');
+      input.type = type;
+      
+      if (type === 'date') {
+        input.value = currentValue;
+      } else if (type === 'number') {
+        input.value = parseInt(currentValue);
+      } else {
+        input.value = currentValue;
+      }
+      
+      input.style.width = '100%';
+      input.onblur = () => saveCell(cell, weekId, field, input.value, type);
+      input.onkeypress = (e) => {
+        if (e.key === 'Enter') {
+          input.blur();
+        }
+      };
+      
+      cell.innerHTML = '';
+      cell.appendChild(input);
+      input.focus();
+    }
+    
+    async function saveCell(cell, weekId, field, value, type) {
+      try {
+        const response = await fetch(`/api/admin/service-weeks/${weekId}`, {
+          method: 'PATCH',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({[field]: value})
+        });
+        
+        if (response.ok) {
+          if (type === 'number') {
+            cell.textContent = value + ' pts';
+          } else if (type === 'date') {
+            cell.textContent = formatDate(value);
+          } else {
+            cell.textContent = value;
+          }
+          await loadOverview();
+        } else {
+          alert('Failed to update');
+          await loadWeeks();
+        }
+      } catch (error) {
+        alert('Error: ' + error.message);
+        await loadWeeks();
+      }
+    }
+    
+    async function updateWeekType(weekId, type) {
+      try {
+        const response = await fetch(`/api/admin/service-weeks/${weekId}`, {
+          method: 'PATCH',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({week_type: type})
+        });
+        
+        if (response.ok) {
+          await loadOverview();
+        } else {
+          alert('Failed to update week type');
+        }
+      } catch (error) {
+        alert('Error: ' + error.message);
+      }
+    }
+    
+    async function deleteWeek(weekId) {
+      if (!confirm('Delete this week? This cannot be undone.')) return;
+      
+      try {
+        const response = await fetch(`/api/admin/service-weeks/${weekId}`, {
+          method: 'DELETE'
+        });
+        
+        if (response.ok) {
+          await loadWeeks();
+          await loadOverview();
+        } else {
+          alert('Failed to delete week');
+        }
+      } catch (error) {
+        alert('Error: ' + error.message);
+      }
+    }
+    
+    document.getElementById('configForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const config = {
+        year: parseInt(document.getElementById('configYear').value),
+        start_date: document.getElementById('configStartDate').value,
+        summer_start: document.getElementById('summerStart').value || null,
+        summer_end: document.getElementById('summerEnd').value || null,
+        spring_break: document.getElementById('springBreak').value || null,
+        thanksgiving: document.getElementById('thanksgiving').value || null,
+        christmas: document.getElementById('christmas').value || null,
+        ats_conference: document.getElementById('atsConference').value || null,
+        chest_conference: document.getElementById('chestConference').value || null,
+        sccm_conference: document.getElementById('sccmConference').value || null
+      };
+      
+      try {
+        const response = await fetch('/api/admin/generate-service-weeks', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(config)
+        });
+        
+        if (response.ok) {
+          showAlert('configAlert', 'Successfully generated 52 weeks with your configuration!', 'success');
+          await loadWeeks();
+          await loadOverview();
+          showTab('weeks');
+        } else {
+          const error = await response.json();
+          showAlert('configAlert', error.detail || 'Failed to generate weeks', 'error');
+        }
+      } catch (error) {
+        showAlert('configAlert', 'Error: ' + error.message, 'error');
+      }
+    });
+    
+    async function clearAllWeeks() {
+      if (!confirm('Delete ALL weeks? This will also remove all faculty requests. This cannot be undone.')) {
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/admin/service-weeks', {
+          method: 'DELETE'
+        });
+        
+        if (response.ok) {
+          showAlert('configAlert', 'All weeks cleared successfully', 'success');
+          await loadWeeks();
+          await loadOverview();
+        } else {
+          showAlert('configAlert', 'Failed to clear weeks', 'error');
+        }
+      } catch (error) {
+        showAlert('configAlert', 'Error: ' + error.message, 'error');
+      }
+    }
+    
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    
+    function showAlert(elementId, message, type) {
+      const alert = document.getElementById(elementId);
+      alert.textContent = message;
+      alert.className = 'alert alert-' + type + ' show';
+      setTimeout(() => {
+        alert.classList.remove('show');
+      }, 5000);
+    }
+  </script>
+</body>
+</html>
