@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, timedelta, date
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pydantic import BaseModel
 import uuid
 
@@ -21,12 +21,29 @@ router = APIRouter(prefix="/api/admin", tags=["admin-service"])
 
 # ===== REQUEST/RESPONSE MODELS =====
 
+class SpecialWeekConfig(BaseModel):
+    """Configuration for a special week period"""
+    name: str  # e.g., "Christmas", "Thanksgiving", "ATS Conference"
+    date: str  # ISO format date (middle of the week)
+    duration_weeks: int = 1  # Number of weeks
+    point_cost: int = 15
+    point_reward: int = 20
+
+
 class GenerateWeeksRequest(BaseModel):
     year: int
     start_date: str  # ISO format: "2026-07-07"
-    spring_break: Optional[str] = None
-    thanksgiving: Optional[str] = None
-    christmas: Optional[str] = None
+    special_weeks: List[SpecialWeekConfig] = []
+
+
+class UpdateWeekRequest(BaseModel):
+    label: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    week_type: Optional[str] = None
+    point_cost_off: Optional[int] = None
+    point_reward_work: Optional[int] = None
+    min_staff_required: Optional[int] = None
 
 
 class ServiceWeekResponse(BaseModel):
@@ -52,7 +69,7 @@ async def get_service_weeks(
 ):
     """Get all service availability weeks for a given year"""
     
-    weeks = db.query(VacationWeek).filter(VacationWeek.year == year).all()
+    weeks = db.query(VacationWeek).filter(VacationWeek.year == year).order_by(VacationWeek.week_number).all()
     
     # Get request counts for each week
     result = []
@@ -75,6 +92,54 @@ async def get_service_weeks(
         ))
     
     return result
+
+
+@router.put("/service-weeks/{week_id}")
+async def update_service_week(
+    week_id: str,
+    request: UpdateWeekRequest,
+    db: Session = Depends(get_db),
+    current_user: Faculty = Depends(require_admin)
+):
+    """Update a service week's details"""
+    
+    week = db.query(VacationWeek).filter(VacationWeek.id == week_id).first()
+    if not week:
+        raise HTTPException(status_code=404, detail="Week not found")
+    
+    # Update fields if provided
+    if request.label is not None:
+        week.label = request.label
+    if request.start_date is not None:
+        week.start_date = datetime.strptime(request.start_date, "%Y-%m-%d").date()
+    if request.end_date is not None:
+        week.end_date = datetime.strptime(request.end_date, "%Y-%m-%d").date()
+    if request.week_type is not None:
+        week.week_type = request.week_type
+    if request.point_cost_off is not None:
+        week.point_cost_off = request.point_cost_off
+    if request.point_reward_work is not None:
+        week.point_reward_work = request.point_reward_work
+    if request.min_staff_required is not None:
+        week.min_staff_required = request.min_staff_required
+    
+    db.commit()
+    db.refresh(week)
+    
+    return {
+        "success": True,
+        "week": {
+            "id": week.id,
+            "week_number": week.week_number,
+            "label": week.label,
+            "start_date": week.start_date.isoformat(),
+            "end_date": week.end_date.isoformat(),
+            "week_type": week.week_type,
+            "point_cost_off": week.point_cost_off,
+            "point_reward_work": week.point_reward_work,
+            "min_staff_required": week.min_staff_required
+        }
+    }
 
 
 @router.post("/generate-service-weeks")
@@ -100,11 +165,17 @@ async def generate_service_weeks(
             detail=f"Weeks already exist for {request.year}. Clear them first."
         )
     
-    # Parse dates
+    # Parse start date
     start_date = datetime.strptime(request.start_date, "%Y-%m-%d").date()
-    spring_break = datetime.strptime(request.spring_break, "%Y-%m-%d").date() if request.spring_break else None
-    thanksgiving = datetime.strptime(request.thanksgiving, "%Y-%m-%d").date() if request.thanksgiving else None
-    christmas = datetime.strptime(request.christmas, "%Y-%m-%d").date() if request.christmas else None
+    
+    # Parse special weeks into a dict for easy lookup
+    special_weeks_by_date: Dict[date, SpecialWeekConfig] = {}
+    for special in request.special_weeks:
+        special_date = datetime.strptime(special.date, "%Y-%m-%d").date()
+        # For multi-week periods, add all weeks
+        for week_offset in range(special.duration_weeks):
+            offset_date = special_date + timedelta(weeks=week_offset)
+            special_weeks_by_date[offset_date] = special
     
     weeks_created = []
     current_date = start_date
@@ -112,45 +183,35 @@ async def generate_service_weeks(
     for week_num in range(1, 53):
         end_date = current_date + timedelta(days=6)
         
-        # Determine week type and point values
+        # Default values
         week_type = "regular"
         point_cost_off = 5
         point_reward_work = 0
+        label = f"Week {week_num} ({current_date.strftime('%b %d')})"
         
-        # Check if it's a special week
+        # Check if it's summer (June-August)
         month = current_date.month
-        
-        # Summer weeks (June-August): Higher cost, some reward
         if month in [6, 7, 8]:
             week_type = "summer"
             point_cost_off = 7
             point_reward_work = 5
+            label = f"Week {week_num} - Summer ({current_date.strftime('%b %d')})"
         
-        # Spring break
-        if spring_break and abs((current_date - spring_break).days) < 7:
-            week_type = "spring_break"
-            point_cost_off = 12
-            point_reward_work = 15
-        
-        # Thanksgiving
-        if thanksgiving and abs((current_date - thanksgiving).days) < 7:
-            week_type = "thanksgiving"
-            point_cost_off = 15
-            point_reward_work = 20
-        
-        # Christmas (2 weeks)
-        if christmas:
-            christmas_end = christmas + timedelta(days=14)
-            if christmas <= current_date <= christmas_end:
-                week_type = "christmas"
-                point_cost_off = 15
-                point_reward_work = 20
+        # Check if this week matches any special week configurations
+        for special_date, special_config in special_weeks_by_date.items():
+            # If current week is within 3 days of the special date
+            if abs((current_date - special_date).days) <= 3:
+                week_type = special_config.name.lower().replace(" ", "_")
+                point_cost_off = special_config.point_cost
+                point_reward_work = special_config.point_reward
+                label = f"Week {week_num} - {special_config.name} ({current_date.strftime('%b %d')})"
+                break
         
         # Create week
         week = VacationWeek(
             id=f"W{week_num:02d}-{request.year}",
             week_number=week_num,
-            label=f"Week {week_num} ({current_date.strftime('%b %d')})",
+            label=label,
             start_date=current_date,
             end_date=end_date,
             year=request.year,
