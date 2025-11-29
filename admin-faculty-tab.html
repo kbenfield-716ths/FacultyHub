@@ -1,0 +1,330 @@
+<!-- This is a new comprehensive Faculty Management tab to add to admin.html -->
+<!-- Replace the existing "Manage Providers" tab with this -->
+
+<div id="tab-faculty" class="tab-content active">
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Faculty Management</h2>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <span id="facultyCount" style="color: #6b7280;">Loading...</span>
+        <button class="btn-primary" onclick="showAddFacultyModal()">+ Add Faculty</button>
+      </div>
+    </div>
+    
+    <div id="facultyError" class="error-message" style="display: none;"></div>
+    
+    <!-- Faculty Table -->
+    <div style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Rank</th>
+            <th>Clinical %</th>
+            <th>Points</th>
+            <th>Status</th>
+            <th>Admin</th>
+            <th style="width: 200px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="facultyTableBody">
+          <tr><td colspan="9" style="text-align: center; padding: 20px;">Loading faculty...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Faculty Modal -->
+<div id="editFacultyModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+  <div style="background: white; border-radius: 12px; padding: 32px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+      <h2 id="modalTitle" style="font-size: 24px; font-weight: 700; color: #1f2937;">Edit Faculty</h2>
+      <button onclick="closeEditModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #6b7280;">&times;</button>
+    </div>
+    
+    <div id="modalError" class="error-message" style="display: none;"></div>
+    
+    <form id="facultyForm" onsubmit="saveFaculty(event)">
+      <input type="hidden" id="editFacultyId">
+      <input type="hidden" id="isNewFaculty" value="false">
+      
+      <div class="form-group">
+        <label>Computing ID *</label>
+        <input type="text" id="editId" required pattern="[A-Z0-9]+" title="Uppercase letters and numbers only">
+        <small style="color: #6b7280; font-size: 12px;">UVA computing ID (e.g., KE4Z)</small>
+      </div>
+      
+      <div class="form-group">
+        <label>Full Name *</label>
+        <input type="text" id="editName" required>
+      </div>
+      
+      <div class="form-group">
+        <label>Email *</label>
+        <input type="email" id="editEmail" required>
+      </div>
+      
+      <div class="form-group">
+        <label>Rank *</label>
+        <select id="editRank" required>
+          <option value="assistant">Assistant Professor</option>
+          <option value="associate">Associate Professor</option>
+          <option value="full">Full Professor</option>
+        </select>
+      </div>
+      
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Clinical Effort % *</label>
+          <input type="number" id="editClinicalEffort" required min="0" max="100">
+        </div>
+        
+        <div class="form-group">
+          <label>Base Points *</label>
+          <input type="number" id="editBasePoints" required min="0">
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label>Bonus Points</label>
+        <input type="number" id="editBonusPoints" value="0" min="0">
+      </div>
+      
+      <div style="display: flex; gap: 20px; margin: 20px 0;">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="checkbox" id="editActive" checked>
+          <span>Active</span>
+        </label>
+        
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="checkbox" id="editAdmin">
+          <span style="font-weight: 600; color: #667eea;">Admin Privileges</span>
+        </label>
+      </div>
+      
+      <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+        <button type="button" onclick="closeEditModal()" class="btn-secondary">Cancel</button>
+        <button type="submit" class="btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  .badge-active { background: #d1fae5; color: #065f46; }
+  .badge-inactive { background: #fee2e2; color: #991b1b; }
+  .badge-admin { background: #dbeafe; color: #1e40af; font-weight: 700; }
+  .badge-rank { background: #f3f4f6; color: #4b5563; }
+  .action-btn { padding: 6px 12px; font-size: 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: 500; }
+  .action-btn-edit { background: #667eea; color: white; }
+  .action-btn-admin { background: #10b981; color: white; }
+  .action-btn-reset { background: #f59e0b; color: white; }
+  .action-btn-delete { background: #ef4444; color: white; }
+</style>
+
+<script>
+let allFaculty = [];
+
+async function loadFaculty() {
+  const errorDiv = document.getElementById('facultyError');
+  const tbody = document.getElementById('facultyTableBody');
+  const countSpan = document.getElementById('facultyCount');
+  
+  try {
+    const response = await fetch('/api/admin/faculty');
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+    }
+    
+    allFaculty = await response.json();
+    countSpan.textContent = `${allFaculty.length} faculty members`;
+    tbody.innerHTML = '';
+    errorDiv.style.display = 'none';
+    
+    if (allFaculty.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: #6b7280;">No faculty yet. Add your first faculty member above.</td></tr>';
+    } else {
+      allFaculty.forEach(f => {
+        const row = document.createElement('tr');
+        const totalPoints = f.base_points + f.bonus_points;
+        const rankLabel = f.rank.charAt(0).toUpperCase() + f.rank.slice(1);
+        
+        row.innerHTML = `
+          <td><strong>${f.id}</strong></td>
+          <td>${f.name}</td>
+          <td>${f.email}</td>
+          <td><span class="badge badge-rank">${rankLabel}</span></td>
+          <td>${f.clinical_effort_pct}%</td>
+          <td>${totalPoints} <small style="color: #6b7280;">(${f.base_points}+${f.bonus_points})</small></td>
+          <td><span class="badge ${f.active ? 'badge-active' : 'badge-inactive'}">${f.active ? 'Active' : 'Inactive'}</span></td>
+          <td>${f.is_admin ? '<span class="badge badge-admin">ADMIN</span>' : '—'}</td>
+          <td>
+            <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+              <button class="action-btn action-btn-edit" onclick="editFaculty('${f.id}')">Edit</button>
+              <button class="action-btn action-btn-admin" onclick="toggleAdmin('${f.id}', ${f.is_admin})">${f.is_admin ? 'Remove Admin' : 'Make Admin'}</button>
+              <button class="action-btn action-btn-reset" onclick="resetPassword('${f.id}')">Reset PW</button>
+              ${f.active ? `<button class="action-btn action-btn-delete" onclick="deactivateFaculty('${f.id}')">Deactivate</button>` : ''}
+            </div>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+  } catch (error) {
+    console.error('Error loading faculty:', error);
+    errorDiv.textContent = `Error loading faculty: ${error.message}`;
+    errorDiv.style.display = 'block';
+    countSpan.textContent = 'Error';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: #dc2626;">Failed to load faculty. See error above.</td></tr>';
+  }
+}
+
+function showAddFacultyModal() {
+  document.getElementById('modalTitle').textContent = 'Add New Faculty';
+  document.getElementById('facultyForm').reset();
+  document.getElementById('isNewFaculty').value = 'true';
+  document.getElementById('editId').readOnly = false;
+  document.getElementById('editActive').checked = true;
+  document.getElementById('editAdmin').checked = false;
+  document.getElementById('editBonusPoints').value = 0;
+  document.getElementById('editBasePoints').value = 100;
+  document.getElementById('editClinicalEffort').value = 80;
+  document.getElementById('editFacultyModal').style.display = 'flex';
+}
+
+function editFaculty(facultyId) {
+  const faculty = allFaculty.find(f => f.id === facultyId);
+  if (!faculty) return;
+  
+  document.getElementById('modalTitle').textContent = `Edit ${faculty.name}`;
+  document.getElementById('isNewFaculty').value = 'false';
+  document.getElementById('editFacultyId').value = faculty.id;
+  document.getElementById('editId').value = faculty.id;
+  document.getElementById('editId').readOnly = true;
+  document.getElementById('editName').value = faculty.name;
+  document.getElementById('editEmail').value = faculty.email;
+  document.getElementById('editRank').value = faculty.rank;
+  document.getElementById('editClinicalEffort').value = faculty.clinical_effort_pct;
+  document.getElementById('editBasePoints').value = faculty.base_points;
+  document.getElementById('editBonusPoints').value = faculty.bonus_points;
+  document.getElementById('editActive').checked = faculty.active;
+  document.getElementById('editAdmin').checked = faculty.is_admin;
+  
+  document.getElementById('editFacultyModal').style.display = 'flex';
+}
+
+function closeEditModal() {
+  document.getElementById('editFacultyModal').style.display = 'none';
+  document.getElementById('modalError').style.display = 'none';
+}
+
+async function saveFaculty(event) {
+  event.preventDefault();
+  const modalError = document.getElementById('modalError');
+  const isNew = document.getElementById('isNewFaculty').value === 'true';
+  
+  const data = {
+    id: document.getElementById('editId').value.toUpperCase(),
+    name: document.getElementById('editName').value,
+    email: document.getElementById('editEmail').value,
+    rank: document.getElementById('editRank').value,
+    clinical_effort_pct: parseInt(document.getElementById('editClinicalEffort').value),
+    base_points: parseInt(document.getElementById('editBasePoints').value),
+    bonus_points: parseInt(document.getElementById('editBonusPoints').value),
+    active: document.getElementById('editActive').checked,
+    is_admin: document.getElementById('editAdmin').checked
+  };
+  
+  try {
+    const url = isNew ? '/api/admin/faculty' : `/api/admin/faculty/${data.id}`;
+    const method = isNew ? 'POST' : 'PATCH';
+    
+    const response = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to save faculty');
+    }
+    
+    alert(isNew ? `Faculty ${data.name} added successfully!` : `Faculty ${data.name} updated successfully!`);
+    closeEditModal();
+    await loadFaculty();
+  } catch (error) {
+    modalError.textContent = error.message;
+    modalError.style.display = 'block';
+  }
+}
+
+async function toggleAdmin(facultyId, currentIsAdmin) {
+  const action = currentIsAdmin ? 'remove admin privileges from' : 'grant admin privileges to';
+  const faculty = allFaculty.find(f => f.id === facultyId);
+  
+  if (!confirm(`${action} ${faculty.name}?`)) return;
+  
+  try {
+    const response = await fetch(`/api/admin/faculty/${facultyId}/toggle-admin`, {
+      method: 'POST'
+    });
+    
+    if (!response.ok) throw new Error('Failed to toggle admin status');
+    
+    alert(`Admin status updated for ${faculty.name}`);
+    await loadFaculty();
+  } catch (error) {
+    alert(`Error: ${error.message}`);
+  }
+}
+
+async function resetPassword(facultyId) {
+  const faculty = allFaculty.find(f => f.id === facultyId);
+  const newPassword = prompt(`Enter new password for ${faculty.name}:\n\n(Minimum 8 characters)`);
+  
+  if (!newPassword) return;
+  
+  if (newPassword.length < 8) {
+    alert('Password must be at least 8 characters');
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/api/admin/faculty/${facultyId}/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ new_password: newPassword })
+    });
+    
+    if (!response.ok) throw new Error('Failed to reset password');
+    
+    alert(`Password reset for ${faculty.name}.\nThey will need to change it on first login.`);
+  } catch (error) {
+    alert(`Error: ${error.message}`);
+  }
+}
+
+async function deactivateFaculty(facultyId) {
+  const faculty = allFaculty.find(f => f.id === facultyId);
+  
+  if (!confirm(`Deactivate ${faculty.name}?\n\nThey will not be able to log in.`)) return;
+  
+  try {
+    const response = await fetch(`/api/admin/faculty/${facultyId}`, {
+      method: 'DELETE'
+    });
+    
+    if (!response.ok) throw new Error('Failed to deactivate faculty');
+    
+    alert(`${faculty.name} has been deactivated`);
+    await loadFaculty();
+  } catch (error) {
+    alert(`Error: ${error.message}`);
+  }
+}
+</script>
