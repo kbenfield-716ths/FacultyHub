@@ -31,8 +31,19 @@ class SpecialWeekConfig(BaseModel):
 
 
 class GenerateWeeksRequest(BaseModel):
+    """Request to generate 52 weeks with special period configurations"""
     year: int
     start_date: str  # ISO format: "2026-07-07"
+    # Optional flat date fields for convenience (will be converted to special_weeks)
+    summer_start: Optional[str] = None
+    summer_end: Optional[str] = None
+    spring_break: Optional[str] = None
+    thanksgiving: Optional[str] = None
+    christmas: Optional[str] = None
+    ats_conference: Optional[str] = None
+    chest_conference: Optional[str] = None
+    sccm_conference: Optional[str] = None
+    # Or use the structured format
     special_weeks: List[SpecialWeekConfig] = []
 
 
@@ -94,14 +105,14 @@ async def get_service_weeks(
     return result
 
 
-@router.put("/service-weeks/{week_id}")
-async def update_service_week(
+@router.patch("/service-weeks/{week_id}")
+async def update_service_week_partial(
     week_id: str,
     request: UpdateWeekRequest,
     db: Session = Depends(get_db),
     current_user: Faculty = Depends(require_admin)
 ):
-    """Update a service week's details"""
+    """Partially update a service week's details (PATCH for inline editing)"""
     
     week = db.query(VacationWeek).filter(VacationWeek.id == week_id).first()
     if not week:
@@ -142,6 +153,31 @@ async def update_service_week(
     }
 
 
+@router.delete("/service-weeks/{week_id}")
+async def delete_single_week(
+    week_id: str,
+    db: Session = Depends(get_db),
+    current_user: Faculty = Depends(require_admin)
+):
+    """Delete a single service availability week"""
+    
+    week = db.query(VacationWeek).filter(VacationWeek.id == week_id).first()
+    if not week:
+        raise HTTPException(status_code=404, detail="Week not found")
+    
+    # Delete associated requests
+    db.query(VacationRequest).filter(VacationRequest.week_id == week_id).delete(synchronize_session=False)
+    
+    # Delete the week
+    db.delete(week)
+    db.commit()
+    
+    return {
+        "success": True,
+        "message": f"Week {week.week_number} deleted"
+    }
+
+
 @router.post("/generate-service-weeks")
 async def generate_service_weeks(
     request: GenerateWeeksRequest,
@@ -168,9 +204,68 @@ async def generate_service_weeks(
     # Parse start date
     start_date = datetime.strptime(request.start_date, "%Y-%m-%d").date()
     
+    # Convert flat date fields to special_weeks if provided
+    special_weeks = list(request.special_weeks)  # Start with any provided special_weeks
+    
+    # Add conferences
+    if request.ats_conference:
+        special_weeks.append(SpecialWeekConfig(
+            name="ATS Conference",
+            date=request.ats_conference,
+            duration_weeks=1,
+            point_cost=15,
+            point_reward=20
+        ))
+    
+    if request.chest_conference:
+        special_weeks.append(SpecialWeekConfig(
+            name="CHEST Conference",
+            date=request.chest_conference,
+            duration_weeks=1,
+            point_cost=15,
+            point_reward=20
+        ))
+    
+    if request.sccm_conference:
+        special_weeks.append(SpecialWeekConfig(
+            name="SCCM Conference",
+            date=request.sccm_conference,
+            duration_weeks=1,
+            point_cost=15,
+            point_reward=20
+        ))
+    
+    # Add holidays
+    if request.spring_break:
+        special_weeks.append(SpecialWeekConfig(
+            name="Spring Break",
+            date=request.spring_break,
+            duration_weeks=1,
+            point_cost=10,
+            point_reward=15
+        ))
+    
+    if request.thanksgiving:
+        special_weeks.append(SpecialWeekConfig(
+            name="Thanksgiving",
+            date=request.thanksgiving,
+            duration_weeks=1,
+            point_cost=15,
+            point_reward=20
+        ))
+    
+    if request.christmas:
+        special_weeks.append(SpecialWeekConfig(
+            name="Christmas",
+            date=request.christmas,
+            duration_weeks=2,  # Christmas is 2 weeks
+            point_cost=15,
+            point_reward=25
+        ))
+    
     # Parse special weeks into a dict for easy lookup
     special_weeks_by_date: Dict[date, SpecialWeekConfig] = {}
-    for special in request.special_weeks:
+    for special in special_weeks:
         special_date = datetime.strptime(special.date, "%Y-%m-%d").date()
         # For multi-week periods, add all weeks
         for week_offset in range(special.duration_weeks):
@@ -190,14 +285,24 @@ async def generate_service_weeks(
         label = f"Week {week_num} ({current_date.strftime('%b %d')})"
         
         # Check if it's summer (June-August)
-        month = current_date.month
-        if month in [6, 7, 8]:
+        # Use provided summer dates if available, otherwise default to month check
+        is_summer = False
+        if request.summer_start and request.summer_end:
+            summer_start = datetime.strptime(request.summer_start, "%Y-%m-%d").date()
+            summer_end = datetime.strptime(request.summer_end, "%Y-%m-%d").date()
+            if summer_start <= current_date <= summer_end:
+                is_summer = True
+        elif current_date.month in [6, 7, 8]:
+            is_summer = True
+        
+        if is_summer:
             week_type = "summer"
             point_cost_off = 7
             point_reward_work = 5
             label = f"Week {week_num} - Summer ({current_date.strftime('%b %d')})"
         
         # Check if this week matches any special week configurations
+        # Special weeks override summer designation
         for special_date, special_config in special_weeks_by_date.items():
             # If current week is within 3 days of the special date
             if abs((current_date - special_date).days) <= 3:
