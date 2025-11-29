@@ -66,8 +66,8 @@
   </footer>
 
   <script>
-    // Backend base URL
-    const API_BASE = "https://moonlighter-web.fly.dev";
+    // Use current origin for API calls (works locally and in production)
+    const API_BASE = window.location.origin;
 
     // Helper to get NEXT month "YYYY-MM" (current month + 1)
     function nextMonthString() {
@@ -206,7 +206,7 @@
     saveBtn.addEventListener("click", async () => {
       if (!provider_id || !provider_name) {
         alert("You must be logged in to submit availability. Please log in first.");
-        window.location.href = "/login.html";
+        window.location.href = "/";
         return;
       }
 
@@ -259,7 +259,7 @@
         alert("✅ Signup saved successfully!");
       } catch (err) {
         console.error(err);
-        alert("❌ There was a problem saving your signup.");
+        alert(`❌ There was a problem saving your signup: ${err.message}`);
       }
     });
 
