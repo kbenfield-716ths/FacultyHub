@@ -15,6 +15,7 @@
     .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); }
     .btn-danger { padding: 10px 20px; background: #ef4444; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
     .btn-secondary { padding: 8px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; font-size: 13px; }
+    .btn-success { padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; font-size: 13px; }
     .admin-tabs { display: flex; gap: 10px; margin-bottom: 30px; border-bottom: 2px solid #e5e7eb; flex-wrap: wrap; }
     .tab-btn { padding: 12px 20px; background: transparent; border: none; border-bottom: 3px solid transparent; cursor: pointer; font-weight: 600; color: #6b7280; transition: all 0.2s; font-size: 14px; }
     .tab-btn:hover { color: #1f2937; }
@@ -38,12 +39,22 @@
     td { padding: 12px; border-bottom: 1px solid #f3f4f6; }
     tr:hover { background: #f9fafb; }
     .badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+    .badge-admin { background: #dbeafe; color: #1e40af; }
+    .badge-active { background: #d1fae5; color: #065f46; }
+    .badge-inactive { background: #fee2e2; color: #991b1b; }
     .editable-cell { cursor: pointer; position: relative; }
     .editable-cell:hover { background: #f3f4f6; }
     .editable-cell input { padding: 4px 8px; border: 2px solid #667eea; border-radius: 4px; font-size: 13px; }
     .loading { text-align: center; padding: 40px; color: #6b7280; }
     .action-buttons { display: flex; gap: 8px; }
     .error-message { color: #dc2626; background: #fee2e2; padding: 12px; border-radius: 8px; margin: 12px 0; border-left: 4px solid #dc2626; }
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+    .modal.show { display: flex; align-items: center; justify-content: center; }
+    .modal-content { background: white; border-radius: 12px; padding: 24px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #e5e7eb; }
+    .modal-title { font-size: 20px; font-weight: 700; }
+    .close-btn { cursor: pointer; font-size: 24px; color: #6b7280; }
+    .close-btn:hover { color: #1f2937; }
   </style>
 </head>
 <body>
@@ -79,7 +90,7 @@
         </div>
         <button class="btn-primary" onclick="addProvider()">Add Faculty Member</button>
         <div style="margin-top: 30px;">
-          <table><thead><tr><th>Computing ID</th><th>Name</th><th>Email</th><th style="width: 120px;">Actions</th></tr></thead><tbody id="providersTableBody"><tr><td colspan="4" style="text-align: center; padding: 20px;">Loading providers...</td></tr></tbody></table>
+          <table><thead><tr><th>Computing ID</th><th>Name</th><th>Email</th><th>Admin</th><th style="width: 200px;">Actions</th></tr></thead><tbody id="providersTableBody"><tr><td colspan="5" style="text-align: center; padding: 20px;">Loading providers...</td></tr></tbody></table>
         </div>
       </div>
     </div>
@@ -164,15 +175,39 @@
     </div>
   </div>
 
+  <!-- Edit Faculty Modal -->
+  <div id="editFacultyModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Edit Faculty Member</h3>
+        <span class="close-btn" onclick="closeEditModal()">&times;</span>
+      </div>
+      <form id="editFacultyForm">
+        <input type="hidden" id="editFacultyId">
+        <div class="form-group"><label>Name</label><input type="text" id="editName" required></div>
+        <div class="form-group"><label>Email</label><input type="email" id="editEmail" required></div>
+        <div class="form-group"><label>Rank</label><select id="editRank"><option value="assistant">Assistant Professor</option><option value="associate">Associate Professor</option><option value="full">Full Professor</option></select></div>
+        <div class="form-group"><label>Clinical Effort (%)</label><input type="number" id="editEffort" min="0" max="100"></div>
+        <div class="form-group"><label>Base Points</label><input type="number" id="editPoints" min="0"></div>
+        <div style="display: flex; gap: 12px; margin-top: 20px;">
+          <button type="submit" class="btn-primary">Save Changes</button>
+          <button type="button" class="btn-secondary" onclick="closeEditModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
     const API_BASE = "";
     let allWeeks = [];
     let allProviders = [];
+    let allFaculty = [];
     
     window.addEventListener('DOMContentLoaded', async () => {
       await checkAuth();
       setDefaultMonth();
       await loadProviders();
+      await loadFaculty();
       await loadOverview();
       await loadWeeks();
     });
@@ -210,40 +245,114 @@
       
       try {
         const response = await fetch('/api/providers');
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`HTTP ${response.status}: ${errorText}`);
-        }
-        
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
-        
-        // Check if response is actually an array
-        if (!Array.isArray(data)) {
-          console.error('Providers API returned non-array:', data);
-          throw new Error('Invalid response from server: expected array');
-        }
+        if (!Array.isArray(data)) throw new Error('Invalid response from server');
         
         allProviders = data;
         countSpan.textContent = `${allProviders.length} faculty`;
-        tbody.innerHTML = '';
         errorDiv.style.display = 'none';
+        await loadFaculty();
+      } catch (error) {
+        console.error('Error loading providers:', error);
+        errorDiv.textContent = `Error loading providers: ${error.message}`;
+        errorDiv.style.display = 'block';
+        countSpan.textContent = 'Error';
+      }
+    }
+    
+    async function loadFaculty() {
+      const tbody = document.getElementById('providersTableBody');
+      try {
+        const response = await fetch('/api/admin/faculty');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        allFaculty = await response.json();
         
-        if (allProviders.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #6b7280;">No providers yet. Add your first faculty member above.</td></tr>';
+        tbody.innerHTML = '';
+        if (allFaculty.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #6b7280;">No faculty yet.</td></tr>';
         } else {
-          allProviders.forEach(p => {
+          allFaculty.forEach(f => {
             const row = document.createElement('tr');
-            row.innerHTML = `<td>${p.id}</td><td>${p.name}</td><td>${p.email || '—'}</td><td><div class="action-buttons"><button class="btn-danger" onclick="deleteProvider('${p.id}', '${p.name}')">Delete</button></div></td>`;
+            const adminBadge = f.is_admin ? '<span class="badge badge-admin">ADMIN</span>' : '';
+            row.innerHTML = `<td>${f.id}</td><td>${f.name}</td><td>${f.email}</td><td>${adminBadge}</td><td><div class="action-buttons"><button class="btn-secondary" onclick="editFaculty('${f.id}')">Edit</button><button class="btn-${f.is_admin ? 'danger' : 'success'}" onclick="toggleAdmin('${f.id}', ${f.is_admin})">${f.is_admin ? 'Remove Admin' : 'Make Admin'}</button><button class="btn-danger" onclick="deleteFaculty('${f.id}', '${f.name}')">Delete</button></div></td>`;
             tbody.appendChild(row);
           });
         }
       } catch (error) {
-        console.error('Error loading providers:', error);
-        errorDiv.textContent = `Error loading providers: ${error.message}. Check console for details.`;
-        errorDiv.style.display = 'block';
-        countSpan.textContent = 'Error';
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #dc2626;">Failed to load providers. See error above.</td></tr>';
+        console.error('Error loading faculty:', error);
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #dc2626;">Failed to load faculty.</td></tr>';
+      }
+    }
+    
+    function editFaculty(facultyId) {
+      const faculty = allFaculty.find(f => f.id === facultyId);
+      if (!faculty) return;
+      
+      document.getElementById('editFacultyId').value = faculty.id;
+      document.getElementById('editName').value = faculty.name;
+      document.getElementById('editEmail').value = faculty.email;
+      document.getElementById('editRank').value = faculty.rank;
+      document.getElementById('editEffort').value = faculty.clinical_effort_pct;
+      document.getElementById('editPoints').value = faculty.base_points;
+      
+      document.getElementById('editFacultyModal').classList.add('show');
+    }
+    
+    function closeEditModal() {
+      document.getElementById('editFacultyModal').classList.remove('show');
+    }
+    
+    document.getElementById('editFacultyForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const facultyId = document.getElementById('editFacultyId').value;
+      const updateData = {
+        name: document.getElementById('editName').value,
+        email: document.getElementById('editEmail').value,
+        rank: document.getElementById('editRank').value,
+        clinical_effort_pct: parseInt(document.getElementById('editEffort').value),
+        base_points: parseInt(document.getElementById('editPoints').value)
+      };
+      
+      try {
+        const response = await fetch(`/api/admin/faculty/${facultyId}`, {
+          method: 'PATCH',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(updateData)
+        });
+        if (!response.ok) throw new Error('Failed to update faculty');
+        alert('Faculty updated successfully');
+        closeEditModal();
+        await loadFaculty();
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    });
+    
+    async function toggleAdmin(facultyId, isCurrentlyAdmin) {
+      const action = isCurrentlyAdmin ? 'remove admin privileges from' : 'grant admin privileges to';
+      const faculty = allFaculty.find(f => f.id === facultyId);
+      if (!confirm(`${action} ${faculty.name}?`)) return;
+      
+      try {
+        const response = await fetch(`/api/admin/faculty/${facultyId}/toggle-admin`, { method: 'POST' });
+        if (!response.ok) throw new Error('Failed to toggle admin status');
+        alert('Admin status updated');
+        await loadFaculty();
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    }
+    
+    async function deleteFaculty(facultyId, name) {
+      if (!confirm(`Delete faculty '${name}'? This will deactivate their account.`)) return;
+      try {
+        const response = await fetch(`/api/admin/faculty/${facultyId}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete faculty');
+        alert(`Faculty '${name}' deactivated`);
+        await loadFaculty();
+      } catch (error) {
+        alert(`Error: ${error.message}`);
       }
     }
     
@@ -259,16 +368,6 @@
         document.getElementById('newProviderId').value = '';
         document.getElementById('newProviderName').value = '';
         document.getElementById('newProviderEmail').value = '';
-        await loadProviders();
-      } catch (error) { alert(`Error: ${error.message}`); }
-    }
-    
-    async function deleteProvider(id, name) {
-      if (!confirm(`Delete faculty '${name}'?\n\nThis will also delete all their signups and assignments.`)) return;
-      try {
-        const response = await fetch(`/api/admin/providers/${encodeURIComponent(id)}`, { method: 'DELETE' });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        alert(`Faculty '${name}' deleted`);
         await loadProviders();
       } catch (error) { alert(`Error: ${error.message}`); }
     }
