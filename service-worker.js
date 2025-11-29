@@ -1,5 +1,5 @@
 // service-worker.js - Enhanced PWA Service Worker
-const CACHE_VERSION = 'pccm-v1.2';
+const CACHE_VERSION = 'pccm-v1.3';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const API_CACHE = `${CACHE_VERSION}-api`;
 const IMAGE_CACHE = `${CACHE_VERSION}-images`;
@@ -9,7 +9,7 @@ const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/signup.html',
-  '/Admin.html',
+  '/admin.html',
   '/Scheduling.html',
   '/resources.html',
   '/style.css',
@@ -80,8 +80,8 @@ async function networkFirstStrategy(request, cacheName) {
   try {
     const networkResponse = await fetch(request);
     
-    // Cache successful responses
-    if (networkResponse.ok) {
+    // Only cache GET requests with successful responses
+    if (networkResponse.ok && request.method === 'GET') {
       const cache = await caches.open(cacheName);
       cache.put(request, networkResponse.clone());
     }
@@ -89,10 +89,14 @@ async function networkFirstStrategy(request, cacheName) {
     return networkResponse;
   } catch (error) {
     console.log('[ServiceWorker] Network failed, trying cache:', request.url);
-    const cachedResponse = await caches.match(request);
     
-    if (cachedResponse) {
-      return cachedResponse;
+    // Only try cache for GET requests
+    if (request.method === 'GET') {
+      const cachedResponse = await caches.match(request);
+      
+      if (cachedResponse) {
+        return cachedResponse;
+      }
     }
     
     // Return offline page for HTML requests
@@ -125,6 +129,11 @@ async function networkFirstStrategy(request, cacheName) {
 
 // Cache first strategy (for static assets)
 async function cacheFirstStrategy(request, cacheName) {
+  // Only cache GET requests
+  if (request.method !== 'GET') {
+    return fetch(request);
+  }
+  
   const cachedResponse = await caches.match(request);
   
   if (cachedResponse) {
