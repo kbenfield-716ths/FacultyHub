@@ -26,7 +26,7 @@ from .routes.auth import router as auth_router
 app = FastAPI()
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-# Include routers
+# Include routers FIRST - before catch-all routes
 app.include_router(auth_router)
 app.include_router(admin_faculty_router)
 app.include_router(admin_service_router)
@@ -149,155 +149,9 @@ def startup_event():
         db.close()
 
 
-# ---------- Static file routes ----------
-
-@app.get("/")
-async def serve_index():
-    """Serve the main index.html"""
-    index_path = STATIC_DIR / "index.html"
-    if index_path.exists():
-        return FileResponse(index_path)
-    return {"status": "ok", "message": "API running"}
-
-@app.get("/favicon.ico")
-async def serve_favicon_ico():
-    favicon_path = STATIC_DIR / "favicon.ico"
-    if favicon_path.exists():
-        return FileResponse(favicon_path)
-    # Fallback to SVG
-    svg_path = STATIC_DIR / "favicon.svg"
-    if svg_path.exists():
-        return FileResponse(svg_path, media_type="image/svg+xml")
-    return {"error": "favicon not found"}
-
-@app.get("/favicon.svg")
-async def serve_favicon_svg():
-    favicon_path = STATIC_DIR / "favicon.svg"
-    if favicon_path.exists():
-        response = FileResponse(favicon_path, media_type="image/svg+xml")
-        response.headers["Cache-Control"] = "public, max-age=86400"
-        return response 
-    return {"error": "favicon.svg not found"}
-
-@app.get("/manifest.json")
-async def serve_manifest():
-    manifest_path = STATIC_DIR / "manifest.json"
-    if manifest_path.exists():
-        response = FileResponse(manifest_path)
-        response.headers["Cache-Control"] = "public, max-age=3600"
-        return response
-    return {"error": "manifest.json not found"}
-
-@app.get("/service-worker.js")
-async def serve_service_worker():
-    """Serve the service worker file"""
-    sw_path = STATIC_DIR / "service-worker.js"
-    if sw_path.exists():
-        response = FileResponse(sw_path, media_type="application/javascript")
-        response.headers["Cache-Control"] = "no-cache"
-        response.headers["Service-Worker-Allowed"] = "/"
-        return response
-    return {"error": "service-worker.js not found"}
-
-@app.get("/Service_Worker.js")
-async def serve_service_worker_legacy():
-    """Legacy route"""
-    sw_path = STATIC_DIR / "service-worker.js"
-    if sw_path.exists():
-        response = FileResponse(sw_path, media_type="application/javascript")
-        response.headers["Cache-Control"] = "no-cache"
-        response.headers["Service-Worker-Allowed"] = "/"
-        return response
-    old_sw_path = STATIC_DIR / "Service_Worker.js"
-    if old_sw_path.exists():
-        response = FileResponse(old_sw_path, media_type="application/javascript")
-        response.headers["Cache-Control"] = "no-cache"
-        response.headers["Service-Worker-Allowed"] = "/"
-        return response
-    return {"error": "Service worker not found"}
-
-@app.get("/{filename}.html")
-async def serve_html_file(filename: str):
-    """Serve any HTML file from root directory"""
-    # Try exact match first
-    html_path = STATIC_DIR / f"{filename}.html"
-    if html_path.exists():
-        response = FileResponse(html_path)
-        response.headers["Cache-Control"] = "public, max-age=3600"
-        return response
-    
-    # Try case-insensitive search
-    for file in STATIC_DIR.glob("*.html"):
-        if file.stem.lower() == filename.lower():
-            response = FileResponse(file)
-            response.headers["Cache-Control"] = "public, max-age=3600"
-            return response
-    
-    for file in STATIC_DIR.glob("*.Html"):
-        if file.stem.lower() == filename.lower():
-            response = FileResponse(file)
-            response.headers["Cache-Control"] = "public, max-age=3600"
-            return response
-    
-    # Also try backend/static directory
-    backend_html_path = BACKEND_STATIC_DIR / f"{filename}.html"
-    if backend_html_path.exists():
-        response = FileResponse(backend_html_path)
-        response.headers["Cache-Control"] = "public, max-age=3600"
-        return response
-    
-    return {"error": f"{filename}.html not found"}
-
-@app.get("/style.css")
-async def serve_style():
-    css_path = STATIC_DIR / "style.css"
-    if css_path.exists():
-        response = FileResponse(css_path)
-        response.headers["Cache-Control"] = "public, max-age=3600"
-        return response
-    return {"error": "style.css not found"}
-
-@app.get("/cache-manager.js")
-async def serve_cache_manager():
-    cache_path = STATIC_DIR / "cache-manager.js"
-    if cache_path.exists():
-        response = FileResponse(cache_path, media_type="application/javascript")
-        response.headers["Cache-Control"] = "public, max-age=3600"
-        return response
-    return {"error": "cache-manager.js not found"}
-
-@app.get("/static/{path:path}")
-async def serve_static(path: str):
-    """Serve any static file from backend/static"""
-    static_path = BACKEND_STATIC_DIR / path
-    if static_path.exists() and static_path.is_file():
-        return FileResponse(static_path)
-    return {"error": f"Static file {path} not found"}
-
-# Catch-all route for paths without extensions (e.g., /dashboard)
-@app.get("/{path:path}")
-async def serve_catch_all(path: str):
-    """Catch-all for paths without extensions - try adding .html"""
-    # Skip API routes
-    if path.startswith("api/"):
-        return {"error": "Not found"}
-    
-    # Try as .html file
-    html_path = STATIC_DIR / f"{path}.html"
-    if html_path.exists():
-        response = FileResponse(html_path)
-        response.headers["Cache-Control"] = "public, max-age=3600"
-        return response
-    
-    # Try in backend/static
-    backend_html_path = BACKEND_STATIC_DIR / f"{path}.html"
-    if backend_html_path.exists():
-        response = FileResponse(backend_html_path)
-        response.headers["Cache-Control"] = "public, max-age=3600"
-        return response
-    
-    return {"error": f"{path} not found"}
-
+# ========================================
+# API ROUTES - MUST COME BEFORE STATIC FILE ROUTES
+# ========================================
 
 # ---------- Signup endpoint ----------
 
@@ -459,6 +313,7 @@ def list_assignments(
 
 @app.get("/api/providers", response_model=List[ProviderOut])
 def list_providers(db: Session = Depends(get_db)):
+    """Get all providers for moonlighting system."""
     providers = db.query(Provider).order_by(Provider.name).all()
     return providers
 
@@ -740,3 +595,156 @@ def search_knowledge_base(q: str):
     notion_kb = get_notion_kb()
     articles = notion_kb.search_articles(q)
     return {"articles": articles}
+
+
+# ========================================
+# STATIC FILE ROUTES - MUST COME AFTER API ROUTES
+# ========================================
+
+@app.get("/")
+async def serve_index():
+    """Serve the main index.html"""
+    index_path = STATIC_DIR / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path)
+    return {"status": "ok", "message": "API running"}
+
+@app.get("/favicon.ico")
+async def serve_favicon_ico():
+    favicon_path = STATIC_DIR / "favicon.ico"
+    if favicon_path.exists():
+        return FileResponse(favicon_path)
+    # Fallback to SVG
+    svg_path = STATIC_DIR / "favicon.svg"
+    if svg_path.exists():
+        return FileResponse(svg_path, media_type="image/svg+xml")
+    return {"error": "favicon not found"}
+
+@app.get("/favicon.svg")
+async def serve_favicon_svg():
+    favicon_path = STATIC_DIR / "favicon.svg"
+    if favicon_path.exists():
+        response = FileResponse(favicon_path, media_type="image/svg+xml")
+        response.headers["Cache-Control"] = "public, max-age=86400"
+        return response 
+    return {"error": "favicon.svg not found"}
+
+@app.get("/manifest.json")
+async def serve_manifest():
+    manifest_path = STATIC_DIR / "manifest.json"
+    if manifest_path.exists():
+        response = FileResponse(manifest_path)
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        return response
+    return {"error": "manifest.json not found"}
+
+@app.get("/service-worker.js")
+async def serve_service_worker():
+    """Serve the service worker file"""
+    sw_path = STATIC_DIR / "service-worker.js"
+    if sw_path.exists():
+        response = FileResponse(sw_path, media_type="application/javascript")
+        response.headers["Cache-Control"] = "no-cache"
+        response.headers["Service-Worker-Allowed"] = "/"
+        return response
+    return {"error": "service-worker.js not found"}
+
+@app.get("/Service_Worker.js")
+async def serve_service_worker_legacy():
+    """Legacy route"""
+    sw_path = STATIC_DIR / "service-worker.js"
+    if sw_path.exists():
+        response = FileResponse(sw_path, media_type="application/javascript")
+        response.headers["Cache-Control"] = "no-cache"
+        response.headers["Service-Worker-Allowed"] = "/"
+        return response
+    old_sw_path = STATIC_DIR / "Service_Worker.js"
+    if old_sw_path.exists():
+        response = FileResponse(old_sw_path, media_type="application/javascript")
+        response.headers["Cache-Control"] = "no-cache"
+        response.headers["Service-Worker-Allowed"] = "/"
+        return response
+    return {"error": "Service worker not found"}
+
+@app.get("/{filename}.html")
+async def serve_html_file(filename: str):
+    """Serve any HTML file from root directory"""
+    # Try exact match first
+    html_path = STATIC_DIR / f"{filename}.html"
+    if html_path.exists():
+        response = FileResponse(html_path)
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        return response
+    
+    # Try case-insensitive search
+    for file in STATIC_DIR.glob("*.html"):
+        if file.stem.lower() == filename.lower():
+            response = FileResponse(file)
+            response.headers["Cache-Control"] = "public, max-age=3600"
+            return response
+    
+    for file in STATIC_DIR.glob("*.Html"):
+        if file.stem.lower() == filename.lower():
+            response = FileResponse(file)
+            response.headers["Cache-Control"] = "public, max-age=3600"
+            return response
+    
+    # Also try backend/static directory
+    backend_html_path = BACKEND_STATIC_DIR / f"{filename}.html"
+    if backend_html_path.exists():
+        response = FileResponse(backend_html_path)
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        return response
+    
+    return {"error": f"{filename}.html not found"}
+
+@app.get("/style.css")
+async def serve_style():
+    css_path = STATIC_DIR / "style.css"
+    if css_path.exists():
+        response = FileResponse(css_path)
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        return response
+    return {"error": "style.css not found"}
+
+@app.get("/cache-manager.js")
+async def serve_cache_manager():
+    cache_path = STATIC_DIR / "cache-manager.js"
+    if cache_path.exists():
+        response = FileResponse(cache_path, media_type="application/javascript")
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        return response
+    return {"error": "cache-manager.js not found"}
+
+@app.get("/static/{path:path}")
+async def serve_static(path: str):
+    """Serve any static file from backend/static"""
+    static_path = BACKEND_STATIC_DIR / path
+    if static_path.exists() and static_path.is_file():
+        return FileResponse(static_path)
+    return {"error": f"Static file {path} not found"}
+
+# Catch-all route for paths without extensions (e.g., /dashboard)
+# THIS MUST BE LAST!
+@app.get("/{path:path}")
+async def serve_catch_all(path: str):
+    """Catch-all for paths without extensions - try adding .html"""
+    # Skip API routes - they should have been handled above
+    if path.startswith("api/"):
+        raise HTTPException(404, "API endpoint not found")
+    
+    # Try as .html file
+    html_path = STATIC_DIR / f"{path}.html"
+    if html_path.exists():
+        response = FileResponse(html_path)
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        return response
+    
+    # Try in backend/static
+    backend_html_path = BACKEND_STATIC_DIR / f"{path}.html"
+    if backend_html_path.exists():
+        response = FileResponse(backend_html_path)
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        return response
+    
+    raise HTTPException(404, f"Page not found: {path}")
