@@ -93,7 +93,7 @@
         </div>
         <button class="btn-primary" onclick="addProvider()">Add Faculty Member</button>
         <div style="margin-top: 30px;">
-          <table><thead><tr><th>Computing ID</th><th>Name</th><th>Email</th><th style="width: 150px;">Actions</th></tr></thead><tbody id="providersTableBody"></tbody></table>
+          <table><thead><tr><th>Computing ID</th><th>Name</th><th>Email</th><th style="width: 120px;">Actions</th></tr></thead><tbody id="providersTableBody"></tbody></table>
         </div>
       </div>
     </div>
@@ -181,6 +181,7 @@
   <script>
     const API_BASE = "";
     let allWeeks = [];
+    let allProviders = [];
     
     window.addEventListener('DOMContentLoaded', async () => {
       await checkAuth();
@@ -220,13 +221,13 @@
       try {
         const response = await fetch('/api/providers');
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const providers = await response.json();
-        document.getElementById('providerCount').textContent = `${providers.length} faculty`;
+        allProviders = await response.json();
+        document.getElementById('providerCount').textContent = `${allProviders.length} faculty`;
         const tbody = document.getElementById('providersTableBody');
         tbody.innerHTML = '';
-        providers.forEach(p => {
+        allProviders.forEach(p => {
           const row = document.createElement('tr');
-          row.innerHTML = `<td>${p.id}</td><td>${p.name}</td><td>${p.email || '—'}</td><td><div class="action-buttons"><button class="btn-secondary" onclick="editProvider('${p.id}')">Edit</button><button class="btn-danger" onclick="deleteProvider('${p.id}', '${p.name}')">Delete</button></div></td>`;
+          row.innerHTML = `<td>${p.id}</td><td>${p.name}</td><td>${p.email || '—'}</td><td><div class="action-buttons"><button class="btn-danger" onclick="deleteProvider('${p.id}', '${p.name}')">Delete</button></div></td>`;
           tbody.appendChild(row);
         });
       } catch (error) { console.error('Error loading providers:', error); }
