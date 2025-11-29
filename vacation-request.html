@@ -29,7 +29,7 @@
     }
 
     .header-content {
-      max-width: 800px;
+      max-width: 900px;
       margin: 0 auto;
       display: flex;
       justify-content: space-between;
@@ -60,7 +60,7 @@
 
     /* User Info Card */
     .user-info {
-      max-width: 800px;
+      max-width: 900px;
       margin: 20px auto;
       padding: 0 20px;
     }
@@ -174,55 +174,61 @@
       border-color: #667eea;
     }
 
-    /* Week Cards */
+    /* Week Cards - New Compact Design */
     .weeks-container {
-      max-width: 800px;
+      max-width: 900px;
       margin: 0 auto;
       padding: 0 20px 20px;
     }
 
     .week-card {
       background: white;
-      border-radius: 16px;
+      border-radius: 12px;
       padding: 16px;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-      cursor: pointer;
       transition: all 0.2s;
-      border: 3px solid transparent;
-      position: relative;
     }
 
-    .week-card:active {
-      transform: scale(0.98);
+    .week-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
     }
 
-    .week-card.selected {
-      border-color: #8b5cf6;
-      background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
-      box-shadow: 0 4px 16px rgba(139, 92, 246, 0.2);
-    }
-
-    .week-card.available {
-      border-color: #10b981;
-      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.2);
-    }
-
-    .week-header {
+    /* Week info row */
+    .week-info {
       display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
+      align-items: center;
+      gap: 12px;
       margin-bottom: 12px;
+      flex-wrap: wrap;
     }
 
     .week-number {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 700;
       color: #6b7280;
       background: #f3f4f6;
       padding: 4px 10px;
       border-radius: 6px;
+      min-width: 60px;
+      text-align: center;
+    }
+
+    .week-details {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .week-label {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 2px;
+    }
+
+    .week-dates {
+      font-size: 13px;
+      color: #6b7280;
     }
 
     .week-type {
@@ -232,6 +238,7 @@
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      white-space: nowrap;
     }
 
     .week-type.regular { background: #e5e7eb; color: #4b5563; }
@@ -241,79 +248,107 @@
     .week-type.spring_break { background: #bbf7d0; color: #166534; }
     .week-type.ats, .week-type.chest, .week-type.sccm { background: #dbeafe; color: #1e40af; }
 
-    .week-label {
-      font-size: 18px;
-      font-weight: 700;
-      color: #1f2937;
-      margin-bottom: 8px;
+    /* Action buttons row */
+    .week-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
     }
 
-    .week-dates {
-      font-size: 14px;
-      color: #6b7280;
-      margin-bottom: 12px;
-    }
-
-    .week-points {
-      display: flex;
-      gap: 12px;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 2px solid #f3f4f6;
-    }
-
-    .point-badge {
-      flex: 1;
-      text-align: center;
-      padding: 8px;
-      border-radius: 8px;
-      background: #f9fafb;
-    }
-
-    .point-badge.cost {
-      background: #fef2f2;
-      border: 2px solid #fee2e2;
-    }
-
-    .point-badge.reward {
-      background: #f0fdf4;
-      border: 2px solid #dcfce7;
-    }
-
-    .point-label {
-      font-size: 11px;
-      color: #6b7280;
+    .action-btn {
+      padding: 12px 16px;
+      border: 2px solid #e5e7eb;
+      border-radius: 10px;
+      background: white;
+      cursor: pointer;
+      transition: all 0.2s;
       font-weight: 600;
-      text-transform: uppercase;
-      margin-bottom: 4px;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      position: relative;
     }
 
-    .point-value {
-      font-size: 20px;
+    .action-btn:active {
+      transform: scale(0.98);
+    }
+
+    .action-btn.request-off {
+      color: #dc2626;
+      border-color: #fecaca;
+    }
+
+    .action-btn.request-off:hover {
+      background: #fef2f2;
+      border-color: #fca5a5;
+    }
+
+    .action-btn.request-off.active {
+      background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+      border-color: #dc2626;
+      border-width: 3px;
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+    }
+
+    .action-btn.volunteer {
+      color: #16a34a;
+      border-color: #bbf7d0;
+    }
+
+    .action-btn.volunteer:hover {
+      background: #f0fdf4;
+      border-color: #86efac;
+    }
+
+    .action-btn.volunteer.active {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border-color: #16a34a;
+      border-width: 3px;
+      box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+    }
+
+    .btn-label {
+      font-size: 13px;
       font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
     }
 
-    .point-value.cost { color: #dc2626; }
-    .point-value.reward { color: #16a34a; }
+    .btn-points {
+      font-size: 18px;
+      font-weight: 800;
+    }
 
-    .selection-badge {
+    .checkmark {
       position: absolute;
-      top: -8px;
-      right: -8px;
-      width: 32px;
-      height: 32px;
-      background: #8b5cf6;
-      color: white;
+      top: -6px;
+      right: -6px;
+      width: 24px;
+      height: 24px;
+      background: white;
       border-radius: 50%;
       display: none;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
-      box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
+      font-size: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
 
-    .week-card.selected .selection-badge { display: flex; }
-    .week-card.available .selection-badge { background: #10b981; }
+    .action-btn.active .checkmark {
+      display: flex;
+    }
+
+    .action-btn.request-off.active .checkmark {
+      color: #dc2626;
+      border: 2px solid #dc2626;
+    }
+
+    .action-btn.volunteer.active .checkmark {
+      color: #16a34a;
+      border: 2px solid #16a34a;
+    }
 
     /* Submit Button */
     .submit-container {
@@ -329,7 +364,7 @@
 
     .submit-btn {
       width: 100%;
-      max-width: 800px;
+      max-width: 900px;
       margin: 0 auto;
       display: block;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -446,6 +481,17 @@
       background: #f3f4f6;
       color: #4b5563;
     }
+
+    @media (max-width: 640px) {
+      .week-actions {
+        grid-template-columns: 1fr;
+      }
+      
+      .week-info {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
   </style>
 </head>
 <body>
@@ -478,10 +524,10 @@
     <div class="instructions">
       <h3>📝 How This Works</h3>
       <ul>
-        <li><strong>Select weeks</strong> you want OFF from inpatient service</li>
-        <li><strong>Earn points</strong> by volunteering for high-demand weeks</li>
-        <li><strong>Spend points</strong> to request time off (5 pts/week, more for holidays)</li>
-        <li><strong>Draft system</strong> allocates final assignments based on seniority and past coverage</li>
+        <li><strong>Request Off:</strong> Select weeks you want OFF from service (costs points)</li>
+        <li><strong>Volunteer:</strong> Select weeks you're willing to work (earns points)</li>
+        <li><strong>Draft system</strong> allocates final assignments based on seniority and coverage</li>
+        <li>You can select both options for different weeks</li>
       </ul>
     </div>
   </div>
@@ -610,28 +656,36 @@
       }
 
       container.innerHTML = filteredWeeks.map(week => {
-        const isSelected = selectedWeeks.has(week.id);
-        const isAvailable = availableWeeks.has(week.id);
-        const cardClass = isSelected ? 'selected' : isAvailable ? 'available' : '';
+        const isRequestedOff = selectedWeeks.has(week.id);
+        const isVolunteer = availableWeeks.has(week.id);
         
         return `
-          <div class="week-card ${cardClass}" data-week-id="${week.id}" onclick="toggleWeek('${week.id}')">
-            <div class="selection-badge">${isSelected ? '✓' : '+'}</div>
-            <div class="week-header">
+          <div class="week-card">
+            <div class="week-info">
               <span class="week-number">Week ${week.week_number}</span>
+              <div class="week-details">
+                <div class="week-label">${week.label}</div>
+                <div class="week-dates">${formatDate(week.start_date)} - ${formatDate(week.end_date)}</div>
+              </div>
               <span class="week-type ${week.week_type}">${week.week_type.replace('_', ' ')}</span>
             </div>
-            <div class="week-label">${week.label}</div>
-            <div class="week-dates">${formatDate(week.start_date)} - ${formatDate(week.end_date)}</div>
-            <div class="week-points">
-              <div class="point-badge cost">
-                <div class="point-label">Cost (Off)</div>
-                <div class="point-value cost">-${week.point_cost_off}</div>
-              </div>
-              <div class="point-badge reward">
-                <div class="point-label">Earn (Work)</div>
-                <div class="point-value reward">+${week.point_reward_work}</div>
-              </div>
+            <div class="week-actions">
+              <button class="action-btn request-off ${isRequestedOff ? 'active' : ''}" 
+                      onclick="toggleRequestOff('${week.id}')">
+                <span class="checkmark">✓</span>
+                <div>
+                  <div class="btn-label">Request Off</div>
+                  <div class="btn-points">-${week.point_cost_off} pts</div>
+                </div>
+              </button>
+              <button class="action-btn volunteer ${isVolunteer ? 'active' : ''}" 
+                      onclick="toggleVolunteer('${week.id}')">
+                <span class="checkmark">✓</span>
+                <div>
+                  <div class="btn-label">Volunteer</div>
+                  <div class="btn-points">+${week.point_reward_work} pts</div>
+                </div>
+              </button>
             </div>
           </div>
         `;
@@ -640,15 +694,29 @@
       updateStats();
     }
 
-    function toggleWeek(weekId) {
-      // Cycle through: none → unavailable → available → none
+    function toggleRequestOff(weekId) {
+      // Remove from volunteer if present
+      availableWeeks.delete(weekId);
+      
+      // Toggle request off
       if (selectedWeeks.has(weekId)) {
         selectedWeeks.delete(weekId);
-        availableWeeks.add(weekId);
-      } else if (availableWeeks.has(weekId)) {
-        availableWeeks.delete(weekId);
       } else {
         selectedWeeks.add(weekId);
+      }
+      
+      renderWeeks();
+    }
+
+    function toggleVolunteer(weekId) {
+      // Remove from request off if present
+      selectedWeeks.delete(weekId);
+      
+      // Toggle volunteer
+      if (availableWeeks.has(weekId)) {
+        availableWeeks.delete(weekId);
+      } else {
+        availableWeeks.add(weekId);
       }
       
       renderWeeks();
