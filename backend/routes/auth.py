@@ -45,8 +45,8 @@ class ChangePasswordRequest(BaseModel):
     new_password: str
 
 
-class UserResponse(BaseModel):
-    """Current user information."""
+class FacultyInfo(BaseModel):
+    """Faculty information subset."""
     faculty_id: str
     faculty_name: str
     email: str
@@ -56,6 +56,11 @@ class UserResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+class UserResponse(BaseModel):
+    """Current user information wrapped in faculty object."""
+    faculty: FacultyInfo
 
 
 # ==========================================
@@ -131,14 +136,17 @@ async def get_current_user_info(
 ):
     """
     Get information about the currently authenticated user.
+    Returns nested structure with 'faculty' wrapper for frontend compatibility.
     """
     return UserResponse(
-        faculty_id=current_user.id,
-        faculty_name=current_user.name,
-        email=current_user.email,
-        is_admin=current_user.is_admin,
-        rank=current_user.rank,
-        password_changed=current_user.password_changed
+        faculty=FacultyInfo(
+            faculty_id=current_user.id,
+            faculty_name=current_user.name,
+            email=current_user.email,
+            is_admin=current_user.is_admin,
+            rank=current_user.rank,
+            password_changed=current_user.password_changed
+        )
     )
 
 
