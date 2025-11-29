@@ -38,27 +38,12 @@
     td { padding: 12px; border-bottom: 1px solid #f3f4f6; }
     tr:hover { background: #f9fafb; }
     .badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
-    .badge-regular { background: #f3f4f6; color: #6b7280; }
-    .badge-summer { background: #fef3c7; color: #92400e; }
-    .badge-spring_break { background: #d1fae5; color: #065f46; }
-    .badge-thanksgiving { background: #fed7aa; color: #9a3412; }
-    .badge-christmas { background: #fecaca; color: #991b1b; }
-    .badge-ats { background: #dbeafe; color: #1e40af; }
-    .badge-chest { background: #e0e7ff; color: #3730a3; }
-    .badge-sccm { background: #fce7f3; color: #9f1239; }
     .editable-cell { cursor: pointer; position: relative; }
     .editable-cell:hover { background: #f3f4f6; }
     .editable-cell input { padding: 4px 8px; border: 2px solid #667eea; border-radius: 4px; font-size: 13px; }
     .loading { text-align: center; padding: 40px; color: #6b7280; }
     .action-buttons { display: flex; gap: 8px; }
-    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 12px; }
-    .calendar-day { border: 1px solid #ddd; padding: 8px; min-height: 60px; background: white; font-size: 0.8rem; }
-    .calendar-day-header { font-weight: 600; background: #f0f0f0; text-align: center; padding: 6px; }
-    .calendar-day-number { font-weight: 600; margin-bottom: 4px; }
-    .calendar-day-empty { background: #fafafa; }
-    .calendar-day-assigned { background: #e6f3ff; }
-    #controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 16px; }
-    #summary { margin-bottom: 16px; font-size: 0.95rem; background: #f3f4f8; border-radius: 6px; padding: 8px 10px; }
+    .error-message { color: #dc2626; background: #fee2e2; padding: 12px; border-radius: 8px; margin: 12px 0; border-left: 4px solid #dc2626; }
   </style>
 </head>
 <body>
@@ -84,8 +69,9 @@
       <div class="card">
         <div class="card-header">
           <h2 class="card-title">Faculty Management</h2>
-          <span id="providerCount" style="color: #6b7280;">0 faculty</span>
+          <span id="providerCount" style="color: #6b7280;">Loading...</span>
         </div>
+        <div id="providerError" class="error-message" style="display: none;"></div>
         <div class="form-grid">
           <div class="form-group"><label>Computing ID</label><input type="text" id="newProviderId" placeholder="jsmith"></div>
           <div class="form-group"><label>Name</label><input type="text" id="newProviderName" placeholder="Dr. Jane Smith"></div>
@@ -93,7 +79,7 @@
         </div>
         <button class="btn-primary" onclick="addProvider()">Add Faculty Member</button>
         <div style="margin-top: 30px;">
-          <table><thead><tr><th>Computing ID</th><th>Name</th><th>Email</th><th style="width: 120px;">Actions</th></tr></thead><tbody id="providersTableBody"></tbody></table>
+          <table><thead><tr><th>Computing ID</th><th>Name</th><th>Email</th><th style="width: 120px;">Actions</th></tr></thead><tbody id="providersTableBody"><tr><td colspan="4" style="text-align: center; padding: 20px;">Loading providers...</td></tr></tbody></table>
         </div>
       </div>
     </div>
@@ -109,7 +95,7 @@
           <button class="btn-secondary" onclick="downloadCsv()">Download CSV</button>
           <button class="btn-danger" onclick="clearMonth()">Clear Month</button>
         </div>
-        <div id="summary"><div><strong>Summary for <span id="summaryMonth"></span></strong></div><div id="summaryText">No data loaded yet.</div></div>
+        <div id="summary" style="margin-bottom: 16px; font-size: 0.95rem; background: #f3f4f8; border-radius: 6px; padding: 8px 10px;"><div><strong>Summary for <span id="summaryMonth"></span></strong></div><div id="summaryText">No data loaded yet.</div></div>
         <div><h3 style="margin: 20px 0 10px;">Signups</h3>
           <table><thead><tr><th>Faculty</th><th>Dates Selected</th><th># Dates</th><th>Desired Nights/Mo</th></tr></thead><tbody id="signupsTbody"></tbody></table>
         </div>
@@ -218,19 +204,47 @@
     }
     
     async function loadProviders() {
+      const errorDiv = document.getElementById('providerError');
+      const tbody = document.getElementById('providersTableBody');
+      const countSpan = document.getElementById('providerCount');
+      
       try {
         const response = await fetch('/api/providers');
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        allProviders = await response.json();
-        document.getElementById('providerCount').textContent = `${allProviders.length} faculty`;
-        const tbody = document.getElementById('providersTableBody');
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        const data = await response.json();
+        
+        // Check if response is actually an array
+        if (!Array.isArray(data)) {
+          console.error('Providers API returned non-array:', data);
+          throw new Error('Invalid response from server: expected array');
+        }
+        
+        allProviders = data;
+        countSpan.textContent = `${allProviders.length} faculty`;
         tbody.innerHTML = '';
-        allProviders.forEach(p => {
-          const row = document.createElement('tr');
-          row.innerHTML = `<td>${p.id}</td><td>${p.name}</td><td>${p.email || '—'}</td><td><div class="action-buttons"><button class="btn-danger" onclick="deleteProvider('${p.id}', '${p.name}')">Delete</button></div></td>`;
-          tbody.appendChild(row);
-        });
-      } catch (error) { console.error('Error loading providers:', error); }
+        errorDiv.style.display = 'none';
+        
+        if (allProviders.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #6b7280;">No providers yet. Add your first faculty member above.</td></tr>';
+        } else {
+          allProviders.forEach(p => {
+            const row = document.createElement('tr');
+            row.innerHTML = `<td>${p.id}</td><td>${p.name}</td><td>${p.email || '—'}</td><td><div class="action-buttons"><button class="btn-danger" onclick="deleteProvider('${p.id}', '${p.name}')">Delete</button></div></td>`;
+            tbody.appendChild(row);
+          });
+        }
+      } catch (error) {
+        console.error('Error loading providers:', error);
+        errorDiv.textContent = `Error loading providers: ${error.message}. Check console for details.`;
+        errorDiv.style.display = 'block';
+        countSpan.textContent = 'Error';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #dc2626;">Failed to load providers. See error above.</td></tr>';
+      }
     }
     
     async function addProvider() {
@@ -313,14 +327,14 @@
         const lastDay = new Date(year, monthNum, 0);
         const assignmentsByDate = {};
         data.forEach(a => { if (!assignmentsByDate[a.date]) assignmentsByDate[a.date] = []; assignmentsByDate[a.date].push(a.provider_name); });
-        let html = '<div class="calendar-grid">';
-        ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(day => { html += `<div class="calendar-day-header">${day}</div>`; });
-        for (let i = 0; i < firstDay.getDay(); i++) html += '<div class="calendar-day calendar-day-empty"></div>';
+        let html = '<div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 12px;">';
+        ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(day => { html += `<div style="font-weight: 600; background: #f0f0f0; text-align: center; padding: 6px;">${day}</div>`; });
+        for (let i = 0; i < firstDay.getDay(); i++) html += '<div style="background: #fafafa; border: 1px solid #ddd; padding: 8px; min-height: 60px;"></div>';
         for (let day = 1; day <= lastDay.getDate(); day++) {
           const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           const providers = assignmentsByDate[dateStr] || [];
           const hasAssignments = providers.length > 0;
-          html += `<div class="calendar-day ${hasAssignments ? 'calendar-day-assigned' : ''}"><div class="calendar-day-number">${day}</div>`;
+          html += `<div style="border: 1px solid #ddd; padding: 8px; min-height: 60px; background: ${hasAssignments ? '#e6f3ff' : 'white'}; font-size: 0.8rem;"><div style="font-weight: 600; margin-bottom: 4px;">${day}</div>`;
           if (hasAssignments) html += providers.map(name => `<div>${name}</div>`).join('');
           html += '</div>';
         }
