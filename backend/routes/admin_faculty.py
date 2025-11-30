@@ -28,6 +28,19 @@ class FacultyCreate(BaseModel):
     bonus_points: int = 0
     active: bool = True
     is_admin: bool = False
+    # NEW FIELDS
+    eligible_moonlighter: bool = False
+    available_points: int = 100
+    bid_priority: int = 0
+    # Service week allocations
+    micu_min_weeks: int = 0
+    micu_max_weeks: int = 0
+    appicu_min_weeks: int = 0
+    appicu_max_weeks: int = 0
+    procedures_min_weeks: int = 0
+    procedures_max_weeks: int = 0
+    consults_min_weeks: int = 0
+    consults_max_weeks: int = 0
 
 
 class FacultyUpdate(BaseModel):
@@ -40,6 +53,19 @@ class FacultyUpdate(BaseModel):
     bonus_points: Optional[int] = None
     active: Optional[bool] = None
     is_admin: Optional[bool] = None
+    # NEW FIELDS
+    eligible_moonlighter: Optional[bool] = None
+    available_points: Optional[int] = None
+    bid_priority: Optional[int] = None
+    # Service week allocations
+    micu_min_weeks: Optional[int] = None
+    micu_max_weeks: Optional[int] = None
+    appicu_min_weeks: Optional[int] = None
+    appicu_max_weeks: Optional[int] = None
+    procedures_min_weeks: Optional[int] = None
+    procedures_max_weeks: Optional[int] = None
+    consults_min_weeks: Optional[int] = None
+    consults_max_weeks: Optional[int] = None
 
 
 class FacultyResponse(BaseModel):
@@ -55,6 +81,19 @@ class FacultyResponse(BaseModel):
     is_admin: bool
     password_changed: bool
     registered: bool
+    # NEW FIELDS
+    eligible_moonlighter: bool
+    available_points: int
+    bid_priority: int
+    # Service week allocations
+    micu_min_weeks: int
+    micu_max_weeks: int
+    appicu_min_weeks: int
+    appicu_max_weeks: int
+    procedures_min_weeks: int
+    procedures_max_weeks: int
+    consults_min_weeks: int
+    consults_max_weeks: int
     
     class Config:
         from_attributes = True
@@ -154,7 +193,19 @@ def create_faculty(
         is_admin=faculty_data.is_admin,
         password_hash=hash_password("PCCM2025!"),
         password_changed=False,
-        registered=True
+        registered=True,
+        # NEW FIELDS
+        eligible_moonlighter=faculty_data.eligible_moonlighter,
+        available_points=faculty_data.available_points,
+        bid_priority=faculty_data.bid_priority,
+        micu_min_weeks=faculty_data.micu_min_weeks,
+        micu_max_weeks=faculty_data.micu_max_weeks,
+        appicu_min_weeks=faculty_data.appicu_min_weeks,
+        appicu_max_weeks=faculty_data.appicu_max_weeks,
+        procedures_min_weeks=faculty_data.procedures_min_weeks,
+        procedures_max_weeks=faculty_data.procedures_max_weeks,
+        consults_min_weeks=faculty_data.consults_min_weeks,
+        consults_max_weeks=faculty_data.consults_max_weeks
     )
     
     db.add(new_faculty)
@@ -311,6 +362,7 @@ def get_faculty_stats(
     total = db.query(Faculty).count()
     active = db.query(Faculty).filter_by(active=True).count()
     admins = db.query(Faculty).filter_by(is_admin=True).count()
+    moonlighters = db.query(Faculty).filter_by(eligible_moonlighter=True, active=True).count()
     
     # Count by rank
     rank_counts = {}
@@ -318,9 +370,25 @@ def get_faculty_stats(
         count = db.query(Faculty).filter_by(rank=rank, active=True).count()
         rank_counts[rank] = count
     
+    # Total service week capacity
+    from sqlalchemy import func
+    service_capacity = db.query(
+        func.sum(Faculty.micu_max_weeks).label('micu'),
+        func.sum(Faculty.appicu_max_weeks).label('appicu'),
+        func.sum(Faculty.procedures_max_weeks).label('procedures'),
+        func.sum(Faculty.consults_max_weeks).label('consults')
+    ).filter(Faculty.active == True).first()
+    
     return {
         "total_faculty": total,
         "active_faculty": active,
         "admin_count": admins,
-        "by_rank": rank_counts
+        "moonlighter_count": moonlighters,
+        "by_rank": rank_counts,
+        "service_capacity": {
+            "micu_weeks": service_capacity.micu or 0,
+            "appicu_weeks": service_capacity.appicu or 0,
+            "procedures_weeks": service_capacity.procedures or 0,
+            "consults_weeks": service_capacity.consults or 0
+        }
     }
