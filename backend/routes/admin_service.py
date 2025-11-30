@@ -5,15 +5,17 @@ This manages the 52-week schedule where faculty indicate when they
 are NOT available for regular inpatient service duties.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, timedelta, date
 from typing import List, Optional, Dict
 from pydantic import BaseModel
 import uuid
+import csv
+import io
 
-from backend.models import get_db, Faculty, VacationWeek, VacationRequest
+from backend.models import get_db, Faculty, VacationWeek, VacationRequest, ServiceWeekAssignment
 from backend.auth import get_current_user, require_admin
 
 router = APIRouter(prefix="/api/admin", tags=["admin-service"])
@@ -68,9 +70,199 @@ class ServiceWeekResponse(BaseModel):
     point_reward_work: int
     min_staff_required: int
     request_count: int = 0
+    assignment_count: int = 0
 
 
-# ===== ADMIN ENDPOINTS =====
+class WeekHeatMapData(BaseModel):
+    """Heat map data for a single week"""
+    week_id: str
+    week_number: int
+    label: str
+    week_type: str
+    unavailable_count: int
+    volunteer_count: int
+    assigned_count: int
+    min_staff_required: int
+    staffing_status: str  # "good", "tight", "critical"
+
+
+# ===== HEAT MAP ENDPOINT =====
+
+@router.get("/service-weeks/heatmap", response_model=List[WeekHeatMapData])
+async def get_service_weeks_heatmap(
+    year: int = 2026,
+    db: Session = Depends(get_db),
+    current_user: Faculty = Depends(require_admin)
+):
+    """
+    Get heat map data showing staffing levels for each week.
+    Shows how many faculty are unavailable, volunteering, or assigned.
+    """
+    
+    weeks = db.query(VacationWeek).filter(VacationWeek.year == year).order_by(VacationWeek.week_number).all()
+    
+    result = []
+    for week in weeks:
+        # Count requests by status
+        unavailable_count = db.query(func.count(VacationRequest.id)).filter(
+            VacationRequest.week_id == week.id,
+            VacationRequest.status == "unavailable"
+        ).scalar() or 0
+        
+        volunteer_count = db.query(func.count(VacationRequest.id)).filter(
+            VacationRequest.week_id == week.id,
+            VacationRequest.status == "available"
+        ).scalar() or 0
+        
+        assigned_count = db.query(func.count(ServiceWeekAssignment.id)).filter(
+            ServiceWeekAssignment.week_id == week.id
+        ).scalar() or 0
+        
+        # Calculate staffing status
+        # Assume total active faculty minus unavailable gives available pool
+        total_active = db.query(func.count(Faculty.id)).filter(Faculty.active == True).scalar() or 0
+        available_pool = total_active - unavailable_count
+        
+        if available_pool >= week.min_staff_required + 3:
+            staffing_status = "good"
+        elif available_pool >= week.min_staff_required:
+            staffing_status = "tight"
+        else:
+            staffing_status = "critical"
+        
+        result.append(WeekHeatMapData(
+            week_id=week.id,
+            week_number=week.week_number,
+            label=week.label,
+            week_type=week.week_type,
+            unavailable_count=unavailable_count,
+            volunteer_count=volunteer_count,
+            assigned_count=assigned_count,
+            min_staff_required=week.min_staff_required,
+            staffing_status=staffing_status
+        ))
+    
+    return result
+
+
+# ===== CSV IMPORT ENDPOINT =====
+
+@router.post("/import-historic-assignments")
+async def import_historic_assignments(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: Faculty = Depends(require_admin)
+):
+    """
+    Import historic service week assignments from CSV.
+    
+    CSV Format:
+    faculty_id,week_number,service_type,year
+    KE4Z,1,MICU,2026
+    IN2C,2,APP-ICU,2026
+    
+    This will:
+    1. Create service assignments
+    2. Mark premium weeks (if they don't exist, create them with higher point costs)
+    3. Track that these are imported historic data
+    """
+    
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="File must be a CSV")
+    
+    try:
+        # Read CSV content
+        contents = await file.read()
+        csv_data = io.StringIO(contents.decode('utf-8'))
+        csv_reader = csv.DictReader(csv_data)
+        
+        required_columns = {'faculty_id', 'week_number', 'service_type', 'year'}
+        if not required_columns.issubset(csv_reader.fieldnames or []):
+            raise HTTPException(
+                status_code=400,
+                detail=f"CSV must have columns: {', '.join(required_columns)}"
+            )
+        
+        assignments_created = 0
+        weeks_marked_premium = 0
+        errors = []
+        
+        for row_num, row in enumerate(csv_reader, start=2):  # Start at 2 to account for header
+            try:
+                faculty_id = row['faculty_id'].strip().upper()
+                week_number = int(row['week_number'])
+                service_type = row['service_type'].strip()
+                year = int(row['year'])
+                
+                # Validate service type
+                valid_services = ['MICU', 'APP-ICU', 'Procedures', 'Consults']
+                if service_type not in valid_services:
+                    errors.append(f"Row {row_num}: Invalid service type '{service_type}'")
+                    continue
+                
+                # Check if faculty exists
+                faculty = db.query(Faculty).filter_by(id=faculty_id).first()
+                if not faculty:
+                    errors.append(f"Row {row_num}: Faculty {faculty_id} not found")
+                    continue
+                
+                # Find or get week
+                week_id = f"W{week_number:02d}-{year}"
+                week = db.query(VacationWeek).filter_by(id=week_id).first()
+                
+                if not week:
+                    errors.append(f"Row {row_num}: Week {week_number} for year {year} not found. Generate weeks first.")
+                    continue
+                
+                # Mark week as premium if it has historic assignments
+                # Premium weeks have higher point costs
+                if week.point_cost_off == 5 and week.week_type == "regular":  # Default values
+                    week.point_cost_off = 7
+                    week.week_type = "premium"
+                    weeks_marked_premium += 1
+                
+                # Check if assignment already exists
+                existing = db.query(ServiceWeekAssignment).filter_by(
+                    faculty_id=faculty_id,
+                    week_id=week_id,
+                    service_type=service_type
+                ).first()
+                
+                if existing:
+                    continue  # Skip duplicates
+                
+                # Create assignment
+                assignment = ServiceWeekAssignment(
+                    id=str(uuid.uuid4()),
+                    faculty_id=faculty_id,
+                    week_id=week_id,
+                    service_type=service_type,
+                    imported=True
+                )
+                
+                db.add(assignment)
+                assignments_created += 1
+                
+            except Exception as e:
+                errors.append(f"Row {row_num}: {str(e)}")
+                continue
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "assignments_created": assignments_created,
+            "weeks_marked_premium": weeks_marked_premium,
+            "errors": errors if errors else None,
+            "message": f"Imported {assignments_created} assignments" + 
+                      (f" with {len(errors)} errors" if errors else "")
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing CSV: {str(e)}")
+
+
+# ===== EXISTING ENDPOINTS =====
 
 @router.get("/service-weeks", response_model=List[ServiceWeekResponse])
 async def get_service_weeks(
@@ -82,11 +274,15 @@ async def get_service_weeks(
     
     weeks = db.query(VacationWeek).filter(VacationWeek.year == year).order_by(VacationWeek.week_number).all()
     
-    # Get request counts for each week
+    # Get request counts and assignment counts for each week
     result = []
     for week in weeks:
         request_count = db.query(func.count(VacationRequest.id)).filter(
             VacationRequest.week_id == week.id
+        ).scalar()
+        
+        assignment_count = db.query(func.count(ServiceWeekAssignment.id)).filter(
+            ServiceWeekAssignment.week_id == week.id
         ).scalar()
         
         result.append(ServiceWeekResponse(
@@ -99,7 +295,8 @@ async def get_service_weeks(
             point_cost_off=week.point_cost_off,
             point_reward_work=week.point_reward_work,
             min_staff_required=week.min_staff_required,
-            request_count=request_count
+            request_count=request_count or 0,
+            assignment_count=assignment_count or 0
         ))
     
     return result
@@ -165,8 +362,9 @@ async def delete_single_week(
     if not week:
         raise HTTPException(status_code=404, detail="Week not found")
     
-    # Delete associated requests
+    # Delete associated requests and assignments
     db.query(VacationRequest).filter(VacationRequest.week_id == week_id).delete(synchronize_session=False)
+    db.query(ServiceWeekAssignment).filter(ServiceWeekAssignment.week_id == week_id).delete(synchronize_session=False)
     
     # Delete the week
     db.delete(week)
@@ -361,8 +559,9 @@ async def clear_service_weeks(
     
     week_ids = [w.id for w in weeks]
     
-    # Delete all requests for these weeks
+    # Delete all requests and assignments for these weeks
     db.query(VacationRequest).filter(VacationRequest.week_id.in_(week_ids)).delete(synchronize_session=False)
+    db.query(ServiceWeekAssignment).filter(ServiceWeekAssignment.week_id.in_(week_ids)).delete(synchronize_session=False)
     
     # Delete weeks
     db.query(VacationWeek).filter(VacationWeek.id.in_(week_ids)).delete(synchronize_session=False)
