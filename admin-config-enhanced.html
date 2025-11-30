@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - Service Availability Configuration</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f7fa;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    h1 {
+      font-size: 28px;
+      color: #1a202c;
+      margin-bottom: 8px;
+    }
+    
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .card-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: #1a202c;
+    }
+    
+    .tabs {
+      display: flex;
+      gap: 8px;
+      border-bottom: 2px solid #e2e8f0;
+      margin-bottom: 24px;
+    }
+    
+    .tab {
+      padding: 12px 24px;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      cursor: pointer;
+      font-weight: 600;
+      color: #718096;
+      transition: all 0.2s;
+    }
+    
+    .tab.active {
+      color: #667eea;
+      border-bottom-color: #667eea;
+    }
+    
+    .tab-content {
+      display: none;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    
+    .heatmap-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 8px;
+      margin-top: 20px;
+    }
+    
+    .heatmap-cell {
+      aspect-ratio: 1;
+      border-radius: 8px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+      position: relative;
+    }
+    
+    .heatmap-cell:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .heatmap-cell.good { background: #d1fae5; color: #065f46; }
+    .heatmap-cell.tight { background: #fef3c7; color: #92400e; }
+    .heatmap-cell.critical { background: #fee2e2; color: #991b1b; }
+    .heatmap-cell.special { border: 2px solid #667eea; }
+    
+    .week-num { font-size: 16px; margin-bottom: 4px; }
+    .week-label { font-size: 9px; opacity: 0.7; }
+    .staff-count { font-size: 10px; margin-top: 4px; }
+    
+    .legend {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+    
+    .legend-box {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+    }
+    
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #4a5568;
+      margin-bottom: 6px;
+    }
+    
+    input, select {
+      padding: 10px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    
+    input:focus, select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #4a5568;
+    }
+    
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+    
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+    
+    .upload-zone {
+      border: 2px dashed #cbd5e0;
+      border-radius: 12px;
+      padding: 40px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .upload-zone:hover {
+      border-color: #667eea;
+      background: #f7fafc;
+    }
+    
+    .upload-zone.dragover {
+      border-color: #667eea;
+      background: #edf2f7;
+    }
+    
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    
+    .alert.show { display: block; }
+    .alert-success { background: #d1fae5; color: #065f46; border-left: 4px solid #10b981; }
+    .alert-error { background: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444; }
+    .alert-info { background: #dbeafe; color: #1e40af; border-left: 4px solid #3b82f6; }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #a0aec0;
+    }
+    
+    .csv-preview {
+      max-height: 300px;
+      overflow-y: auto;
+      background: #f7fafc;
+      padding: 16px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 12px;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>⚙️ Service Availability Configuration</h1>
+      <p style="color: #718096; margin-top: 8px;">Configure weeks, import historic data, and visualize staffing</p>
+    </div>
+    
+    <!-- Tabs -->
+    <div class="card">
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('heat-map')">Heat Map</button>
+        <button class="tab" onclick="switchTab('import')">Import Historic Data</button>
+        <button class="tab" onclick="switchTab('configure')">Configure Weeks</button>
+      </div>
+      
+      <!-- Heat Map Tab -->
+      <div id="tab-heat-map" class="tab-content active">
+        <h2 class="card-title">📅 Staffing Heat Map</h2>
+        <div id="heatmapAlert" class="alert"></div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label>Academic Year</label>
+            <select id="heatmapYear" onchange="loadHeatMap()">
+              <option value="2025">2025-2026</option>
+              <option value="2026" selected>2026-2027</option>
+              <option value="2027">2027-2028</option>
+            </select>
+          </div>
+          <div style="display: flex; align-items: flex-end;">
+            <button class="btn btn-secondary" onclick="loadHeatMap()">🔄 Refresh</button>
+          </div>
+        </div>
+        
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-box good"></div>
+            <span>Good Staffing (3+ above min)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-box tight"></div>
+            <span>Tight Staffing (at min)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-box critical"></div>
+            <span>Critical (below min)</span>
+          </div>
+        </div>
+        
+        <div id="heatmapLoading" class="loading">Loading heat map...</div>
+        <div id="heatmapContainer" class="heatmap-container" style="display: none;"></div>
+      </div>
+      
+      <!-- Import Tab -->
+      <div id="tab-import" class="tab-content">
+        <h2 class="card-title">📊 Import Historic Service Assignments</h2>
+        <div id="importAlert" class="alert"></div>
+        
+        <div style="background: #f7fafc; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+          <h3 style="font-size: 16px; margin-bottom: 8px;">CSV Format Required:</h3>
+          <pre style="font-family: monospace; font-size: 12px; color: #4a5568;">faculty_id,week_number,service_type,year
+KE4Z,1,MICU,2026
+IN2C,2,APP-ICU,2026
+JD3X,1,Procedures,2026</pre>
+          <p style="margin-top: 8px; color: #718096; font-size: 13px;">
+            <strong>Service Types:</strong> MICU, APP-ICU, Procedures, Consults<br>
+            <strong>Effect:</strong> Weeks with historic assignments will be marked as "premium" (higher point cost)
+          </p>
+        </div>
+        
+        <input type="file" id="csvFileInput" accept=".csv" style="display: none;" onchange="handleFileSelect(event)">
+        
+        <div class="upload-zone" onclick="document.getElementById('csvFileInput').click()" 
+             ondragover="handleDragOver(event)" 
+             ondrop="handleFileDrop(event)" 
+             ondragleave="handleDragLeave(event)">
+          <div style="font-size: 48px; margin-bottom: 12px;">📄</div>
+          <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Drop CSV file here or click to browse</div>
+          <div style="color: #718096; font-size: 13px;">Maximum file size: 5MB</div>
+        </div>
+        
+        <div id="csvPreview" class="csv-preview" style="display: none;"></div>
+        
+        <div id="importActions" style="display: none; margin-top: 20px;">
+          <button class="btn btn-primary" onclick="uploadCSV()">⬆️ Import Assignments</button>
+          <button class="btn btn-secondary" onclick="cancelImport()">Cancel</button>
+        </div>
+      </div>
+      
+      <!-- Configure Tab -->
+      <div id="tab-configure" class="tab-content">
+        <h2 class="card-title">Generate 52-Week Schedule</h2>
+        <div id="configAlert" class="alert"></div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label>Academic Year</label>
+            <select id="academicYear">
+              <option value="2025">2025-2026</option>
+              <option value="2026" selected>2026-2027</option>
+              <option value="2027">2027-2028</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>Start Date (First Tuesday of July)</label>
+            <input type="date" id="startDate" value="2026-07-07">
+          </div>
+        </div>
+        
+        <div style="background: #f7fafc; padding: 16px; border-radius: 8px; margin: 16px 0;">
+          <strong>Optional: Configure Special Periods</strong>
+          <div class="form-row" style="margin-top: 12px;">
+            <div class="form-group">
+              <label>Christmas (2 weeks)</label>
+              <input type="date" id="christmas" value="2026-12-22">
+            </div>
+            <div class="form-group">
+              <label>Thanksgiving</label>
+              <input type="date" id="thanksgiving" value="2026-11-26">
+            </div>
+            <div class="form-group">
+              <label>Spring Break</label>
+              <input type="date" id="springBreak" value="2027-03-15">
+            </div>
+            <div class="form-group">
+              <label>ATS Conference</label>
+              <input type="date" id="atsConference" value="2027-05-15">
+            </div>
+            <div class="form-group">
+              <label>CHEST Conference</label>
+              <input type="date" id="chestConference" value="2026-10-18">
+            </div>
+            <div class="form-group">
+              <label>SCCM Conference</label>
+              <input type="date" id="sccmConference" value="2027-01-24">
+            </div>
+          </div>
+        </div>
+        
+        <div style="display: flex; gap: 12px;">
+          <button class="btn btn-primary" onclick="generateWeeks()">✨ Generate 52 Weeks</button>
+          <button class="btn btn-danger" onclick="clearWeeks()">🗑️ Clear All Weeks</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let selectedFile = null;
+    let currentTab = 'heat-map';
+    
+    function switchTab(tabName) {
+      // Hide all tabs
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      
+      // Show selected tab
+      document.getElementById(`tab-${tabName}`).classList.add('active');
+      event.target.classList.add('active');
+      currentTab = tabName;
+      
+      // Load data for tab
+      if (tabName === 'heat-map') {
+        loadHeatMap();
+      }
+    }
+    
+    // ===== HEAT MAP =====
+    
+    async function loadHeatMap() {
+      const year = parseInt(document.getElementById('heatmapYear').value);
+      const container = document.getElementById('heatmapContainer');
+      const loading = document.getElementById('heatmapLoading');
+      
+      loading.style.display = 'block';
+      container.style.display = 'none';
+      
+      try {
+        const response = await fetch(`/api/admin/service-weeks/heatmap?year=${year}`);
+        const data = await response.json();
+        
+        if (data.length === 0) {
+          loading.textContent = 'No weeks configured for this year. Use Configure tab to generate weeks.';
+          return;
+        }
+        
+        container.innerHTML = '';
+        
+        data.forEach(week => {
+          const cell = document.createElement('div');
+          cell.className = `heatmap-cell ${week.staffing_status}`;
+          if (week.week_type !== 'regular' && week.week_type !== 'summer') {
+            cell.classList.add('special');
+          }
+          
+          const available = week.unavailable_count > 0 ? 
+            `<div class="staff-count">${week.unavailable_count} unavail</div>` : '';
+          
+          cell.innerHTML = `
+            <div class="week-num">W${week.week_number}</div>
+            <div class="week-label">${week.label.substring(0, 15)}</div>
+            ${available}
+            <div class="staff-count">${week.assigned_count} assigned</div>
+          `;
+          
+          cell.title = `Week ${week.week_number}: ${week.label}\nUnavailable: ${week.unavailable_count}\nVolunteers: ${week.volunteer_count}\nAssigned: ${week.assigned_count}\nMin Required: ${week.min_staff_required}`;
+          
+          container.appendChild(cell);
+        });
+        
+        loading.style.display = 'none';
+        container.style.display = 'grid';
+      } catch (error) {
+        showAlert('heatmapAlert', 'Error loading heat map: ' + error.message, 'error');
+        loading.textContent = 'Error loading heat map';
+      }
+    }
+    
+    // ===== CSV IMPORT =====
+    
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (file) processFile(file);
+    }
+    
+    function handleDragOver(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.currentTarget.classList.add('dragover');
+    }
+    
+    function handleDragLeave(event) {
+      event.currentTarget.classList.remove('dragover');
+    }
+    
+    function handleFileDrop(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.currentTarget.classList.remove('dragover');
+      
+      const file = event.dataTransfer.files[0];
+      if (file) processFile(file);
+    }
+    
+    function processFile(file) {
+      if (!file.name.endsWith('.csv')) {
+        showAlert('importAlert', 'Please upload a CSV file', 'error');
+        return;
+      }
+      
+      if (file.size > 5 * 1024 * 1024) {
+        showAlert('importAlert', 'File too large. Maximum size is 5MB', 'error');
+        return;
+      }
+      
+      selectedFile = file;
+      
+      // Preview file
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const lines = e.target.result.split('\n').slice(0, 10);
+        document.getElementById('csvPreview').innerHTML = `
+          <strong>Preview (first 10 lines):</strong><br>
+          ${lines.map(line => line.trim()).filter(line => line).join('<br>')}
+        `;
+        document.getElementById('csvPreview').style.display = 'block';
+        document.getElementById('importActions').style.display = 'block';
+      };
+      reader.readAsText(file);
+    }
+    
+    async function uploadCSV() {
+      if (!selectedFile) return;
+      
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      
+      try {
+        showAlert('importAlert', 'Importing assignments...', 'info');
+        
+        const response = await fetch('/api/admin/import-historic-assignments', {
+          method: 'POST',
+          body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+          let message = `Successfully imported ${result.assignments_created} assignments`;
+          if (result.weeks_marked_premium > 0) {
+            message += ` and marked ${result.weeks_marked_premium} weeks as premium`;
+          }
+          if (result.errors && result.errors.length > 0) {
+            message += `\n\nWarnings:\n` + result.errors.slice(0, 5).join('\n');
+            if (result.errors.length > 5) {
+              message += `\n... and ${result.errors.length - 5} more`;
+            }
+          }
+          showAlert('importAlert', message, 'success');
+          cancelImport();
+          loadHeatMap(); // Refresh heat map
+        } else {
+          showAlert('importAlert', result.detail || 'Import failed', 'error');
+        }
+      } catch (error) {
+        showAlert('importAlert', 'Error: ' + error.message, 'error');
+      }
+    }
+    
+    function cancelImport() {
+      selectedFile = null;
+      document.getElementById('csvFileInput').value = '';
+      document.getElementById('csvPreview').style.display = 'none';
+      document.getElementById('importActions').style.display = 'none';
+    }
+    
+    // ===== WEEK CONFIGURATION =====
+    
+    async function generateWeeks() {
+      const year = parseInt(document.getElementById('academicYear').value);
+      const startDate = document.getElementById('startDate').value;
+      
+      if (!startDate) {
+        showAlert('configAlert', 'Please select a start date', 'error');
+        return;
+      }
+      
+      const payload = {
+        year: year,
+        start_date: startDate,
+        christmas: document.getElementById('christmas').value || null,
+        thanksgiving: document.getElementById('thanksgiving').value || null,
+        spring_break: document.getElementById('springBreak').value || null,
+        ats_conference: document.getElementById('atsConference').value || null,
+        chest_conference: document.getElementById('chestConference').value || null,
+        sccm_conference: document.getElementById('sccmConference').value || null
+      };
+      
+      try {
+        const response = await fetch('/api/admin/generate-service-weeks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          showAlert('configAlert', `Successfully generated ${data.weeks_created} weeks!`, 'success');
+          loadHeatMap();
+        } else {
+          showAlert('configAlert', data.detail || 'Failed to generate weeks', 'error');
+        }
+      } catch (error) {
+        showAlert('configAlert', 'Error: ' + error.message, 'error');
+      }
+    }
+    
+    async function clearWeeks() {
+      if (!confirm('Are you sure you want to delete all weeks? This will also remove all requests and assignments.')) {
+        return;
+      }
+      
+      const year = parseInt(document.getElementById('academicYear').value);
+      
+      try {
+        const response = await fetch(`/api/admin/service-weeks?year=${year}`, { method: 'DELETE' });
+        
+        if (response.ok) {
+          showAlert('configAlert', 'All weeks cleared', 'success');
+          loadHeatMap();
+        } else {
+          showAlert('configAlert', 'Failed to clear weeks', 'error');
+        }
+      } catch (error) {
+        showAlert('configAlert', 'Error: ' + error.message, 'error');
+      }
+    }
+    
+    // ===== UTILITIES =====
+    
+    function showAlert(elementId, message, type) {
+      const alert = document.getElementById(elementId);
+      alert.textContent = message;
+      alert.className = `alert alert-${type} show`;
+      setTimeout(() => alert.classList.remove('show'), 7000);
+    }
+    
+    // Initialize
+    window.addEventListener('DOMContentLoaded', () => {
+      loadHeatMap();
+    });
+  </script>
+</body>
+</html>
