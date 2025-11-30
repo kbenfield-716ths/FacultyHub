@@ -114,6 +114,7 @@ class Faculty(Base):
     
     # Relationships
     vacation_requests = relationship("VacationRequest", back_populates="faculty")
+    service_assignments = relationship("ServiceWeekAssignment", back_populates="faculty")
 
 
 class VacationWeek(Base):
@@ -135,6 +136,7 @@ class VacationWeek(Base):
     
     # Relationships
     vacation_requests = relationship("VacationRequest", back_populates="week")
+    service_assignments = relationship("ServiceWeekAssignment", back_populates="week")
 
 
 class VacationRequest(Base):
@@ -161,6 +163,28 @@ class VacationRequest(Base):
     # Relationships
     faculty = relationship("Faculty", back_populates="vacation_requests")
     week = relationship("VacationWeek", back_populates="vacation_requests")
+
+
+class ServiceWeekAssignment(Base):
+    """Actual service week assignments (MICU, APP-ICU, Procedures, Consults)"""
+    __tablename__ = "service_week_assignments"
+    
+    id = Column(String, primary_key=True, index=True)
+    faculty_id = Column(String, ForeignKey('faculty.id'), nullable=False, index=True)
+    week_id = Column(String, ForeignKey('vacation_weeks.id'), nullable=False, index=True)
+    
+    # Service type: "MICU", "APP-ICU", "Procedures", "Consults"
+    service_type = Column(String, nullable=False, index=True)
+    
+    # Import tracking
+    imported = Column(Boolean, default=False)  # True if from historic CSV
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    faculty = relationship("Faculty", back_populates="service_assignments")
+    week = relationship("VacationWeek", back_populates="service_assignments")
 
 
 # ==========================================
@@ -202,6 +226,14 @@ def init_db():
             conn.execute(text("""
                 CREATE INDEX IF NOT EXISTS idx_vacation_weeks_year 
                 ON vacation_weeks(year)
+            """))
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_service_assignments_faculty_week 
+                ON service_week_assignments(faculty_id, week_id)
+            """))
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_service_assignments_service_type 
+                ON service_week_assignments(service_type)
             """))
             
             conn.execute(text("ANALYZE"))
