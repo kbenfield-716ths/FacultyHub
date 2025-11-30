@@ -5,10 +5,11 @@ These require admin authentication.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Optional
 from pydantic import BaseModel, EmailStr
 
-from backend.models import Faculty, get_db
+from backend.models import Faculty, ServiceWeekAssignment, VacationWeek, get_db
 from backend.auth import require_admin, hash_password
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -42,8 +43,17 @@ class FacultyUpdate(BaseModel):
     is_admin: Optional[bool] = None
 
 
+class ServiceAssignmentSummary(BaseModel):
+    """Summary of a faculty member's service assignments"""
+    MICU: int = 0
+    APP_ICU: int = 0
+    Procedures: int = 0
+    Consults: int = 0
+    total: int = 0
+
+
 class FacultyResponse(BaseModel):
-    """Model for faculty response"""
+    """Model for faculty response with service assignments"""
     id: str
     name: str
     email: str
@@ -51,10 +61,12 @@ class FacultyResponse(BaseModel):
     clinical_effort_pct: int
     base_points: int
     bonus_points: int
+    total_points: int
     active: bool
     is_admin: bool
     password_changed: bool
     registered: bool
+    service_weeks: ServiceAssignmentSummary
     
     class Config:
         from_attributes = True
@@ -76,15 +88,59 @@ def get_all_faculty(
     db: Session = Depends(get_db)
 ):
     """
-    Get all faculty members.
+    Get all faculty members with their points and service week assignments.
     Requires admin authentication.
     """
     query = db.query(Faculty)
     if active_only:
         query = query.filter_by(active=True)
     
-    faculty = query.order_by(Faculty.name).all()
-    return faculty
+    faculty_list = query.order_by(Faculty.name).all()
+    
+    # Build response with service assignments
+    result = []
+    for faculty in faculty_list:
+        # Count service assignments by type
+        assignments = db.query(
+            ServiceWeekAssignment.service_type,
+            func.count(ServiceWeekAssignment.id).label('count')
+        ).filter(
+            ServiceWeekAssignment.faculty_id == faculty.id
+        ).group_by(ServiceWeekAssignment.service_type).all()
+        
+        # Build service summary
+        service_weeks = ServiceAssignmentSummary()
+        total = 0
+        for service_type, count in assignments:
+            total += count
+            if service_type == "MICU":
+                service_weeks.MICU = count
+            elif service_type == "APP-ICU":
+                service_weeks.APP_ICU = count
+            elif service_type == "Procedures":
+                service_weeks.Procedures = count
+            elif service_type == "Consults":
+                service_weeks.Consults = count
+        
+        service_weeks.total = total
+        
+        result.append(FacultyResponse(
+            id=faculty.id,
+            name=faculty.name,
+            email=faculty.email,
+            rank=faculty.rank,
+            clinical_effort_pct=faculty.clinical_effort_pct,
+            base_points=faculty.base_points,
+            bonus_points=faculty.bonus_points,
+            total_points=faculty.base_points + faculty.bonus_points,
+            active=faculty.active,
+            is_admin=faculty.is_admin,
+            password_changed=faculty.password_changed,
+            registered=faculty.registered,
+            service_weeks=service_weeks
+        ))
+    
+    return result
 
 
 @router.get("/faculty/{faculty_id}", response_model=FacultyResponse)
@@ -94,7 +150,7 @@ def get_faculty(
     db: Session = Depends(get_db)
 ):
     """
-    Get a specific faculty member by ID.
+    Get a specific faculty member by ID with their service assignments.
     Requires admin authentication.
     """
     faculty = db.query(Faculty).filter_by(id=faculty_id).first()
@@ -104,7 +160,45 @@ def get_faculty(
             detail="Faculty not found"
         )
     
-    return faculty
+    # Count service assignments by type
+    assignments = db.query(
+        ServiceWeekAssignment.service_type,
+        func.count(ServiceWeekAssignment.id).label('count')
+    ).filter(
+        ServiceWeekAssignment.faculty_id == faculty.id
+    ).group_by(ServiceWeekAssignment.service_type).all()
+    
+    # Build service summary
+    service_weeks = ServiceAssignmentSummary()
+    total = 0
+    for service_type, count in assignments:
+        total += count
+        if service_type == "MICU":
+            service_weeks.MICU = count
+        elif service_type == "APP-ICU":
+            service_weeks.APP_ICU = count
+        elif service_type == "Procedures":
+            service_weeks.Procedures = count
+        elif service_type == "Consults":
+            service_weeks.Consults = count
+    
+    service_weeks.total = total
+    
+    return FacultyResponse(
+        id=faculty.id,
+        name=faculty.name,
+        email=faculty.email,
+        rank=faculty.rank,
+        clinical_effort_pct=faculty.clinical_effort_pct,
+        base_points=faculty.base_points,
+        bonus_points=faculty.bonus_points,
+        total_points=faculty.base_points + faculty.bonus_points,
+        active=faculty.active,
+        is_admin=faculty.is_admin,
+        password_changed=faculty.password_changed,
+        registered=faculty.registered,
+        service_weeks=service_weeks
+    )
 
 
 @router.post("/faculty", response_model=FacultyResponse, status_code=status.HTTP_201_CREATED)
@@ -161,7 +255,22 @@ def create_faculty(
     db.commit()
     db.refresh(new_faculty)
     
-    return new_faculty
+    # Return with empty service weeks
+    return FacultyResponse(
+        id=new_faculty.id,
+        name=new_faculty.name,
+        email=new_faculty.email,
+        rank=new_faculty.rank,
+        clinical_effort_pct=new_faculty.clinical_effort_pct,
+        base_points=new_faculty.base_points,
+        bonus_points=new_faculty.bonus_points,
+        total_points=new_faculty.base_points + new_faculty.bonus_points,
+        active=new_faculty.active,
+        is_admin=new_faculty.is_admin,
+        password_changed=new_faculty.password_changed,
+        registered=new_faculty.registered,
+        service_weeks=ServiceAssignmentSummary()
+    )
 
 
 @router.patch("/faculty/{faculty_id}", response_model=FacultyResponse)
@@ -213,7 +322,43 @@ def update_faculty(
     db.commit()
     db.refresh(faculty)
     
-    return faculty
+    # Get service assignments
+    assignments = db.query(
+        ServiceWeekAssignment.service_type,
+        func.count(ServiceWeekAssignment.id).label('count')
+    ).filter(
+        ServiceWeekAssignment.faculty_id == faculty.id
+    ).group_by(ServiceWeekAssignment.service_type).all()
+    
+    service_weeks = ServiceAssignmentSummary()
+    total = 0
+    for service_type, count in assignments:
+        total += count
+        if service_type == "MICU":
+            service_weeks.MICU = count
+        elif service_type == "APP-ICU":
+            service_weeks.APP_ICU = count
+        elif service_type == "Procedures":
+            service_weeks.Procedures = count
+        elif service_type == "Consults":
+            service_weeks.Consults = count
+    service_weeks.total = total
+    
+    return FacultyResponse(
+        id=faculty.id,
+        name=faculty.name,
+        email=faculty.email,
+        rank=faculty.rank,
+        clinical_effort_pct=faculty.clinical_effort_pct,
+        base_points=faculty.base_points,
+        bonus_points=faculty.bonus_points,
+        total_points=faculty.base_points + faculty.bonus_points,
+        active=faculty.active,
+        is_admin=faculty.is_admin,
+        password_changed=faculty.password_changed,
+        registered=faculty.registered,
+        service_weeks=service_weeks
+    )
 
 
 @router.delete("/faculty/{faculty_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -296,7 +441,43 @@ def toggle_admin_status(
     db.commit()
     db.refresh(faculty)
     
-    return faculty
+    # Get service assignments
+    assignments = db.query(
+        ServiceWeekAssignment.service_type,
+        func.count(ServiceWeekAssignment.id).label('count')
+    ).filter(
+        ServiceWeekAssignment.faculty_id == faculty.id
+    ).group_by(ServiceWeekAssignment.service_type).all()
+    
+    service_weeks = ServiceAssignmentSummary()
+    total = 0
+    for service_type, count in assignments:
+        total += count
+        if service_type == "MICU":
+            service_weeks.MICU = count
+        elif service_type == "APP-ICU":
+            service_weeks.APP_ICU = count
+        elif service_type == "Procedures":
+            service_weeks.Procedures = count
+        elif service_type == "Consults":
+            service_weeks.Consults = count
+    service_weeks.total = total
+    
+    return FacultyResponse(
+        id=faculty.id,
+        name=faculty.name,
+        email=faculty.email,
+        rank=faculty.rank,
+        clinical_effort_pct=faculty.clinical_effort_pct,
+        base_points=faculty.base_points,
+        bonus_points=faculty.bonus_points,
+        total_points=faculty.base_points + faculty.bonus_points,
+        active=faculty.active,
+        is_admin=faculty.is_admin,
+        password_changed=faculty.password_changed,
+        registered=faculty.registered,
+        service_weeks=service_weeks
+    )
 
 
 @router.get("/faculty/stats/summary")
