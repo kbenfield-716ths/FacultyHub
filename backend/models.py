@@ -1,7 +1,7 @@
 # backend/models.py
 from datetime import datetime, date
 from sqlalchemy import (
-    Column, Integer, String, Boolean, Date, DateTime,
+    Column, Integer, String, Boolean, Date, DateTime, Float,
     ForeignKey, create_engine, text
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
@@ -87,7 +87,7 @@ class Assignment(Base):
 
 
 # ==========================================
-# FACULTY SCHEDULING MODELS (New)
+# FACULTY SCHEDULING MODELS (Enhanced)
 # ==========================================
 
 class Faculty(Base):
@@ -112,6 +112,32 @@ class Faculty(Base):
     bonus_points = Column(Integer, default=0)  # Earned from volunteering
     active = Column(Boolean, default=True)
     
+    # NEW: Moonlighting eligibility
+    eligible_moonlighter = Column(Boolean, default=False)
+    
+    # NEW: Available points for service unavailability requests
+    available_points = Column(Integer, default=100)  # Starting balance
+    
+    # NEW: Bid priority (for rolling draft system)
+    bid_priority = Column(Integer, default=0)  # Higher = earlier pick
+    
+    # NEW: Service week allocations (min/max weeks per service)
+    # MICU
+    micu_min_weeks = Column(Integer, default=0)
+    micu_max_weeks = Column(Integer, default=0)
+    
+    # APP-ICU
+    appicu_min_weeks = Column(Integer, default=0)
+    appicu_max_weeks = Column(Integer, default=0)
+    
+    # Procedures
+    procedures_min_weeks = Column(Integer, default=0)
+    procedures_max_weeks = Column(Integer, default=0)
+    
+    # Consults
+    consults_min_weeks = Column(Integer, default=0)
+    consults_max_weeks = Column(Integer, default=0)
+    
     # Relationships
     vacation_requests = relationship("VacationRequest", back_populates="faculty")
 
@@ -132,6 +158,11 @@ class VacationWeek(Base):
     point_cost_off = Column(Integer, default=5)     # Cost to take week off
     point_reward_work = Column(Integer, default=0)  # Bonus for volunteering
     min_staff_required = Column(Integer, default=5)
+    
+    # NEW: Heatmap data
+    current_requests = Column(Integer, default=0)   # Number of current unavailability requests
+    max_capacity = Column(Integer, default=20)      # Max people who can be unavailable
+    pressure_score = Column(Float, default=0.0)     # 0.0-1.0 scarcity indicator
     
     # Relationships
     vacation_requests = relationship("VacationRequest", back_populates="week")
@@ -161,6 +192,27 @@ class VacationRequest(Base):
     # Relationships
     faculty = relationship("Faculty", back_populates="vacation_requests")
     week = relationship("VacationWeek", back_populates="vacation_requests")
+
+
+# ==========================================
+# HEATMAP HISTORY (for tracking trends)
+# ==========================================
+
+class WeekHeatmapHistory(Base):
+    """Historical heatmap data for pattern analysis"""
+    __tablename__ = "week_heatmap_history"
+    
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    week_id = Column(String, ForeignKey('vacation_weeks.id'), nullable=False, index=True)
+    snapshot_date = Column(Date, nullable=False)
+    
+    # Snapshot of week state
+    requests_count = Column(Integer, nullable=False)
+    capacity = Column(Integer, nullable=False)
+    pressure_score = Column(Float, nullable=False)
+    point_cost = Column(Integer, nullable=False)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 # ==========================================
@@ -202,6 +254,10 @@ def init_db():
             conn.execute(text("""
                 CREATE INDEX IF NOT EXISTS idx_vacation_weeks_year 
                 ON vacation_weeks(year)
+            """))
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_heatmap_history_week 
+                ON week_heatmap_history(week_id, snapshot_date)
             """))
             
             conn.execute(text("ANALYZE"))
