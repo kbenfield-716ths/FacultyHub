@@ -1,5 +1,4 @@
-<!-- This is a new comprehensive Faculty Management tab to add to admin.html -->
-<!-- Replace the existing "Manage Providers" tab with this -->
+<!-- Comprehensive Faculty Management tab for admin.html -->
 
 <div id="tab-faculty" class="tab-content active">
   <div class="card">
@@ -24,13 +23,14 @@
             <th>Rank</th>
             <th>Clinical %</th>
             <th>Points</th>
+            <th>Service Weeks</th>
             <th>Status</th>
             <th>Admin</th>
             <th style="width: 200px;">Actions</th>
           </tr>
         </thead>
         <tbody id="facultyTableBody">
-          <tr><td colspan="9" style="text-align: center; padding: 20px;">Loading faculty...</td></tr>
+          <tr><td colspan="10" style="text-align: center; padding: 20px;">Loading faculty...</td></tr>
         </tbody>
       </table>
     </div>
@@ -118,6 +118,20 @@
   .badge-inactive { background: #fee2e2; color: #991b1b; }
   .badge-admin { background: #dbeafe; color: #1e40af; font-weight: 700; }
   .badge-rank { background: #f3f4f6; color: #4b5563; }
+  .service-weeks-badge { 
+    display: inline-block;
+    padding: 2px 8px;
+    margin: 2px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #f3f4f6;
+    color: #374151;
+  }
+  .service-weeks-badge.micu { background: #dbeafe; color: #1e40af; }
+  .service-weeks-badge.app-icu { background: #fef3c7; color: #92400e; }
+  .service-weeks-badge.procedures { background: #dcfce7; color: #166534; }
+  .service-weeks-badge.consults { background: #fce7f3; color: #9f1239; }
   .action-btn { padding: 6px 12px; font-size: 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: 500; }
   .action-btn-edit { background: #667eea; color: white; }
   .action-btn-admin { background: #10b981; color: white; }
@@ -146,12 +160,32 @@ async function loadFaculty() {
     errorDiv.style.display = 'none';
     
     if (allFaculty.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: #6b7280;">No faculty yet. Add your first faculty member above.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: #6b7280;">No faculty yet. Add your first faculty member above.</td></tr>';
     } else {
       allFaculty.forEach(f => {
         const row = document.createElement('tr');
-        const totalPoints = f.base_points + f.bonus_points;
+        const totalPoints = f.total_points;
         const rankLabel = f.rank.charAt(0).toUpperCase() + f.rank.slice(1);
+        
+        // Build service weeks display
+        let serviceWeeksHtml = '';
+        if (f.service_weeks.total > 0) {
+          if (f.service_weeks.MICU > 0) {
+            serviceWeeksHtml += `<span class="service-weeks-badge micu">MICU: ${f.service_weeks.MICU}</span>`;
+          }
+          if (f.service_weeks.APP_ICU > 0) {
+            serviceWeeksHtml += `<span class="service-weeks-badge app-icu">APP-ICU: ${f.service_weeks.APP_ICU}</span>`;
+          }
+          if (f.service_weeks.Procedures > 0) {
+            serviceWeeksHtml += `<span class="service-weeks-badge procedures">Proc: ${f.service_weeks.Procedures}</span>`;
+          }
+          if (f.service_weeks.Consults > 0) {
+            serviceWeeksHtml += `<span class="service-weeks-badge consults">Consult: ${f.service_weeks.Consults}</span>`;
+          }
+          serviceWeeksHtml += `<br><small style="color: #6b7280;">Total: ${f.service_weeks.total} weeks</small>`;
+        } else {
+          serviceWeeksHtml = '<span style="color: #9ca3af;">No assignments</span>';
+        }
         
         row.innerHTML = `
           <td><strong>${f.id}</strong></td>
@@ -160,6 +194,7 @@ async function loadFaculty() {
           <td><span class="badge badge-rank">${rankLabel}</span></td>
           <td>${f.clinical_effort_pct}%</td>
           <td>${totalPoints} <small style="color: #6b7280;">(${f.base_points}+${f.bonus_points})</small></td>
+          <td>${serviceWeeksHtml}</td>
           <td><span class="badge ${f.active ? 'badge-active' : 'badge-inactive'}">${f.active ? 'Active' : 'Inactive'}</span></td>
           <td>${f.is_admin ? '<span class="badge badge-admin">ADMIN</span>' : '—'}</td>
           <td>
@@ -179,7 +214,7 @@ async function loadFaculty() {
     errorDiv.textContent = `Error loading faculty: ${error.message}`;
     errorDiv.style.display = 'block';
     countSpan.textContent = 'Error';
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: #dc2626;">Failed to load faculty. See error above.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: #dc2626;">Failed to load faculty. See error above.</td></tr>';
   }
 }
 
