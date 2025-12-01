@@ -412,7 +412,7 @@
               <li>Each row shows ONE week and the COUNT of unavailable faculty</li>
               <li>Example: Week 15 with 7 faculty unavailable = <code>15,7</code></li>
               <li>Only include weeks with unavailability data (skip weeks with 0)</li>
-              <li>This helps identify historically high-demand weeks</li>
+              <li>Data is processed locally in your browser - nothing is sent to the server</li>
             </ul>
           </div>
         </div>
@@ -431,7 +431,7 @@
         <div id="csvPreview" class="csv-preview" style="display: none;"></div>
         
         <div id="importActions" style="display: none; margin-top: 20px;">
-          <button class="btn btn-primary" onclick="uploadCSV()">⬆️ Import Unavailability Data</button>
+          <button class="btn btn-primary" onclick="uploadCSV()">✅ Load Data into Heat Map</button>
           <button class="btn btn-secondary" onclick="cancelImport()">Cancel</button>
         </div>
       </div>
@@ -544,7 +544,9 @@
           const cell = document.createElement('div');
           
           // Use imported historic data if available, otherwise use current data
-          const unavailableCount = historicData[week.week_number] || week.unavailable_count || 0;
+          const unavailableCount = historicData[week.week_number] !== undefined ? 
+                                   historicData[week.week_number] : 
+                                   (week.unavailable_count || 0);
           
           // Determine color based on number of unavailable faculty
           let colorClass = 'low';
@@ -563,13 +565,15 @@
             cell.classList.add('special');
           }
           
+          const dataSource = historicData[week.week_number] !== undefined ? ' (historic)' : '';
+          
           cell.innerHTML = `
             <div class="week-num">W${week.week_number}</div>
             <div class="week-label">${week.label.substring(0, 15)}</div>
             <div class="unavailable-count">${unavailableCount} unavailable</div>
           `;
           
-          cell.title = `Week ${week.week_number}: ${week.label}\nUnavailable: ${unavailableCount} faculty`;
+          cell.title = `Week ${week.week_number}: ${week.label}\nUnavailable: ${unavailableCount} faculty${dataSource}`;
           
           container.appendChild(cell);
         });
@@ -583,7 +587,7 @@
       }
     }
     
-    // ===== CSV IMPORT =====
+    // ===== CSV IMPORT (Client-side processing) =====
     
     function handleFileSelect(event) {
       const file = event.target.files[0];
@@ -642,7 +646,7 @@
       try {
         showAlert('importAlert', 'Processing CSV...', 'info');
         
-        // Read and parse CSV directly in browser
+        // Read and parse CSV directly in browser (NO backend call)
         const text = await selectedFile.text();
         const lines = text.trim().split('\n');
         
@@ -690,7 +694,7 @@
           recordsImported++;
         }
         
-        let message = `Successfully imported ${recordsImported} weeks of data`;
+        let message = `Successfully loaded ${recordsImported} weeks of historic data into heat map!`;
         if (errors.length > 0) {
           message += `\n\nWarnings:\n` + errors.slice(0, 5).join('\n');
           if (errors.length > 5) {
