@@ -96,18 +96,31 @@ async def get_service_weeks_heatmap(
 ):
     """
     Get heat map data showing staffing levels for each week.
+    
+    For current/future years: Uses actual VacationRequest data
+    For past years: Uses seeded historic_unavailable_count data
+    
     Shows how many faculty are unavailable, volunteering, or assigned.
     """
     
     weeks = db.query(VacationWeek).filter(VacationWeek.year == year).order_by(VacationWeek.week_number).all()
     
+    if not weeks:
+        return []  # No weeks configured for this year
+    
     result = []
     for week in weeks:
-        # Count requests by status
-        unavailable_count = db.query(func.count(VacationRequest.id)).filter(
-            VacationRequest.week_id == week.id,
-            VacationRequest.status == "unavailable"
-        ).scalar() or 0
+        # Check if this is historic data (year < current year)
+        # If historic_unavailable_count is set, use it; otherwise count actual requests
+        if week.historic_unavailable_count > 0:
+            # Use historic seeded data
+            unavailable_count = week.historic_unavailable_count
+        else:
+            # Count actual requests from database
+            unavailable_count = db.query(func.count(VacationRequest.id)).filter(
+                VacationRequest.week_id == week.id,
+                VacationRequest.status == "unavailable"
+            ).scalar() or 0
         
         volunteer_count = db.query(func.count(VacationRequest.id)).filter(
             VacationRequest.week_id == week.id,
@@ -121,7 +134,7 @@ async def get_service_weeks_heatmap(
         # Calculate staffing status
         # Assume total active faculty minus unavailable gives available pool
         total_active = db.query(func.count(Faculty.id)).filter(Faculty.active == True).scalar() or 0
-        available_pool = total_active - unavailable_count
+        available_pool = total_active - unavailable_count if total_active > 0 else 0
         
         if available_pool >= week.min_staff_required + 3:
             staffing_status = "good"
@@ -521,7 +534,8 @@ async def generate_service_weeks(
             week_type=week_type,
             point_cost_off=point_cost_off,
             point_reward_work=point_reward_work,
-            min_staff_required=5
+            min_staff_required=5,
+            historic_unavailable_count=0  # Will be seeded separately for historic years
         )
         
         db.add(week)
