@@ -448,25 +448,37 @@ JD3X,1,Procedures,2026</pre>
       
       try {
         const response = await fetch(`/api/admin/service-weeks/heatmap?year=${year}`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+        }
+        
         const data = await response.json();
         
-        if (data.length === 0) {
+        console.log('Heat map data:', data); // Debug
+        
+        // Handle both array and object responses
+        let weeks = Array.isArray(data) ? data : (data.weeks || []);
+        
+        if (weeks.length === 0) {
           loading.textContent = 'No weeks configured for this year. Use Configure tab to generate weeks.';
           return;
         }
         
         container.innerHTML = '';
         
-        data.forEach(week => {
+        weeks.forEach(week => {
           const cell = document.createElement('div');
           
           // Determine color based on number of unavailable faculty
           let colorClass = 'low';
-          if (week.unavailable_count >= 9) {
+          const unavailableCount = week.unavailable_count || 0;
+          
+          if (unavailableCount >= 9) {
             colorClass = 'critical';
-          } else if (week.unavailable_count >= 6) {
+          } else if (unavailableCount >= 6) {
             colorClass = 'high';
-          } else if (week.unavailable_count >= 3) {
+          } else if (unavailableCount >= 3) {
             colorClass = 'medium';
           }
           
@@ -480,14 +492,14 @@ JD3X,1,Procedures,2026</pre>
           cell.innerHTML = `
             <div class="week-num">W${week.week_number}</div>
             <div class="week-label">${week.label.substring(0, 15)}</div>
-            <div class="unavailable-count">${week.unavailable_count} unavailable</div>
+            <div class="unavailable-count">${unavailableCount} unavailable</div>
           `;
           
           cell.title = `Week ${week.week_number}: ${week.label}\n` +
-                      `Unavailable: ${week.unavailable_count} faculty\n` +
-                      `Volunteers: ${week.volunteer_count} faculty\n` +
-                      `Assigned: ${week.assigned_count} faculty\n` +
-                      `Min Required: ${week.min_staff_required} faculty`;
+                      `Unavailable: ${unavailableCount} faculty\n` +
+                      `Volunteers: ${week.volunteer_count || 0} faculty\n` +
+                      `Assigned: ${week.assigned_count || 0} faculty\n` +
+                      `Min Required: ${week.min_staff_required || 5} faculty`;
           
           container.appendChild(cell);
         });
@@ -495,6 +507,7 @@ JD3X,1,Procedures,2026</pre>
         loading.style.display = 'none';
         container.style.display = 'grid';
       } catch (error) {
+        console.error('Heat map error:', error);
         showAlert('heatmapAlert', 'Error loading heat map: ' + error.message, 'error');
         loading.textContent = 'Error loading heat map';
       }
