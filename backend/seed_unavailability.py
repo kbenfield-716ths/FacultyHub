@@ -3,7 +3,7 @@
 Seed historic unavailability data for past academic years.
 
 This script loads CSV files from backend/seed_data/ and populates the
-historic_unavailable_count field in VacationWeek for past years.
+historic_unavailable_count field in ServiceWeek for past years.
 
 Run this manually or as part of initial setup.
 """
@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from models import SessionLocal, VacationWeek
+from models import SessionLocal, ServiceWeek
 
 
 def seed_unavailability_for_year(db: Session, year: int, csv_path: Path) -> dict:
@@ -36,7 +36,7 @@ def seed_unavailability_for_year(db: Session, year: int, csv_path: Path) -> dict
         return {"success": False, "error": f"CSV file not found: {csv_path}"}
     
     # Check if weeks exist for this year
-    weeks = db.query(VacationWeek).filter(VacationWeek.year == year).all()
+    weeks = db.query(ServiceWeek).filter(ServiceWeek.year == year).all()
     if not weeks:
         return {
             "success": False,
