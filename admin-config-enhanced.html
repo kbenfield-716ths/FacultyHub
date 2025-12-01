@@ -320,7 +320,7 @@
   <div class="container">
     <div class="header">
       <h1>⚙️ Service Availability Configuration</h1>
-      <p style="color: #718096; margin-top: 8px;">Configure weeks, import historic data, and visualize unavailability requests</p>
+      <p style="color: #718096; margin-top: 8px;">Configure weeks, import historic unavailability data, and visualize demand patterns</p>
     </div>
     
     <!-- Tabs -->
@@ -376,19 +376,20 @@
       
       <!-- Import Tab -->
       <div id="tab-import" class="tab-content">
-        <h2 class="card-title">📊 Import Historic Service Assignments</h2>
+        <h2 class="card-title">📊 Import Historic Unavailability Data</h2>
         <div id="importAlert" class="alert"></div>
         
         <div class="info-box">
           <h3>📋 CSV File Format</h3>
-          <p style="color: #1e40af; margin-bottom: 12px;">Import past inpatient service assignments to track faculty workload history and identify high-demand weeks.</p>
+          <p style="color: #1e40af; margin-bottom: 12px;">Import past unavailability requests to identify high-demand weeks and inform future scheduling.</p>
           
           <div class="csv-example">
-            <div class="header-row">faculty_id,week_number,service_type,year</div>
-            <div class="data-row">KE4Z,1,MICU,2026</div>
-            <div class="data-row">IN2C,2,APP-ICU,2026</div>
-            <div class="data-row">JD3X,3,Procedures,2026</div>
-            <div class="data-row">AB1Y,4,Consults,2026</div>
+            <div class="header-row">faculty_id,week_number,year</div>
+            <div class="data-row">KE4Z,1,2026</div>
+            <div class="data-row">IN2C,1,2026</div>
+            <div class="data-row">JD3X,15,2026</div>
+            <div class="data-row">AB1Y,15,2026</div>
+            <div class="data-row">KE4Z,52,2026</div>
           </div>
           
           <div style="margin-top: 16px;">
@@ -405,11 +406,6 @@
             </div>
             
             <div class="field-desc">
-              <div class="field-name">service_type</div>
-              <div class="field-info"><strong>Exactly one of:</strong> MICU, APP-ICU, Procedures, Consults</div>
-            </div>
-            
-            <div class="field-desc">
               <div class="field-name">year</div>
               <div class="field-info">Academic year (e.g., 2026 for 2026-2027)</div>
             </div>
@@ -419,10 +415,11 @@
             <strong style="color: #92400e;">⚠️ Important:</strong>
             <ul style="margin: 8px 0 0 20px; color: #92400e;">
               <li>First row must be the header (shown above)</li>
+              <li>Each row represents ONE faculty member requesting to be unavailable for ONE week</li>
+              <li>If 3 faculty are unavailable for week 15, you'll have 3 rows with week_number=15</li>
               <li>Faculty IDs are case-sensitive</li>
-              <li>Service types must match exactly (case-sensitive)</li>
               <li>Weeks must be generated first via "Configure Weeks" tab</li>
-              <li>Weeks with historic assignments will automatically be marked as "premium" (higher point cost)</li>
+              <li>This data helps identify historically high-demand weeks</li>
             </ul>
           </div>
         </div>
@@ -441,7 +438,7 @@
         <div id="csvPreview" class="csv-preview" style="display: none;"></div>
         
         <div id="importActions" style="display: none; margin-top: 20px;">
-          <button class="btn btn-primary" onclick="uploadCSV()">⬆️ Import Assignments</button>
+          <button class="btn btn-primary" onclick="uploadCSV()">⬆️ Import Unavailability Data</button>
           <button class="btn btn-secondary" onclick="cancelImport()">Cancel</button>
         </div>
       </div>
@@ -662,9 +659,9 @@
       formData.append('file', selectedFile);
       
       try {
-        showAlert('importAlert', 'Importing assignments...', 'info');
+        showAlert('importAlert', 'Importing unavailability data...', 'info');
         
-        const response = await fetch('/api/admin/import-historic-assignments', {
+        const response = await fetch('/api/admin/import-historic-unavailability', {
           method: 'POST',
           body: formData
         });
@@ -672,10 +669,7 @@
         const result = await response.json();
         
         if (response.ok) {
-          let message = `Successfully imported ${result.assignments_created} assignments`;
-          if (result.weeks_marked_premium > 0) {
-            message += ` and marked ${result.weeks_marked_premium} weeks as premium`;
-          }
+          let message = `Successfully imported ${result.records_created} unavailability records`;
           if (result.errors && result.errors.length > 0) {
             message += `\n\nWarnings:\n` + result.errors.slice(0, 5).join('\n');
             if (result.errors.length > 5) {
