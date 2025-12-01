@@ -1,4 +1,4 @@
-"""
+""
 Faculty service availability request endpoints.
 These allow faculty to submit their unavailable/available weeks.
 """
@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from datetime import datetime
 import uuid
 
-from backend.models import Faculty, VacationWeek, VacationRequest, get_db
+from backend.models import Faculty, ServiceWeek, UnavailabilityRequest, get_db
 from backend.auth import get_current_user
 
 router = APIRouter(prefix="/api/service-requests", tags=["service-requests"])
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/service-requests", tags=["service-requests"])
 # PYDANTIC MODELS
 # ==========================================
 
-class VacationRequestInput(BaseModel):
+class UnavailabilityRequestInput(BaseModel):
     """Model for a single vacation request"""
     week_id: str
     status: str  # "unavailable" or "available"
@@ -27,12 +27,12 @@ class VacationRequestInput(BaseModel):
     points_earned: int = 0
 
 
-class VacationRequestSubmit(BaseModel):
+class UnavailabilityRequestSubmit(BaseModel):
     """Model for submitting multiple requests"""
-    requests: List[VacationRequestInput]
+    requests: List[UnavailabilityRequestInput]
 
 
-class VacationRequestResponse(BaseModel):
+class UnavailabilityRequestResponse(BaseModel):
     """Model for vacation request response"""
     id: str
     faculty_id: str
@@ -54,8 +54,8 @@ class VacationRequestResponse(BaseModel):
 # ==========================================
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-def submit_vacation_requests(
-    data: VacationRequestSubmit,
+def submit_unavailability_requests(
+    data: UnavailabilityRequestSubmit,
     current_user: Faculty = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -65,15 +65,15 @@ def submit_vacation_requests(
     """
     try:
         # Delete existing requests for this faculty
-        db.query(VacationRequest).filter(
-            VacationRequest.faculty_id == current_user.id
+        db.query(UnavailabilityRequest).filter(
+            UnavailabilityRequest.faculty_id == current_user.id
         ).delete()
         
         # Create new requests
         created_requests = []
         for req in data.requests:
             # Verify week exists
-            week = db.query(VacationWeek).filter_by(id=req.week_id).first()
+            week = db.query(ServiceWeek).filter_by(id=req.week_id).first()
             if not week:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
@@ -88,7 +88,7 @@ def submit_vacation_requests(
                 )
             
             # Create request
-            vacation_request = VacationRequest(
+            unavailability_request = UnavailabilityRequest(
                 id=f"VR-{uuid.uuid4().hex[:8].upper()}",
                 faculty_id=current_user.id,
                 week_id=req.week_id,
@@ -98,8 +98,8 @@ def submit_vacation_requests(
                 gives_priority=False  # Will be set by admin during draft
             )
             
-            db.add(vacation_request)
-            created_requests.append(vacation_request)
+            db.add(unavailability_request)
+            created_requests.append(unavailability_request)
         
         db.commit()
         
@@ -120,7 +120,7 @@ def submit_vacation_requests(
         )
 
 
-@router.get("/my-requests", response_model=List[VacationRequestResponse])
+@router.get("/my-requests", response_model=List[UnavailabilityRequestResponse])
 def get_my_requests(
     current_user: Faculty = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -130,26 +130,26 @@ def get_my_requests(
     """
     requests = (
         db.query(
-            VacationRequest.id,
-            VacationRequest.faculty_id,
+            UnavailabilityRequest.id,
+            UnavailabilityRequest.faculty_id,
             Faculty.name.label("faculty_name"),
-            VacationRequest.week_id,
-            VacationWeek.week_number,
-            VacationWeek.label.label("week_label"),
-            VacationRequest.status,
-            VacationRequest.points_spent,
-            VacationRequest.points_earned,
-            VacationRequest.created_at
+            UnavailabilityRequest.week_id,
+            ServiceWeek.week_number,
+            ServiceWeek.label.label("week_label"),
+            UnavailabilityRequest.status,
+            UnavailabilityRequest.points_spent,
+            UnavailabilityRequest.points_earned,
+            UnavailabilityRequest.created_at
         )
-        .join(Faculty, VacationRequest.faculty_id == Faculty.id)
-        .join(VacationWeek, VacationRequest.week_id == VacationWeek.id)
-        .filter(VacationRequest.faculty_id == current_user.id)
-        .order_by(VacationWeek.week_number)
+        .join(Faculty, UnavailabilityRequest.faculty_id == Faculty.id)
+        .join(ServiceWeek, UnavailabilityRequest.week_id == ServiceWeek.id)
+        .filter(UnavailabilityRequest.faculty_id == current_user.id)
+        .order_by(ServiceWeek.week_number)
         .all()
     )
     
     return [
-        VacationRequestResponse(
+        UnavailabilityRequestResponse(
             id=r.id,
             faculty_id=r.faculty_id,
             faculty_name=r.faculty_name,
@@ -173,8 +173,8 @@ def delete_my_requests(
     """
     Delete all vacation requests for the current faculty member.
     """
-    db.query(VacationRequest).filter(
-        VacationRequest.faculty_id == current_user.id
+    db.query(UnavailabilityRequest).filter(
+        UnavailabilityRequest.faculty_id == current_user.id
     ).delete()
     
     db.commit()
@@ -190,8 +190,8 @@ def get_my_summary(
     Get summary statistics for the current faculty member.
     """
     # Count requests by status
-    requests = db.query(VacationRequest).filter(
-        VacationRequest.faculty_id == current_user.id
+    requests = db.query(UnavailabilityRequest).filter(
+        UnavailabilityRequest.faculty_id == current_user.id
     ).all()
     
     unavailable_count = sum(1 for r in requests if r.status == "unavailable")
@@ -215,3 +215,4 @@ def get_my_summary(
         "weeks_available": available_count,
         "total_requests": len(requests)
     }
+unavailability_request
