@@ -80,7 +80,7 @@
     
     .heatmap-container {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
       gap: 8px;
       margin-top: 20px;
     }
@@ -88,7 +88,7 @@
     .heatmap-cell {
       aspect-ratio: 1;
       border-radius: 8px;
-      padding: 8px;
+      padding: 10px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -101,24 +101,37 @@
     }
     
     .heatmap-cell:hover {
-      transform: scale(1.05);
+      transform: scale(1.08);
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 10;
     }
     
-    .heatmap-cell.good { background: #d1fae5; color: #065f46; }
-    .heatmap-cell.tight { background: #fef3c7; color: #92400e; }
-    .heatmap-cell.critical { background: #fee2e2; color: #991b1b; }
-    .heatmap-cell.special { border: 2px solid #667eea; }
+    /* Color based on number of unavailable faculty */
+    .heatmap-cell.low { background: #d1fae5; color: #065f46; }
+    .heatmap-cell.medium { background: #fef3c7; color: #92400e; }
+    .heatmap-cell.high { background: #fecaca; color: #991b1b; }
+    .heatmap-cell.critical { background: #fee2e2; color: #7f1d1d; font-weight: 700; }
+    .heatmap-cell.special { border: 3px solid #667eea; }
     
-    .week-num { font-size: 16px; margin-bottom: 4px; }
-    .week-label { font-size: 9px; opacity: 0.7; }
-    .staff-count { font-size: 10px; margin-top: 4px; }
+    .week-num { font-size: 18px; margin-bottom: 4px; font-weight: 700; }
+    .week-label { font-size: 9px; opacity: 0.7; margin-bottom: 6px; }
+    .unavailable-count { 
+      font-size: 14px; 
+      margin-top: 4px; 
+      font-weight: 700;
+      padding: 4px 8px;
+      background: rgba(0,0,0,0.1);
+      border-radius: 4px;
+    }
     
     .legend {
       display: flex;
       gap: 16px;
       margin-bottom: 16px;
       flex-wrap: wrap;
+      padding: 12px;
+      background: #f7fafc;
+      border-radius: 8px;
     }
     
     .legend-item {
@@ -126,11 +139,12 @@
       align-items: center;
       gap: 8px;
       font-size: 13px;
+      font-weight: 500;
     }
     
     .legend-box {
-      width: 20px;
-      height: 20px;
+      width: 24px;
+      height: 24px;
       border-radius: 4px;
     }
     
@@ -253,20 +267,21 @@
   <div class="container">
     <div class="header">
       <h1>⚙️ Service Availability Configuration</h1>
-      <p style="color: #718096; margin-top: 8px;">Configure weeks, import historic data, and visualize staffing</p>
+      <p style="color: #718096; margin-top: 8px;">Configure weeks, import historic data, and visualize unavailability requests</p>
     </div>
     
     <!-- Tabs -->
     <div class="card">
       <div class="tabs">
-        <button class="tab active" onclick="switchTab('heat-map')">Heat Map</button>
+        <button class="tab active" onclick="switchTab('heat-map')">Unavailability Heat Map</button>
         <button class="tab" onclick="switchTab('import')">Import Historic Data</button>
         <button class="tab" onclick="switchTab('configure')">Configure Weeks</button>
       </div>
       
       <!-- Heat Map Tab -->
       <div id="tab-heat-map" class="tab-content active">
-        <h2 class="card-title">📅 Staffing Heat Map</h2>
+        <h2 class="card-title">📅 Faculty Unavailability by Week</h2>
+        <p style="color: #718096; margin-bottom: 16px; font-size: 14px;">Shows number of faculty requesting to be unavailable for inpatient service each week</p>
         <div id="heatmapAlert" class="alert"></div>
         
         <div class="form-row">
@@ -285,16 +300,20 @@
         
         <div class="legend">
           <div class="legend-item">
-            <div class="legend-box good"></div>
-            <span>Good Staffing (3+ above min)</span>
+            <div class="legend-box low"></div>
+            <span>Low Demand (0-2 unavailable)</span>
           </div>
           <div class="legend-item">
-            <div class="legend-box tight"></div>
-            <span>Tight Staffing (at min)</span>
+            <div class="legend-box medium"></div>
+            <span>Medium Demand (3-5 unavailable)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-box high"></div>
+            <span>High Demand (6-8 unavailable)</span>
           </div>
           <div class="legend-item">
             <div class="legend-box critical"></div>
-            <span>Critical (below min)</span>
+            <span>Critical (9+ unavailable)</span>
           </div>
         </div>
         
@@ -440,22 +459,35 @@ JD3X,1,Procedures,2026</pre>
         
         data.forEach(week => {
           const cell = document.createElement('div');
-          cell.className = `heatmap-cell ${week.staffing_status}`;
-          if (week.week_type !== 'regular' && week.week_type !== 'summer') {
-            cell.classList.add('special');
+          
+          // Determine color based on number of unavailable faculty
+          let colorClass = 'low';
+          if (week.unavailable_count >= 9) {
+            colorClass = 'critical';
+          } else if (week.unavailable_count >= 6) {
+            colorClass = 'high';
+          } else if (week.unavailable_count >= 3) {
+            colorClass = 'medium';
           }
           
-          const available = week.unavailable_count > 0 ? 
-            `<div class="staff-count">${week.unavailable_count} unavail</div>` : '';
+          cell.className = `heatmap-cell ${colorClass}`;
+          
+          // Mark special weeks with border
+          if (week.week_type !== 'regular' && week.week_type !== 'summer' && week.week_type !== 'premium') {
+            cell.classList.add('special');
+          }
           
           cell.innerHTML = `
             <div class="week-num">W${week.week_number}</div>
             <div class="week-label">${week.label.substring(0, 15)}</div>
-            ${available}
-            <div class="staff-count">${week.assigned_count} assigned</div>
+            <div class="unavailable-count">${week.unavailable_count} unavailable</div>
           `;
           
-          cell.title = `Week ${week.week_number}: ${week.label}\nUnavailable: ${week.unavailable_count}\nVolunteers: ${week.volunteer_count}\nAssigned: ${week.assigned_count}\nMin Required: ${week.min_staff_required}`;
+          cell.title = `Week ${week.week_number}: ${week.label}\n` +
+                      `Unavailable: ${week.unavailable_count} faculty\n` +
+                      `Volunteers: ${week.volunteer_count} faculty\n` +
+                      `Assigned: ${week.assigned_count} faculty\n` +
+                      `Min Required: ${week.min_staff_required} faculty`;
           
           container.appendChild(cell);
         });
