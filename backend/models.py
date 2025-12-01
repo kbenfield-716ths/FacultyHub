@@ -134,6 +134,9 @@ class VacationWeek(Base):
     point_reward_work = Column(Integer, default=0)  # Bonus for volunteering
     min_staff_required = Column(Integer, default=5)
     
+    # Historic data seeding (for previous years before system was deployed)
+    historic_unavailable_count = Column(Integer, default=0)  # Number of faculty unavailable (from seed data)
+    
     # Relationships
     vacation_requests = relationship("VacationRequest", back_populates="week")
     service_assignments = relationship("ServiceWeekAssignment", back_populates="week")
