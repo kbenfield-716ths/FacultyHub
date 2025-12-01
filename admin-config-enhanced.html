@@ -298,7 +298,7 @@
     
     .field-desc {
       display: grid;
-      grid-template-columns: 150px 1fr;
+      grid-template-columns: 180px 1fr;
       gap: 12px;
       margin: 8px 0;
       padding: 8px;
@@ -381,24 +381,18 @@
         
         <div class="info-box">
           <h3>📋 CSV File Format</h3>
-          <p style="color: #1e40af; margin-bottom: 12px;">Import past unavailability requests to identify high-demand weeks and inform future scheduling.</p>
+          <p style="color: #1e40af; margin-bottom: 12px;">Import historic data showing how many faculty were unavailable each week to identify high-demand periods.</p>
           
           <div class="csv-example">
-            <div class="header-row">faculty_id,week_number,year</div>
-            <div class="data-row">KE4Z,1,2026</div>
-            <div class="data-row">IN2C,1,2026</div>
-            <div class="data-row">JD3X,15,2026</div>
-            <div class="data-row">AB1Y,15,2026</div>
-            <div class="data-row">KE4Z,52,2026</div>
+            <div class="header-row">week_number,unavailable_count</div>
+            <div class="data-row">1,3</div>
+            <div class="data-row">15,7</div>
+            <div class="data-row">25,5</div>
+            <div class="data-row">52,9</div>
           </div>
           
           <div style="margin-top: 16px;">
             <strong style="color: #1f2937;">Field Descriptions:</strong>
-            
-            <div class="field-desc">
-              <div class="field-name">faculty_id</div>
-              <div class="field-info">Faculty computing ID (e.g., KE4Z, IN2C) - must exist in system</div>
-            </div>
             
             <div class="field-desc">
               <div class="field-name">week_number</div>
@@ -406,20 +400,19 @@
             </div>
             
             <div class="field-desc">
-              <div class="field-name">year</div>
-              <div class="field-info">Academic year (e.g., 2026 for 2026-2027)</div>
+              <div class="field-name">unavailable_count</div>
+              <div class="field-info">Total number of faculty unavailable that week</div>
             </div>
           </div>
           
           <div style="margin-top: 16px; padding: 12px; background: #fef3c7; border-radius: 6px;">
             <strong style="color: #92400e;">⚠️ Important:</strong>
             <ul style="margin: 8px 0 0 20px; color: #92400e;">
-              <li>First row must be the header (shown above)</li>
-              <li>Each row represents ONE faculty member requesting to be unavailable for ONE week</li>
-              <li>If 3 faculty are unavailable for week 15, you'll have 3 rows with week_number=15</li>
-              <li>Faculty IDs are case-sensitive</li>
-              <li>Weeks must be generated first via "Configure Weeks" tab</li>
-              <li>This data helps identify historically high-demand weeks</li>
+              <li>First row must be the header: <code>week_number,unavailable_count</code></li>
+              <li>Each row shows ONE week and the COUNT of unavailable faculty</li>
+              <li>Example: Week 15 with 7 faculty unavailable = <code>15,7</code></li>
+              <li>Only include weeks with unavailability data (skip weeks with 0)</li>
+              <li>This helps identify historically high-demand weeks</li>
             </ul>
           </div>
         </div>
@@ -505,18 +498,16 @@
   <script>
     let selectedFile = null;
     let currentTab = 'heat-map';
+    let historicData = {}; // Store imported data: {week_number: unavailable_count}
     
     function switchTab(tabName) {
-      // Hide all tabs
       document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       
-      // Show selected tab
       document.getElementById(`tab-${tabName}`).classList.add('active');
       event.target.classList.add('active');
       currentTab = tabName;
       
-      // Load data for tab
       if (tabName === 'heat-map') {
         loadHeatMap();
       }
@@ -540,10 +531,6 @@
         }
         
         const data = await response.json();
-        
-        console.log('Heat map data:', data); // Debug
-        
-        // Handle both array and object responses
         let weeks = Array.isArray(data) ? data : (data.weeks || []);
         
         if (weeks.length === 0) {
@@ -556,10 +543,11 @@
         weeks.forEach(week => {
           const cell = document.createElement('div');
           
+          // Use imported historic data if available, otherwise use current data
+          const unavailableCount = historicData[week.week_number] || week.unavailable_count || 0;
+          
           // Determine color based on number of unavailable faculty
           let colorClass = 'low';
-          const unavailableCount = week.unavailable_count || 0;
-          
           if (unavailableCount >= 9) {
             colorClass = 'critical';
           } else if (unavailableCount >= 6) {
@@ -581,11 +569,7 @@
             <div class="unavailable-count">${unavailableCount} unavailable</div>
           `;
           
-          cell.title = `Week ${week.week_number}: ${week.label}\n` +
-                      `Unavailable: ${unavailableCount} faculty\n` +
-                      `Volunteers: ${week.volunteer_count || 0} faculty\n` +
-                      `Assigned: ${week.assigned_count || 0} faculty\n` +
-                      `Min Required: ${week.min_staff_required || 5} faculty`;
+          cell.title = `Week ${week.week_number}: ${week.label}\nUnavailable: ${unavailableCount} faculty`;
           
           container.appendChild(cell);
         });
@@ -655,33 +639,69 @@
     async function uploadCSV() {
       if (!selectedFile) return;
       
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      
       try {
-        showAlert('importAlert', 'Importing unavailability data...', 'info');
+        showAlert('importAlert', 'Processing CSV...', 'info');
         
-        const response = await fetch('/api/admin/import-historic-unavailability', {
-          method: 'POST',
-          body: formData
-        });
+        // Read and parse CSV directly in browser
+        const text = await selectedFile.text();
+        const lines = text.trim().split('\n');
         
-        const result = await response.json();
-        
-        if (response.ok) {
-          let message = `Successfully imported ${result.records_created} unavailability records`;
-          if (result.errors && result.errors.length > 0) {
-            message += `\n\nWarnings:\n` + result.errors.slice(0, 5).join('\n');
-            if (result.errors.length > 5) {
-              message += `\n... and ${result.errors.length - 5} more`;
-            }
-          }
-          showAlert('importAlert', message, 'success');
-          cancelImport();
-          loadHeatMap(); // Refresh heat map
-        } else {
-          showAlert('importAlert', result.detail || 'Import failed', 'error');
+        if (lines.length < 2) {
+          showAlert('importAlert', 'CSV file is empty or has no data rows', 'error');
+          return;
         }
+        
+        // Validate header
+        const header = lines[0].toLowerCase().trim();
+        if (!header.includes('week_number') || !header.includes('unavailable_count')) {
+          showAlert('importAlert', 'CSV must have columns: week_number,unavailable_count', 'error');
+          return;
+        }
+        
+        // Parse data rows
+        historicData = {};
+        let recordsImported = 0;
+        const errors = [];
+        
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          
+          const parts = line.split(',');
+          if (parts.length < 2) {
+            errors.push(`Row ${i + 1}: Invalid format`);
+            continue;
+          }
+          
+          const weekNum = parseInt(parts[0].trim());
+          const count = parseInt(parts[1].trim());
+          
+          if (isNaN(weekNum) || isNaN(count)) {
+            errors.push(`Row ${i + 1}: Invalid numbers`);
+            continue;
+          }
+          
+          if (weekNum < 1 || weekNum > 52) {
+            errors.push(`Row ${i + 1}: Week number must be 1-52`);
+            continue;
+          }
+          
+          historicData[weekNum] = count;
+          recordsImported++;
+        }
+        
+        let message = `Successfully imported ${recordsImported} weeks of data`;
+        if (errors.length > 0) {
+          message += `\n\nWarnings:\n` + errors.slice(0, 5).join('\n');
+          if (errors.length > 5) {
+            message += `\n... and ${errors.length - 5} more`;
+          }
+        }
+        
+        showAlert('importAlert', message, 'success');
+        cancelImport();
+        loadHeatMap(); // Refresh heat map with imported data
+        
       } catch (error) {
         showAlert('importAlert', 'Error: ' + error.message, 'error');
       }
