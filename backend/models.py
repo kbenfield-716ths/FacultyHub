@@ -87,7 +87,7 @@ class Assignment(Base):
 
 
 # ==========================================
-# FACULTY SCHEDULING MODELS (New)
+# FACULTY SCHEDULING MODELS (Service Availability)
 # ==========================================
 
 class Faculty(Base):
@@ -113,13 +113,13 @@ class Faculty(Base):
     active = Column(Boolean, default=True)
     
     # Relationships
-    vacation_requests = relationship("VacationRequest", back_populates="faculty")
+    unavailability_requests = relationship("UnavailabilityRequest", back_populates="faculty")
     service_assignments = relationship("ServiceWeekAssignment", back_populates="faculty")
 
 
-class VacationWeek(Base):
-    """The 52 weeks of the academic year for vacation scheduling"""
-    __tablename__ = "vacation_weeks"
+class ServiceWeek(Base):
+    """The 52 weeks of the academic year for service availability scheduling"""
+    __tablename__ = "service_weeks"
     
     id = Column(String, primary_key=True, index=True)  # "W01", "W02", etc.
     week_number = Column(Integer, nullable=False, unique=True)
@@ -130,7 +130,7 @@ class VacationWeek(Base):
     
     # Week characteristics
     week_type = Column(String, default="regular")  # regular, summer, spring_break, thanksgiving, christmas
-    point_cost_off = Column(Integer, default=5)     # Cost to take week off
+    point_cost_off = Column(Integer, default=5)     # Cost to request unavailability
     point_reward_work = Column(Integer, default=0)  # Bonus for volunteering
     min_staff_required = Column(Integer, default=5)
     
@@ -138,23 +138,23 @@ class VacationWeek(Base):
     historic_unavailable_count = Column(Integer, default=0)  # Number of faculty unavailable (from seed data)
     
     # Relationships
-    vacation_requests = relationship("VacationRequest", back_populates="week")
+    unavailability_requests = relationship("UnavailabilityRequest", back_populates="week")
     service_assignments = relationship("ServiceWeekAssignment", back_populates="week")
 
 
-class VacationRequest(Base):
-    """Faculty vacation requests for specific weeks"""
-    __tablename__ = "vacation_requests"
+class UnavailabilityRequest(Base):
+    """Faculty unavailability requests for specific weeks"""
+    __tablename__ = "unavailability_requests"
     
     id = Column(String, primary_key=True, index=True)
     faculty_id = Column(String, ForeignKey('faculty.id'), nullable=False, index=True)
-    week_id = Column(String, ForeignKey('vacation_weeks.id'), nullable=False, index=True)
+    week_id = Column(String, ForeignKey('service_weeks.id'), nullable=False, index=True)
     
-    # Status: "unavailable" (wants off), "available" (volunteers), "assigned" (final)
+    # Status: "unavailable" (requests time off), "available" (volunteers), "assigned" (final)
     status = Column(String, nullable=False, default="unavailable")
     
     # Points tracking
-    points_spent = Column(Integer, default=0)   # For taking week off
+    points_spent = Column(Integer, default=0)   # For requesting unavailability
     points_earned = Column(Integer, default=0)  # For volunteering
     
     # Draft priority tracking
@@ -164,8 +164,8 @@ class VacationRequest(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    faculty = relationship("Faculty", back_populates="vacation_requests")
-    week = relationship("VacationWeek", back_populates="vacation_requests")
+    faculty = relationship("Faculty", back_populates="unavailability_requests")
+    week = relationship("ServiceWeek", back_populates="unavailability_requests")
 
 
 class ServiceWeekAssignment(Base):
@@ -174,7 +174,7 @@ class ServiceWeekAssignment(Base):
     
     id = Column(String, primary_key=True, index=True)
     faculty_id = Column(String, ForeignKey('faculty.id'), nullable=False, index=True)
-    week_id = Column(String, ForeignKey('vacation_weeks.id'), nullable=False, index=True)
+    week_id = Column(String, ForeignKey('service_weeks.id'), nullable=False, index=True)
     
     # Service type: "MICU", "APP-ICU", "Procedures", "Consults"
     service_type = Column(String, nullable=False, index=True)
@@ -187,7 +187,7 @@ class ServiceWeekAssignment(Base):
     
     # Relationships
     faculty = relationship("Faculty", back_populates="service_assignments")
-    week = relationship("VacationWeek", back_populates="service_assignments")
+    week = relationship("ServiceWeek", back_populates="service_assignments")
 
 
 # ==========================================
@@ -215,20 +215,20 @@ def init_db():
                 CREATE INDEX IF NOT EXISTS idx_faculty_active ON faculty(active)
             """))
             conn.execute(text("""
-                CREATE INDEX IF NOT EXISTS idx_vacation_requests_faculty_week 
-                ON vacation_requests(faculty_id, week_id)
+                CREATE INDEX IF NOT EXISTS idx_unavailability_requests_faculty_week 
+                ON unavailability_requests(faculty_id, week_id)
             """))
             conn.execute(text("""
-                CREATE INDEX IF NOT EXISTS idx_vacation_requests_status 
-                ON vacation_requests(status)
+                CREATE INDEX IF NOT EXISTS idx_unavailability_requests_status 
+                ON unavailability_requests(status)
             """))
             conn.execute(text("""
-                CREATE INDEX IF NOT EXISTS idx_vacation_weeks_number 
-                ON vacation_weeks(week_number)
+                CREATE INDEX IF NOT EXISTS idx_service_weeks_number 
+                ON service_weeks(week_number)
             """))
             conn.execute(text("""
-                CREATE INDEX IF NOT EXISTS idx_vacation_weeks_year 
-                ON vacation_weeks(year)
+                CREATE INDEX IF NOT EXISTS idx_service_weeks_year 
+                ON service_weeks(year)
             """))
             conn.execute(text("""
                 CREATE INDEX IF NOT EXISTS idx_service_assignments_faculty_week 
