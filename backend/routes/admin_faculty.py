@@ -9,7 +9,7 @@ from sqlalchemy import func
 from typing import List, Optional
 from pydantic import BaseModel, EmailStr
 
-from backend.models import Faculty, ServiceWeekAssignment, VacationWeek, get_db
+from backend.models import Faculty, ServiceWeekAssignment, ServiceWeek, get_db
 from backend.auth import require_admin, hash_password
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])

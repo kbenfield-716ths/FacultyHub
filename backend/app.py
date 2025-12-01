@@ -60,6 +60,16 @@ def get_db():
     finally:
         db.close()
 
+    # Seed unavailability data from CSV (if weeks exist)
+    try:
+        from .seed_unavailability import seed_all_historic_data
+        seed_all_historic_data()
+    except Exception as e:
+        print(f"[Startup] Note: {e}")
+
+
+    
+
 
 # ---------- Pydantic Schemas ----------
 
@@ -149,6 +159,16 @@ def startup_event():
         print(f"[Startup] Error creating admin user: {e}")
     finally:
         db.close()
+
+    # Seed unavailability data from CSV (if weeks exist)
+    try:
+        from .seed_unavailability import seed_all_historic_data
+        seed_all_historic_data()
+    except Exception as e:
+        print(f"[Startup] Note: {e}")
+
+
+    
 
 
 # ========================================

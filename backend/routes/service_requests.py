@@ -1,4 +1,4 @@
-""
+"""
 Faculty service availability request endpoints.
 These allow faculty to submit their unavailable/available weeks.
 """
@@ -215,4 +215,3 @@ def get_my_summary(
         "weeks_available": available_count,
         "total_requests": len(requests)
     }
-unavailability_request
