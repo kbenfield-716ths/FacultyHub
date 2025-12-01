@@ -15,7 +15,7 @@ import uuid
 import csv
 import io
 
-from backend.models import get_db, Faculty, VacationWeek, VacationRequest, ServiceWeekAssignment
+from backend.models import get_db, Faculty, ServiceWeek, UnavailabilityRequest, ServiceWeekAssignment
 from backend.auth import get_current_user, require_admin
 
 router = APIRouter(prefix="/api/admin", tags=["admin-service"])
@@ -97,13 +97,13 @@ async def get_service_weeks_heatmap(
     """
     Get heat map data showing staffing levels for each week.
     
-    For current/future years: Uses actual VacationRequest data
+    For current/future years: Uses actual UnavailabilityRequest data
     For past years: Uses seeded historic_unavailable_count data
     
     Shows how many faculty are unavailable, volunteering, or assigned.
     """
     
-    weeks = db.query(VacationWeek).filter(VacationWeek.year == year).order_by(VacationWeek.week_number).all()
+    weeks = db.query(ServiceWeek).filter(ServiceWeek.year == year).order_by(ServiceWeek.week_number).all()
     
     if not weeks:
         return []  # No weeks configured for this year
@@ -117,14 +117,14 @@ async def get_service_weeks_heatmap(
             unavailable_count = week.historic_unavailable_count
         else:
             # Count actual requests from database
-            unavailable_count = db.query(func.count(VacationRequest.id)).filter(
-                VacationRequest.week_id == week.id,
-                VacationRequest.status == "unavailable"
+            unavailable_count = db.query(func.count(UnavailabilityRequest.id)).filter(
+                UnavailabilityRequest.week_id == week.id,
+                UnavailabilityRequest.status == "unavailable"
             ).scalar() or 0
         
-        volunteer_count = db.query(func.count(VacationRequest.id)).filter(
-            VacationRequest.week_id == week.id,
-            VacationRequest.status == "available"
+        volunteer_count = db.query(func.count(UnavailabilityRequest.id)).filter(
+            UnavailabilityRequest.week_id == week.id,
+            UnavailabilityRequest.status == "available"
         ).scalar() or 0
         
         assigned_count = db.query(func.count(ServiceWeekAssignment.id)).filter(
@@ -221,7 +221,7 @@ async def import_historic_assignments(
                 
                 # Find or get week
                 week_id = f"W{week_number:02d}-{year}"
-                week = db.query(VacationWeek).filter_by(id=week_id).first()
+                week = db.query(ServiceWeek).filter_by(id=week_id).first()
                 
                 if not week:
                     errors.append(f"Row {row_num}: Week {week_number} for year {year} not found. Generate weeks first.")
@@ -285,13 +285,13 @@ async def get_service_weeks(
 ):
     """Get all service availability weeks for a given year"""
     
-    weeks = db.query(VacationWeek).filter(VacationWeek.year == year).order_by(VacationWeek.week_number).all()
+    weeks = db.query(ServiceWeek).filter(ServiceWeek.year == year).order_by(ServiceWeek.week_number).all()
     
     # Get request counts and assignment counts for each week
     result = []
     for week in weeks:
-        request_count = db.query(func.count(VacationRequest.id)).filter(
-            VacationRequest.week_id == week.id
+        request_count = db.query(func.count(UnavailabilityRequest.id)).filter(
+            UnavailabilityRequest.week_id == week.id
         ).scalar()
         
         assignment_count = db.query(func.count(ServiceWeekAssignment.id)).filter(
@@ -324,7 +324,7 @@ async def update_service_week_partial(
 ):
     """Partially update a service week's details (PATCH for inline editing)"""
     
-    week = db.query(VacationWeek).filter(VacationWeek.id == week_id).first()
+    week = db.query(ServiceWeek).filter(ServiceWeek.id == week_id).first()
     if not week:
         raise HTTPException(status_code=404, detail="Week not found")
     
@@ -371,12 +371,12 @@ async def delete_single_week(
 ):
     """Delete a single service availability week"""
     
-    week = db.query(VacationWeek).filter(VacationWeek.id == week_id).first()
+    week = db.query(ServiceWeek).filter(ServiceWeek.id == week_id).first()
     if not week:
         raise HTTPException(status_code=404, detail="Week not found")
     
     # Delete associated requests and assignments
-    db.query(VacationRequest).filter(VacationRequest.week_id == week_id).delete(synchronize_session=False)
+    db.query(UnavailabilityRequest).filter(UnavailabilityRequest.week_id == week_id).delete(synchronize_session=False)
     db.query(ServiceWeekAssignment).filter(ServiceWeekAssignment.week_id == week_id).delete(synchronize_session=False)
     
     # Delete the week
@@ -405,7 +405,7 @@ async def generate_service_weeks(
     """
     
     # Check if weeks already exist for this year
-    existing = db.query(VacationWeek).filter(VacationWeek.year == request.year).first()
+    existing = db.query(ServiceWeek).filter(ServiceWeek.year == request.year).first()
     if existing:
         raise HTTPException(
             status_code=400,
@@ -524,7 +524,7 @@ async def generate_service_weeks(
                 break
         
         # Create week
-        week = VacationWeek(
+        week = ServiceWeek(
             id=f"W{week_num:02d}-{request.year}",
             week_number=week_num,
             label=label,
@@ -567,18 +567,18 @@ async def clear_service_weeks(
     """
     
     if year:
-        weeks = db.query(VacationWeek).filter(VacationWeek.year == year).all()
+        weeks = db.query(ServiceWeek).filter(ServiceWeek.year == year).all()
     else:
-        weeks = db.query(VacationWeek).all()
+        weeks = db.query(ServiceWeek).all()
     
     week_ids = [w.id for w in weeks]
     
     # Delete all requests and assignments for these weeks
-    db.query(VacationRequest).filter(VacationRequest.week_id.in_(week_ids)).delete(synchronize_session=False)
+    db.query(UnavailabilityRequest).filter(UnavailabilityRequest.week_id.in_(week_ids)).delete(synchronize_session=False)
     db.query(ServiceWeekAssignment).filter(ServiceWeekAssignment.week_id.in_(week_ids)).delete(synchronize_session=False)
     
     # Delete weeks
-    db.query(VacationWeek).filter(VacationWeek.id.in_(week_ids)).delete(synchronize_session=False)
+    db.query(ServiceWeek).filter(ServiceWeek.id.in_(week_ids)).delete(synchronize_session=False)
     
     db.commit()
     
@@ -598,13 +598,13 @@ async def get_service_requests(
 ):
     """Get all service availability requests with filters"""
     
-    query = db.query(VacationRequest).join(VacationWeek).join(Faculty)
+    query = db.query(UnavailabilityRequest).join(ServiceWeek).join(Faculty)
     
     if year:
-        query = query.filter(VacationWeek.year == year)
+        query = query.filter(ServiceWeek.year == year)
     
     if faculty_id:
-        query = query.filter(VacationRequest.faculty_id == faculty_id)
+        query = query.filter(UnavailabilityRequest.faculty_id == faculty_id)
     
     requests = query.all()
     
