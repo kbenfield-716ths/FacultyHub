@@ -106,11 +106,12 @@
       z-index: 10;
     }
     
-    /* Color based on number of unavailable faculty */
-    .heatmap-cell.low { background: #d1fae5; color: #065f46; }
-    .heatmap-cell.medium { background: #fef3c7; color: #92400e; }
-    .heatmap-cell.high { background: #fecaca; color: #991b1b; }
-    .heatmap-cell.critical { background: #fee2e2; color: #7f1d1d; font-weight: 700; }
+    /* Updated color thresholds based on 2025-26 historic data */
+    /* Data shows: Min=3, Q1=7, Median=9, Q3=13, Max=21 */
+    .heatmap-cell.low { background: #d1fae5; color: #065f46; }      /* 0-7: Bottom 25% */
+    .heatmap-cell.medium { background: #fef3c7; color: #92400e; }   /* 8-9: 25th-50th percentile */
+    .heatmap-cell.high { background: #fed7aa; color: #9a3412; }     /* 10-13: 50th-75th percentile */
+    .heatmap-cell.critical { background: #fecaca; color: #7f1d1d; font-weight: 700; }  /* 14+: Top 25% */
     .heatmap-cell.special { border: 3px solid #667eea; }
     
     .week-num { font-size: 18px; margin-bottom: 4px; font-weight: 700; }
@@ -354,19 +355,19 @@
         <div class="legend">
           <div class="legend-item">
             <div class="legend-box low"></div>
-            <span>Low Demand (0-2 unavailable)</span>
+            <span>Low Demand (0-7 unavailable)</span>
           </div>
           <div class="legend-item">
             <div class="legend-box medium"></div>
-            <span>Medium Demand (3-5 unavailable)</span>
+            <span>Medium Demand (8-9 unavailable)</span>
           </div>
           <div class="legend-item">
             <div class="legend-box high"></div>
-            <span>High Demand (6-8 unavailable)</span>
+            <span>High Demand (10-13 unavailable)</span>
           </div>
           <div class="legend-item">
             <div class="legend-box critical"></div>
-            <span>Critical (9+ unavailable)</span>
+            <span>Critical Demand (14+ unavailable)</span>
           </div>
         </div>
         
@@ -549,13 +550,14 @@
                                    (week.unavailable_count || 0);
           
           // Determine color based on number of unavailable faculty
+          // Updated thresholds based on 2025-26 data: Q1=7, Median=9, Q3=13
           let colorClass = 'low';
-          if (unavailableCount >= 9) {
-            colorClass = 'critical';
-          } else if (unavailableCount >= 6) {
-            colorClass = 'high';
-          } else if (unavailableCount >= 3) {
-            colorClass = 'medium';
+          if (unavailableCount >= 14) {
+            colorClass = 'critical';  // Top 25%
+          } else if (unavailableCount >= 10) {
+            colorClass = 'high';      // 50th-75th percentile
+          } else if (unavailableCount >= 8) {
+            colorClass = 'medium';    // 25th-50th percentile
           }
           
           cell.className = `heatmap-cell ${colorClass}`;
