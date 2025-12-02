@@ -126,7 +126,7 @@
     </div>
     
     <div id="heatmapLoading" class="loading">Loading heatmap...</div>
-    <div id="heatmapGrid" style="display: none;"></div>
+    <div id="heatmapGrid" class="heatmap-grid" style="display: none;"></div></div>
   </div>
 </div>
     
@@ -670,6 +670,9 @@
     let currentYear = 2026;
 
 async function loadHeatmap(year) {
+let currentYear = 2026;
+
+async function loadHeatmap(year) {
   currentYear = year;
   
   // Update button states
@@ -704,6 +707,8 @@ async function loadHeatmap(year) {
     
     const data = await response.json();
     
+    console.log('Heatmap data:', data); // DEBUG
+    
     if (data.length === 0) {
       loading.innerHTML = `<p style="color: #6b7280;">No weeks found for ${year}. Generate weeks in the Configure Periods tab.</p>`;
       return;
@@ -711,9 +716,14 @@ async function loadHeatmap(year) {
     
     // Render heatmap
     grid.innerHTML = '';
+    grid.className = 'heatmap-grid'; // Make sure the class is applied
+    
     data.forEach(week => {
       const cell = document.createElement('div');
       cell.className = `week-cell status-${week.staffing_status}`;
+      
+      console.log(`Week ${week.week_number}: status-${week.staffing_status}`); // DEBUG
+      
       cell.innerHTML = `
         <div class="week-num">Week ${week.week_number}</div>
         <div class="week-label">${week.label.split(' - ')[1] || week.label.split('(')[1]?.replace(')', '') || week.label}</div>
@@ -725,12 +735,14 @@ async function loadHeatmap(year) {
     });
     
     loading.style.display = 'none';
-    grid.style.display = 'grid';
+    grid.style.display = 'grid'; // This will work now that the class is set
     
   } catch (error) {
     console.error('Error loading heatmap:', error);
     loading.innerHTML = `<p style="color: #dc2626;">Error loading heatmap: ${error.message}</p>`;
   }
+}
+
 }
   </script>
 </body>
