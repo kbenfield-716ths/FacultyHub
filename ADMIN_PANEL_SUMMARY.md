@@ -2,8 +2,8 @@
 
 ## What I've Created
 
-### 1. **Admin Panel HTML** (`backend/static/admin.html`)
-A comprehensive admin interface with 4 main tabs:
+### 1. **Admin Panel HTML** (`admin.html`)
+A comprehensive admin interface with multiple tabs for managing the faculty scheduling system.
 
 #### **📊 Overview Tab**
 - Real-time statistics dashboard showing:
@@ -45,7 +45,7 @@ A comprehensive admin interface with 4 main tabs:
 - Clear all weeks button (with confirmation)
 
 ### 2. **Admin API Routes** (`backend/routes/admin_service.py`)
-New backend endpoints for service availability management:
+Backend endpoints for service availability management:
 
 - `GET /api/admin/service-weeks` - Get all service weeks for a year
 - `POST /api/admin/generate-service-weeks` - Generate 52 weeks
@@ -61,10 +61,10 @@ New backend endpoints for service availability management:
 
 ## Key Features
 
-### ✅ **Removed ALL "Vacation" Terminology**
-- Changed to "Service Availability" throughout
+### ✅ **Service Availability Terminology**
+- System uses "Service Availability" throughout (not "vacation")
 - Reflects that this is about when faculty **cannot** work inpatient service
-- Not about vacation requests
+- Faculty request time off from service duties, not vacation time
 
 ### ✅ **Integrated Design**
 - Matches existing moonlighting system UI
@@ -114,9 +114,9 @@ To complete the integration, you'll need to:
    - Submitting availability requests
 
 2. **Add request management** endpoints:
-   - Faculty submit unavailable/available/requested status
+   - Faculty submit unavailable/available status
    - Points are automatically deducted/awarded
-   - Requests are tracked in `vacation_requests` table
+   - Requests are tracked in `unavailability_requests` table
 
 3. **Build scheduling algorithm** (similar to moonlighting):
    - Ensure minimum staff coverage (default 5 per week)
@@ -132,7 +132,7 @@ To complete the integration, you'll need to:
 
 ## Database Schema
 
-The system uses these tables (already in your `models.py`):
+The system uses these tables (defined in `models.py`):
 
 ```python
 Faculty
@@ -141,22 +141,22 @@ Faculty
 - rank, clinical_effort_pct, base_points
 - is_admin, password_hash
 
-VacationWeek (should rename to ServiceWeek)
+ServiceWeek
 - id, week_number, label
 - start_date, end_date, year
 - week_type, point_cost_off, point_reward_work
 - min_staff_required
 
-VacationRequest (should rename to ServiceRequest)
+UnavailabilityRequest
 - id, faculty_id, week_id
-- status (unavailable/available/requested)
+- status (unavailable/available)
 - points_spent, points_earned
 - gives_priority (for draft next year)
 ```
 
 ## Important Notes
 
-1. **Terminology**: We've removed "vacation" everywhere - this is about **service availability**
+1. **Terminology**: This is a **service availability** system - faculty request time off from inpatient service duties
 2. **Points**: Negative when unavailable (costs), positive when volunteering (earns)
 3. **Admin Access**: Only users with `is_admin=True` can access admin panel
 4. **Default Admin**: Created on startup - username: `ADMIN`, password: `PCCM2025!`

@@ -20,9 +20,14 @@ router = APIRouter(prefix="/api/service-requests", tags=["service-requests"])
 # ==========================================
 
 class UnavailabilityRequestInput(BaseModel):
-    """Model for a single vacation request"""
+    """Model for a single availability request.
+    
+    Note: points_spent and points_earned are calculated server-side
+    based on the week's configuration. Client values are ignored for security.
+    """
     week_id: str
     status: str  # "unavailable" or "available"
+    # These fields are accepted but recalculated server-side for security
     points_spent: int = 0
     points_earned: int = 0
 
@@ -33,7 +38,7 @@ class UnavailabilityRequestSubmit(BaseModel):
 
 
 class UnavailabilityRequestResponse(BaseModel):
-    """Model for vacation request response"""
+    """Model for availability request response"""
     id: str
     faculty_id: str
     faculty_name: str
@@ -60,8 +65,10 @@ def submit_unavailability_requests(
     db: Session = Depends(get_db)
 ):
     """
-    Submit or update vacation requests for the current faculty member.
+    Submit or update availability requests for the current faculty member.
     This replaces all existing requests for this faculty member.
+    
+    Points are calculated server-side based on week configuration for security.
     """
     try:
         # Delete existing requests for this faculty
@@ -69,10 +76,14 @@ def submit_unavailability_requests(
             UnavailabilityRequest.faculty_id == current_user.id
         ).delete()
         
+        # Track totals for validation
+        total_points_spent = 0
+        total_points_earned = 0
+        
         # Create new requests
         created_requests = []
         for req in data.requests:
-            # Verify week exists
+            # Verify week exists and get its point configuration
             week = db.query(ServiceWeek).filter_by(id=req.week_id).first()
             if not week:
                 raise HTTPException(
@@ -84,22 +95,45 @@ def submit_unavailability_requests(
             if req.status not in ["unavailable", "available"]:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid status: {req.status}"
+                    detail=f"Invalid status: {req.status}. Must be 'unavailable' or 'available'"
                 )
             
-            # Create request
+            # Calculate points server-side based on week configuration
+            # This prevents clients from submitting incorrect point values
+            if req.status == "unavailable":
+                points_spent = week.point_cost_off
+                points_earned = 0
+            else:  # available (volunteering)
+                points_spent = 0
+                points_earned = week.point_reward_work
+            
+            total_points_spent += points_spent
+            total_points_earned += points_earned
+            
+            # Create request with server-calculated points
             unavailability_request = UnavailabilityRequest(
                 id=f"VR-{uuid.uuid4().hex[:8].upper()}",
                 faculty_id=current_user.id,
                 week_id=req.week_id,
                 status=req.status,
-                points_spent=req.points_spent,
-                points_earned=req.points_earned,
+                points_spent=points_spent,
+                points_earned=points_earned,
                 gives_priority=False  # Will be set by admin during draft
             )
             
             db.add(unavailability_request)
             created_requests.append(unavailability_request)
+        
+        # Validate faculty has enough points
+        available_points = current_user.base_points + (current_user.bonus_points or 0)
+        net_points = available_points - total_points_spent + total_points_earned
+        
+        if net_points < 0:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Insufficient points. You have {available_points} points but need {total_points_spent} for these requests."
+            )
         
         db.commit()
         
@@ -107,7 +141,10 @@ def submit_unavailability_requests(
             "message": f"Successfully submitted {len(created_requests)} requests",
             "total_requests": len(created_requests),
             "faculty_id": current_user.id,
-            "faculty_name": current_user.name
+            "faculty_name": current_user.name,
+            "points_spent": total_points_spent,
+            "points_earned": total_points_earned,
+            "remaining_points": net_points
         }
         
     except HTTPException:
@@ -126,7 +163,7 @@ def get_my_requests(
     db: Session = Depends(get_db)
 ):
     """
-    Get all vacation requests for the current faculty member.
+    Get all availability requests for the current faculty member.
     """
     requests = (
         db.query(
@@ -171,7 +208,7 @@ def delete_my_requests(
     db: Session = Depends(get_db)
 ):
     """
-    Delete all vacation requests for the current faculty member.
+    Delete all availability requests for the current faculty member.
     """
     db.query(UnavailabilityRequest).filter(
         UnavailabilityRequest.faculty_id == current_user.id
@@ -200,14 +237,16 @@ def get_my_summary(
     total_spent = sum(r.points_spent for r in requests)
     total_earned = sum(r.points_earned for r in requests)
     
-    available_points = current_user.base_points + current_user.bonus_points - total_spent + total_earned
+    base_points = current_user.base_points
+    bonus_points = current_user.bonus_points or 0
+    available_points = base_points + bonus_points - total_spent + total_earned
     
     return {
         "faculty_id": current_user.id,
         "faculty_name": current_user.name,
-        "base_points": current_user.base_points,
-        "bonus_points": current_user.bonus_points,
-        "total_points": current_user.base_points + current_user.bonus_points,
+        "base_points": base_points,
+        "bonus_points": bonus_points,
+        "total_points": base_points + bonus_points,
         "points_spent": total_spent,
         "points_earned": total_earned,
         "available_points": available_points,

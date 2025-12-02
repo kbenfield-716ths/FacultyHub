@@ -54,21 +54,12 @@ app.add_middleware(
 # ---------- DB session dependency ----------
 
 def get_db():
+    """Database session dependency for FastAPI endpoints."""
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
-
-    # Seed unavailability data from CSV (if weeks exist)
-    try:
-        from .seed_unavailability import seed_all_historic_data
-        seed_all_historic_data()
-    except Exception as e:
-        print(f"[Startup] Note: {e}")
-
-
-    
 
 
 # ---------- Pydantic Schemas ----------
@@ -123,11 +114,13 @@ class AssignmentOut(BaseModel):
     class Config:
         from_attributes = True
 
+
 # ---------- FastAPI lifecycle ----------
 
 @app.on_event("startup")
 def startup_event():
-    # make sure tables exist
+    """Initialize database and seed data on startup."""
+    # Make sure tables exist
     init_db()
     
     # Create default admin user if none exists
@@ -166,9 +159,6 @@ def startup_event():
         seed_all_historic_data()
     except Exception as e:
         print(f"[Startup] Note: {e}")
-
-
-    
 
 
 # ========================================
@@ -584,6 +574,7 @@ def signups_csv(
     }
     return PlainTextResponse(csv_text, headers=headers)
 
+
 # Notion
 
 @app.get("/api/knowledge-base")
@@ -631,6 +622,7 @@ async def serve_index():
         return FileResponse(index_path)
     return {"status": "ok", "message": "API running"}
 
+
 @app.get("/favicon.ico")
 async def serve_favicon_ico():
     favicon_path = STATIC_DIR / "favicon.ico"
@@ -642,6 +634,7 @@ async def serve_favicon_ico():
         return FileResponse(svg_path, media_type="image/svg+xml")
     return {"error": "favicon not found"}
 
+
 @app.get("/favicon.svg")
 async def serve_favicon_svg():
     favicon_path = STATIC_DIR / "favicon.svg"
@@ -651,6 +644,7 @@ async def serve_favicon_svg():
         return response 
     return {"error": "favicon.svg not found"}
 
+
 @app.get("/manifest.json")
 async def serve_manifest():
     manifest_path = STATIC_DIR / "manifest.json"
@@ -659,6 +653,7 @@ async def serve_manifest():
         response.headers["Cache-Control"] = "public, max-age=3600"
         return response
     return {"error": "manifest.json not found"}
+
 
 @app.get("/service-worker.js")
 async def serve_service_worker():
@@ -670,6 +665,7 @@ async def serve_service_worker():
         response.headers["Service-Worker-Allowed"] = "/"
         return response
     return {"error": "service-worker.js not found"}
+
 
 @app.get("/Service_Worker.js")
 async def serve_service_worker_legacy():
@@ -687,6 +683,7 @@ async def serve_service_worker_legacy():
         response.headers["Service-Worker-Allowed"] = "/"
         return response
     return {"error": "Service worker not found"}
+
 
 @app.get("/{filename}.html")
 async def serve_html_file(filename: str):
@@ -720,6 +717,7 @@ async def serve_html_file(filename: str):
     
     return {"error": f"{filename}.html not found"}
 
+
 @app.get("/style.css")
 async def serve_style():
     css_path = STATIC_DIR / "style.css"
@@ -728,6 +726,7 @@ async def serve_style():
         response.headers["Cache-Control"] = "public, max-age=3600"
         return response
     return {"error": "style.css not found"}
+
 
 @app.get("/cache-manager.js")
 async def serve_cache_manager():
@@ -738,6 +737,7 @@ async def serve_cache_manager():
         return response
     return {"error": "cache-manager.js not found"}
 
+
 @app.get("/static/{path:path}")
 async def serve_static(path: str):
     """Serve any static file from backend/static"""
@@ -745,6 +745,7 @@ async def serve_static(path: str):
     if static_path.exists() and static_path.is_file():
         return FileResponse(static_path)
     return {"error": f"Static file {path} not found"}
+
 
 # Catch-all route for paths without extensions (e.g., /dashboard)
 # THIS MUST BE LAST!
