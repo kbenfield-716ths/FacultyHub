@@ -29,6 +29,11 @@ class FacultyCreate(BaseModel):
     bonus_points: int = 0
     active: bool = True
     is_admin: bool = False
+    moonlighter: bool = False
+    micu_weeks: int = 0
+    app_icu_weeks: int = 0
+    procedure_weeks: int = 0
+    consult_weeks: int = 0
 
 
 class FacultyUpdate(BaseModel):
@@ -41,6 +46,11 @@ class FacultyUpdate(BaseModel):
     bonus_points: Optional[int] = None
     active: Optional[bool] = None
     is_admin: Optional[bool] = None
+    moonlighter: Optional[bool] = None
+    micu_weeks: Optional[int] = None
+    app_icu_weeks: Optional[int] = None
+    procedure_weeks: Optional[int] = None
+    consult_weeks: Optional[int] = None
 
 
 class ServiceAssignmentSummary(BaseModel):
@@ -66,6 +76,13 @@ class FacultyResponse(BaseModel):
     is_admin: bool
     password_changed: bool
     registered: bool
+    # Service week commitments (expected weeks per year)
+    moonlighter: bool
+    micu_weeks: int
+    app_icu_weeks: int
+    procedure_weeks: int
+    consult_weeks: int
+    # Actual service assignments (weeks worked)
     service_weeks: ServiceAssignmentSummary
     
     class Config:
@@ -137,6 +154,11 @@ def get_all_faculty(
             is_admin=faculty.is_admin,
             password_changed=faculty.password_changed,
             registered=faculty.registered,
+            moonlighter=faculty.moonlighter,
+            micu_weeks=faculty.micu_weeks,
+            app_icu_weeks=faculty.app_icu_weeks,
+            procedure_weeks=faculty.procedure_weeks,
+            consult_weeks=faculty.consult_weeks,
             service_weeks=service_weeks
         ))
     
@@ -197,6 +219,11 @@ def get_faculty(
         is_admin=faculty.is_admin,
         password_changed=faculty.password_changed,
         registered=faculty.registered,
+        moonlighter=faculty.moonlighter,
+        micu_weeks=faculty.micu_weeks,
+        app_icu_weeks=faculty.app_icu_weeks,
+        procedure_weeks=faculty.procedure_weeks,
+        consult_weeks=faculty.consult_weeks,
         service_weeks=service_weeks
     )
 
@@ -246,6 +273,11 @@ def create_faculty(
         bonus_points=faculty_data.bonus_points,
         active=faculty_data.active,
         is_admin=faculty_data.is_admin,
+        moonlighter=faculty_data.moonlighter,
+        micu_weeks=faculty_data.micu_weeks,
+        app_icu_weeks=faculty_data.app_icu_weeks,
+        procedure_weeks=faculty_data.procedure_weeks,
+        consult_weeks=faculty_data.consult_weeks,
         password_hash=hash_password("PCCM2025!"),
         password_changed=False,
         registered=True
@@ -269,6 +301,11 @@ def create_faculty(
         is_admin=new_faculty.is_admin,
         password_changed=new_faculty.password_changed,
         registered=new_faculty.registered,
+        moonlighter=new_faculty.moonlighter,
+        micu_weeks=new_faculty.micu_weeks,
+        app_icu_weeks=new_faculty.app_icu_weeks,
+        procedure_weeks=new_faculty.procedure_weeks,
+        consult_weeks=new_faculty.consult_weeks,
         service_weeks=ServiceAssignmentSummary()
     )
 
@@ -357,6 +394,11 @@ def update_faculty(
         is_admin=faculty.is_admin,
         password_changed=faculty.password_changed,
         registered=faculty.registered,
+        moonlighter=faculty.moonlighter,
+        micu_weeks=faculty.micu_weeks,
+        app_icu_weeks=faculty.app_icu_weeks,
+        procedure_weeks=faculty.procedure_weeks,
+        consult_weeks=faculty.consult_weeks,
         service_weeks=service_weeks
     )
 
@@ -476,6 +518,11 @@ def toggle_admin_status(
         is_admin=faculty.is_admin,
         password_changed=faculty.password_changed,
         registered=faculty.registered,
+        moonlighter=faculty.moonlighter,
+        micu_weeks=faculty.micu_weeks,
+        app_icu_weeks=faculty.app_icu_weeks,
+        procedure_weeks=faculty.procedure_weeks,
+        consult_weeks=faculty.consult_weeks,
         service_weeks=service_weeks
     )
 
@@ -492,6 +539,7 @@ def get_faculty_stats(
     total = db.query(Faculty).count()
     active = db.query(Faculty).filter_by(active=True).count()
     admins = db.query(Faculty).filter_by(is_admin=True).count()
+    moonlighters = db.query(Faculty).filter_by(moonlighter=True, active=True).count()
     
     # Count by rank
     rank_counts = {}
@@ -503,5 +551,6 @@ def get_faculty_stats(
         "total_faculty": total,
         "active_faculty": active,
         "admin_count": admins,
+        "moonlighter_count": moonlighters,
         "by_rank": rank_counts
     }
