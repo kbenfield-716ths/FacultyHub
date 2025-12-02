@@ -55,6 +55,7 @@
     .modal-title { font-size: 20px; font-weight: 700; }
     .close-btn { cursor: pointer; font-size: 24px; color: #6b7280; }
     .close-btn:hover { color: #1f2937; }
+    
     /* Heatmap styles */
     .year-selector button.active { background: #667eea !important; color: white !important; border-color: #667eea !important; }
     .heatmap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
@@ -66,17 +67,17 @@
     .week-status { font-size: 11px; font-weight: 600; text-transform: uppercase; margin-top: 4px; }
     
     /* Heatmap colors */
-    .status-good { background: #d1fae5; border-color: #10b981; }
-    .status-good .week-count { color: #065f46; }
-    .status-good .week-status { color: #065f46; }
+    .status-good { background: #d1fae5 !important; border-color: #10b981 !important; }
+    .status-good .week-count { color: #065f46 !important; }
+    .status-good .week-status { color: #065f46 !important; }
     
-    .status-tight { background: #fef3c7; border-color: #f59e0b; }
-    .status-tight .week-count { color: #92400e; }
-    .status-tight .week-status { color: #92400e; }
+    .status-tight { background: #fef3c7 !important; border-color: #f59e0b !important; }
+    .status-tight .week-count { color: #92400e !important; }
+    .status-tight .week-status { color: #92400e !important; }
     
-    .status-critical { background: #fee2e2; border-color: #ef4444; }
-    .status-critical .week-count { color: #991b1b; }
-    .status-critical .week-status { color: #991b1b; }
+    .status-critical { background: #fee2e2 !important; border-color: #ef4444 !important; }
+    .status-critical .week-count { color: #991b1b !important; }
+    .status-critical .week-status { color: #991b1b !important; }
   </style>
 </head>
 <body>
@@ -98,37 +99,38 @@
       <button class="tab-btn" onclick="showTab('requests')">📈 View Requests</button>
       <button class="tab-btn" onclick="showTab('weeks')">📅 Manage Weeks</button>
     </div>
+    
     <!-- HEATMAP TAB -->
-<div id="tab-heatmap" class="tab-content">
-  <div class="card">
-    <div class="card-header">
-      <h2 class="card-title">Service Unavailability Heatmap</h2>
-      <div class="year-selector">
-        <span style="font-weight: 600; color: #6b7280; margin-right: 12px;">Academic Year:</span>
-        <button id="year2025Btn" onclick="loadHeatmap(2025)" style="padding: 8px 20px; border: 2px solid #e5e7eb; background: white; border-radius: 6px; cursor: pointer; font-weight: 600; color: #6b7280; margin-right: 8px;">2025-2026 (Historic)</button>
-        <button id="year2026Btn" onclick="loadHeatmap(2026)" style="padding: 8px 20px; border: 2px solid #667eea; background: #667eea; color: white; border-radius: 6px; cursor: pointer; font-weight: 600;">2026-2027 (Current)</button>
+    <div id="tab-heatmap" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Service Unavailability Heatmap</h2>
+          <div class="year-selector">
+            <span style="font-weight: 600; color: #6b7280; margin-right: 12px;">Academic Year:</span>
+            <button id="year2025Btn" onclick="loadHeatmap(2025)" style="padding: 8px 20px; border: 2px solid #e5e7eb; background: white; border-radius: 6px; cursor: pointer; font-weight: 600; color: #6b7280; margin-right: 8px;">2025-2026 (Historic)</button>
+            <button id="year2026Btn" onclick="loadHeatmap(2026)" style="padding: 8px 20px; border: 2px solid #667eea; background: #667eea; color: white; border-radius: 6px; cursor: pointer; font-weight: 600;">2026-2027 (Current)</button>
+          </div>
+        </div>
+        
+        <div class="heatmap-legend" style="display: flex; gap: 24px; margin-bottom: 20px; padding: 16px; background: #f9fafb; border-radius: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 24px; height: 24px; border-radius: 4px; border: 2px solid #10b981; background: #d1fae5;"></div>
+            <span style="font-size: 13px; font-weight: 600; color: #374151;">Good Staffing</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 24px; height: 24px; border-radius: 4px; border: 2px solid #f59e0b; background: #fef3c7;"></div>
+            <span style="font-size: 13px; font-weight: 600; color: #374151;">Tight Staffing</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 24px; height: 24px; border-radius: 4px; border: 2px solid #ef4444; background: #fee2e2;"></div>
+            <span style="font-size: 13px; font-weight: 600; color: #374151;">Critical Staffing</span>
+          </div>
+        </div>
+        
+        <div id="heatmapLoading" class="loading">Loading heatmap...</div>
+        <div id="heatmapGrid" class="heatmap-grid" style="display: none;"></div>
       </div>
     </div>
-    
-    <div class="heatmap-legend" style="display: flex; gap: 24px; margin-bottom: 20px; padding: 16px; background: #f9fafb; border-radius: 8px;">
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <div style="width: 24px; height: 24px; border-radius: 4px; border: 2px solid #10b981; background: #d1fae5;"></div>
-        <span style="font-size: 13px; font-weight: 600; color: #374151;">Good Staffing</span>
-      </div>
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <div style="width: 24px; height: 24px; border-radius: 4px; border: 2px solid #f59e0b; background: #fef3c7;"></div>
-        <span style="font-size: 13px; font-weight: 600; color: #374151;">Tight Staffing</span>
-      </div>
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <div style="width: 24px; height: 24px; border-radius: 4px; border: 2px solid #ef4444; background: #fee2e2;"></div>
-        <span style="font-size: 13px; font-weight: 600; color: #374151;">Critical Staffing</span>
-      </div>
-    </div>
-    
-    <div id="heatmapLoading" class="loading">Loading heatmap...</div>
-    <div id="heatmapGrid" class="heatmap-grid" style="display: none;"></div></div>
-  </div>
-</div>
     
     <div id="tab-providers" class="tab-content active">
       <div class="card">
@@ -256,6 +258,7 @@
     let allWeeks = [];
     let allProviders = [];
     let allFaculty = [];
+    let currentYear = 2026;
     
     window.addEventListener('DOMContentLoaded', async () => {
       await checkAuth();
@@ -667,83 +670,77 @@
       alert.className = `alert alert-${type} show`;
       setTimeout(() => { alert.classList.remove('show'); }, 5000);
     }
-    let currentYear = 2026;
-
-async function loadHeatmap(year) {
-let currentYear = 2026;
-
-async function loadHeatmap(year) {
-  currentYear = year;
-  
-  // Update button states
-  const btn2025 = document.getElementById('year2025Btn');
-  const btn2026 = document.getElementById('year2026Btn');
-  
-  if (year === 2025) {
-    btn2025.style.background = '#667eea';
-    btn2025.style.color = 'white';
-    btn2025.style.borderColor = '#667eea';
-    btn2026.style.background = 'white';
-    btn2026.style.color = '#6b7280';
-    btn2026.style.borderColor = '#e5e7eb';
-  } else {
-    btn2026.style.background = '#667eea';
-    btn2026.style.color = 'white';
-    btn2026.style.borderColor = '#667eea';
-    btn2025.style.background = 'white';
-    btn2025.style.color = '#6b7280';
-    btn2025.style.borderColor = '#e5e7eb';
-  }
-  
-  const loading = document.getElementById('heatmapLoading');
-  const grid = document.getElementById('heatmapGrid');
-  
-  loading.style.display = 'block';
-  grid.style.display = 'none';
-  
-  try {
-    const response = await fetch(`/api/admin/service-weeks/heatmap?year=${year}`);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     
-    const data = await response.json();
-    
-    console.log('Heatmap data:', data); // DEBUG
-    
-    if (data.length === 0) {
-      loading.innerHTML = `<p style="color: #6b7280;">No weeks found for ${year}. Generate weeks in the Configure Periods tab.</p>`;
-      return;
+    async function loadHeatmap(year) {
+      currentYear = year;
+      
+      // Update button states
+      const btn2025 = document.getElementById('year2025Btn');
+      const btn2026 = document.getElementById('year2026Btn');
+      
+      if (year === 2025) {
+        btn2025.style.background = '#667eea';
+        btn2025.style.color = 'white';
+        btn2025.style.borderColor = '#667eea';
+        btn2026.style.background = 'white';
+        btn2026.style.color = '#6b7280';
+        btn2026.style.borderColor = '#e5e7eb';
+      } else {
+        btn2026.style.background = '#667eea';
+        btn2026.style.color = 'white';
+        btn2026.style.borderColor = '#667eea';
+        btn2025.style.background = 'white';
+        btn2025.style.color = '#6b7280';
+        btn2025.style.borderColor = '#e5e7eb';
+      }
+      
+      const loading = document.getElementById('heatmapLoading');
+      const grid = document.getElementById('heatmapGrid');
+      
+      loading.style.display = 'block';
+      grid.style.display = 'none';
+      
+      try {
+        const response = await fetch(`/api/admin/service-weeks/heatmap?year=${year}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const data = await response.json();
+        
+        console.log('Heatmap data:', data);
+        
+        if (data.length === 0) {
+          loading.innerHTML = `<p style="color: #6b7280;">No weeks found for ${year}. Generate weeks in the Configure Periods tab.</p>`;
+          return;
+        }
+        
+        // Render heatmap
+        grid.innerHTML = '';
+        grid.className = 'heatmap-grid';
+        
+        data.forEach(week => {
+          const cell = document.createElement('div');
+          cell.className = `week-cell status-${week.staffing_status}`;
+          
+          console.log(`Week ${week.week_number}: status-${week.staffing_status}, unavailable=${week.unavailable_count}`);
+          
+          cell.innerHTML = `
+            <div class="week-num">Week ${week.week_number}</div>
+            <div class="week-label">${week.label.split(' - ')[1] || week.label.split('(')[1]?.replace(')', '') || week.label}</div>
+            <div class="week-count">${week.unavailable_count}</div>
+            <div class="week-status">${week.staffing_status}</div>
+          `;
+          cell.title = `${week.label}\n${week.unavailable_count} unavailable\n${week.volunteer_count} volunteers\nMin required: ${week.min_staff_required}`;
+          grid.appendChild(cell);
+        });
+        
+        loading.style.display = 'none';
+        grid.style.display = 'grid';
+        
+      } catch (error) {
+        console.error('Error loading heatmap:', error);
+        loading.innerHTML = `<p style="color: #dc2626;">Error loading heatmap: ${error.message}</p>`;
+      }
     }
-    
-    // Render heatmap
-    grid.innerHTML = '';
-    grid.className = 'heatmap-grid'; // Make sure the class is applied
-    
-    data.forEach(week => {
-      const cell = document.createElement('div');
-      cell.className = `week-cell status-${week.staffing_status}`;
-      
-      console.log(`Week ${week.week_number}: status-${week.staffing_status}`); // DEBUG
-      
-      cell.innerHTML = `
-        <div class="week-num">Week ${week.week_number}</div>
-        <div class="week-label">${week.label.split(' - ')[1] || week.label.split('(')[1]?.replace(')', '') || week.label}</div>
-        <div class="week-count">${week.unavailable_count}</div>
-        <div class="week-status">${week.staffing_status}</div>
-      `;
-      cell.title = `${week.label}\n${week.unavailable_count} unavailable\n${week.volunteer_count} volunteers\nMin required: ${week.min_staff_required}`;
-      grid.appendChild(cell);
-    });
-    
-    loading.style.display = 'none';
-    grid.style.display = 'grid'; // This will work now that the class is set
-    
-  } catch (error) {
-    console.error('Error loading heatmap:', error);
-    loading.innerHTML = `<p style="color: #dc2626;">Error loading heatmap: ${error.message}</p>`;
-  }
-}
-
-}
   </script>
 </body>
 </html>
