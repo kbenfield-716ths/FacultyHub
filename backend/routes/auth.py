@@ -26,8 +26,8 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 # ==========================================
 
 class LoginRequest(BaseModel):
-    """Login credentials."""
-    faculty_id: str
+    """Login credentials - accepts 'username' which maps to faculty_id."""
+    username: str
     password: str
 
 
@@ -76,10 +76,12 @@ async def login(
     """
     Authenticate faculty member and create session.
     Returns session cookie.
+    
+    The 'username' field is used as the faculty_id for lookup.
     """
-    # Authenticate user
+    # Authenticate user (username is the faculty_id)
     faculty = authenticate_faculty(
-        credentials.faculty_id,
+        credentials.username,
         credentials.password,
         db
     )
