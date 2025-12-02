@@ -130,15 +130,17 @@ async def get_service_weeks_heatmap(
         assigned_count = db.query(func.count(ServiceWeekAssignment.id)).filter(
             ServiceWeekAssignment.week_id == week.id
         ).scalar() or 0
+
+        # Calculate staffing status based on unavailability levels
+        # High unavailability = popular week that needs attention
+        # Thresholds: 
+        #   Good: <= 7 unavailable (low demand)
+        #   Tight: 8-11 unavailable (moderate demand)
+        #   Critical: >= 12 unavailable (high demand, premium week)
         
-        # Calculate staffing status
-        # Assume total active faculty minus unavailable gives available pool
-        total_active = db.query(func.count(Faculty.id)).filter(Faculty.active == True).scalar() or 0
-        available_pool = total_active - unavailable_count if total_active > 0 else 0
-        
-        if available_pool >= week.min_staff_required + 3:
+        if unavailable_count <= 7:
             staffing_status = "good"
-        elif available_pool >= week.min_staff_required:
+        elif unavailable_count <= 11:
             staffing_status = "tight"
         else:
             staffing_status = "critical"
