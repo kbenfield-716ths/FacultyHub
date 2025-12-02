@@ -55,6 +55,28 @@
     .modal-title { font-size: 20px; font-weight: 700; }
     .close-btn { cursor: pointer; font-size: 24px; color: #6b7280; }
     .close-btn:hover { color: #1f2937; }
+    /* Heatmap styles */
+    .year-selector button.active { background: #667eea !important; color: white !important; border-color: #667eea !important; }
+    .heatmap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+    .week-cell { padding: 12px; border-radius: 8px; border: 2px solid #e5e7eb; cursor: pointer; transition: all 0.2s; }
+    .week-cell:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    .week-num { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; }
+    .week-label { font-size: 13px; font-weight: 600; color: #1f2937; margin: 4px 0; }
+    .week-count { font-size: 20px; font-weight: 700; margin: 8px 0; }
+    .week-status { font-size: 11px; font-weight: 600; text-transform: uppercase; margin-top: 4px; }
+    
+    /* Heatmap colors */
+    .status-good { background: #d1fae5; border-color: #10b981; }
+    .status-good .week-count { color: #065f46; }
+    .status-good .week-status { color: #065f46; }
+    
+    .status-tight { background: #fef3c7; border-color: #f59e0b; }
+    .status-tight .week-count { color: #92400e; }
+    .status-tight .week-status { color: #92400e; }
+    
+    .status-critical { background: #fee2e2; border-color: #ef4444; }
+    .status-critical .week-count { color: #991b1b; }
+    .status-critical .week-status { color: #991b1b; }
   </style>
 </head>
 <body>
@@ -268,6 +290,7 @@
       if (tabName === 'requests') loadRequests();
       if (tabName === 'weeks') loadWeeks();
       if (tabName === 'overview') loadOverview();
+      if (tabName === 'heatmap') loadHeatmap(currentYear);
     }
     
     async function loadProviders() {
@@ -644,6 +667,71 @@
       alert.className = `alert alert-${type} show`;
       setTimeout(() => { alert.classList.remove('show'); }, 5000);
     }
+    let currentYear = 2026;
+
+async function loadHeatmap(year) {
+  currentYear = year;
+  
+  // Update button states
+  const btn2025 = document.getElementById('year2025Btn');
+  const btn2026 = document.getElementById('year2026Btn');
+  
+  if (year === 2025) {
+    btn2025.style.background = '#667eea';
+    btn2025.style.color = 'white';
+    btn2025.style.borderColor = '#667eea';
+    btn2026.style.background = 'white';
+    btn2026.style.color = '#6b7280';
+    btn2026.style.borderColor = '#e5e7eb';
+  } else {
+    btn2026.style.background = '#667eea';
+    btn2026.style.color = 'white';
+    btn2026.style.borderColor = '#667eea';
+    btn2025.style.background = 'white';
+    btn2025.style.color = '#6b7280';
+    btn2025.style.borderColor = '#e5e7eb';
+  }
+  
+  const loading = document.getElementById('heatmapLoading');
+  const grid = document.getElementById('heatmapGrid');
+  
+  loading.style.display = 'block';
+  grid.style.display = 'none';
+  
+  try {
+    const response = await fetch(`/api/admin/service-weeks/heatmap?year=${year}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    
+    const data = await response.json();
+    
+    if (data.length === 0) {
+      loading.innerHTML = `<p style="color: #6b7280;">No weeks found for ${year}. Generate weeks in the Configure Periods tab.</p>`;
+      return;
+    }
+    
+    // Render heatmap
+    grid.innerHTML = '';
+    data.forEach(week => {
+      const cell = document.createElement('div');
+      cell.className = `week-cell status-${week.staffing_status}`;
+      cell.innerHTML = `
+        <div class="week-num">Week ${week.week_number}</div>
+        <div class="week-label">${week.label.split(' - ')[1] || week.label.split('(')[1]?.replace(')', '') || week.label}</div>
+        <div class="week-count">${week.unavailable_count}</div>
+        <div class="week-status">${week.staffing_status}</div>
+      `;
+      cell.title = `${week.label}\n${week.unavailable_count} unavailable\n${week.volunteer_count} volunteers\nMin required: ${week.min_staff_required}`;
+      grid.appendChild(cell);
+    });
+    
+    loading.style.display = 'none';
+    grid.style.display = 'grid';
+    
+  } catch (error) {
+    console.error('Error loading heatmap:', error);
+    loading.innerHTML = `<p style="color: #dc2626;">Error loading heatmap: ${error.message}</p>`;
+  }
+}
   </script>
 </body>
 </html>
