@@ -71,11 +71,42 @@
       <button class="tab-btn active" onclick="showTab('providers')">👥 Manage Providers</button>
       <button class="tab-btn" onclick="showTab('moonlighting')">🌙 Moonlighting/IRPA</button>
       <button class="tab-btn" onclick="showTab('overview')">📊 Service Overview</button>
-      <button class="tab-btn" onclick="window.location.href='/admin-config-enhanced.html'">🔧 Advanced Configuration</button>
+      <button class="tab-btn" onclick="showTab('heatmap')">🔥 Unavailability Heatmap</button>
       <button class="tab-btn" onclick="showTab('configure')">⚙️ Configure Periods</button>
       <button class="tab-btn" onclick="showTab('requests')">📈 View Requests</button>
       <button class="tab-btn" onclick="showTab('weeks')">📅 Manage Weeks</button>
     </div>
+    <!-- HEATMAP TAB -->
+<div id="tab-heatmap" class="tab-content">
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Service Unavailability Heatmap</h2>
+      <div class="year-selector">
+        <span style="font-weight: 600; color: #6b7280; margin-right: 12px;">Academic Year:</span>
+        <button id="year2025Btn" onclick="loadHeatmap(2025)" style="padding: 8px 20px; border: 2px solid #e5e7eb; background: white; border-radius: 6px; cursor: pointer; font-weight: 600; color: #6b7280; margin-right: 8px;">2025-2026 (Historic)</button>
+        <button id="year2026Btn" onclick="loadHeatmap(2026)" style="padding: 8px 20px; border: 2px solid #667eea; background: #667eea; color: white; border-radius: 6px; cursor: pointer; font-weight: 600;">2026-2027 (Current)</button>
+      </div>
+    </div>
+    
+    <div class="heatmap-legend" style="display: flex; gap: 24px; margin-bottom: 20px; padding: 16px; background: #f9fafb; border-radius: 8px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="width: 24px; height: 24px; border-radius: 4px; border: 2px solid #10b981; background: #d1fae5;"></div>
+        <span style="font-size: 13px; font-weight: 600; color: #374151;">Good Staffing</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="width: 24px; height: 24px; border-radius: 4px; border: 2px solid #f59e0b; background: #fef3c7;"></div>
+        <span style="font-size: 13px; font-weight: 600; color: #374151;">Tight Staffing</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="width: 24px; height: 24px; border-radius: 4px; border: 2px solid #ef4444; background: #fee2e2;"></div>
+        <span style="font-size: 13px; font-weight: 600; color: #374151;">Critical Staffing</span>
+      </div>
+    </div>
+    
+    <div id="heatmapLoading" class="loading">Loading heatmap...</div>
+    <div id="heatmapGrid" style="display: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px;"></div>
+  </div>
+</div>
     
     <div id="tab-providers" class="tab-content active">
       <div class="card">
