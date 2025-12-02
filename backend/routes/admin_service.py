@@ -199,8 +199,8 @@ async def import_historic_assignments(
         assignments_created = 0
         weeks_marked_premium = 0
         errors = []
-        
-        for row_num, row in enumerate(csv_reader, start=2):  # Start at 2 to account for header
+
+    for row_num, row in enumerate(csv_reader, start=2):  # Start at 2 to account for header
             try:
                 faculty_id = row['faculty_id'].strip().upper()
                 week_number = int(row['week_number'])
@@ -259,7 +259,45 @@ async def import_historic_assignments(
             except Exception as e:
                 errors.append(f"Row {row_num}: {str(e)}")
                 continue
-                @router.post("/import-historic-unavailability")
+        
+        # Calculate historic_unavailable_count for each week based on assignments
+        week_faculty_map = {}
+        for assignment in db.query(ServiceWeekAssignment).filter(
+            ServiceWeekAssignment.imported == True,
+            ServiceWeekAssignment.week_id.like(f"%-{year}")  # Only this year
+        ).all():
+            if assignment.week_id not in week_faculty_map:
+                week_faculty_map[assignment.week_id] = set()
+            week_faculty_map[assignment.week_id].add(assignment.faculty_id)
+        
+        # Update historic_unavailable_count  
+        total_active = db.query(func.count(Faculty.id)).filter(Faculty.active == True).scalar() or 0
+        weeks_updated_count = 0
+        
+        for week_id, faculty_set in week_faculty_map.items():
+            week = db.query(ServiceWeek).filter_by(id=week_id).first()
+            if week and total_active > 0:
+                faculty_working = len(faculty_set)
+                week.historic_unavailable_count = max(0, total_active - faculty_working)
+                weeks_updated_count += 1
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "assignments_created": assignments_created,
+            "weeks_marked_premium": weeks_marked_premium,
+            "weeks_updated": weeks_updated_count,
+            "errors": errors if errors else None,
+            "message": f"Imported {assignments_created} assignments" + 
+                      (f" with {len(errors)} errors" if errors else "")
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing CSV: {str(e)}")
+
+
+@router.post("/import-historic-unavailability")
 async def import_historic_unavailability(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
@@ -330,7 +368,7 @@ async def import_historic_unavailability(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing CSV: {str(e)}")
-
+       
             # Calculate historic_unavailable_count for each week based on assignments
             week_faculty_map = {}
             for assignment in db.query(ServiceWeekAssignment).filter(
