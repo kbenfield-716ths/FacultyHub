@@ -199,8 +199,8 @@ async def import_historic_assignments(
         assignments_created = 0
         weeks_marked_premium = 0
         errors = []
-
-    for row_num, row in enumerate(csv_reader, start=2):  # Start at 2 to account for header
+        
+        for row_num, row in enumerate(csv_reader, start=2):  # Start at 2 to account for header
             try:
                 faculty_id = row['faculty_id'].strip().upper()
                 week_number = int(row['week_number'])
@@ -295,115 +295,6 @@ async def import_historic_assignments(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing CSV: {str(e)}")
-
-
-@router.post("/import-historic-unavailability")
-async def import_historic_unavailability(
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    current_user: Faculty = Depends(require_admin)
-):
-    """
-    Import historic unavailability counts directly from CSV.
-    
-    CSV Format:
-    week_number,year,unavailable_count
-    1,2025,8
-    2,2025,5
-    
-    This directly sets the historic_unavailable_count field for display in heatmaps.
-    """
-    
-    if not file.filename.endswith('.csv'):
-        raise HTTPException(status_code=400, detail="File must be a CSV")
-    
-    try:
-        contents = await file.read()
-        csv_data = io.StringIO(contents.decode('utf-8'))
-        csv_reader = csv.DictReader(csv_data)
-        
-        required_columns = {'week_number', 'year', 'unavailable_count'}
-        if not required_columns.issubset(csv_reader.fieldnames or []):
-            raise HTTPException(
-                status_code=400,
-                detail=f"CSV must have columns: {', '.join(required_columns)}"
-            )
-        
-        weeks_updated = 0
-        errors = []
-        
-        for row_num, row in enumerate(csv_reader, start=2):
-            try:
-                week_number = int(row['week_number'])
-                year = int(row['year'])
-                unavailable_count = int(row['unavailable_count'])
-                
-                if week_number < 1 or week_number > 52:
-                    errors.append(f"Row {row_num}: Invalid week number {week_number}")
-                    continue
-                
-                week_id = f"W{week_number:02d}-{year}"
-                week = db.query(ServiceWeek).filter_by(id=week_id).first()
-                
-                if not week:
-                    errors.append(f"Row {row_num}: Week {week_number} for year {year} not found")
-                    continue
-                
-                week.historic_unavailable_count = unavailable_count
-                weeks_updated += 1
-                
-            except Exception as e:
-                errors.append(f"Row {row_num}: {str(e)}")
-                continue
-        
-        db.commit()
-        
-        return {
-            "success": True,
-            "weeks_updated": weeks_updated,
-            "errors": errors if errors else None,
-            "message": f"Updated {weeks_updated} weeks" + 
-                      (f" with {len(errors)} errors" if errors else "")
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing CSV: {str(e)}")
-       
-            # Calculate historic_unavailable_count for each week based on assignments
-            week_faculty_map = {}
-            for assignment in db.query(ServiceWeekAssignment).filter(
-                ServiceWeekAssignment.imported == True,
-                ServiceWeekAssignment.week_id.like(f"%-{year}")  # Only this year
-            ).all():
-                if assignment.week_id not in week_faculty_map:
-                    week_faculty_map[assignment.week_id] = set()
-                week_faculty_map[assignment.week_id].add(assignment.faculty_id)
-        
-            # Update historic_unavailable_count  
-            total_active = db.query(func.count(Faculty.id)).filter(Faculty.active == True).scalar() or 0
-            weeks_updated_count = 0
-        
-            for week_id, faculty_set in week_faculty_map.items():
-                week = db.query(ServiceWeek).filter_by(id=week_id).first()
-                if week and total_active > 0:
-                    faculty_working = len(faculty_set)
-                    week.historic_unavailable_count = max(0, total_active - faculty_working)
-                    weeks_updated_count += 1
-        db.commit()
-        
-        return {
-            "success": True,
-            "assignments_created": assignments_created,
-            "weeks_marked_premium": weeks_marked_premium,
-            "weeks_updated": weeks_updated_count,  # ADD THIS LINE
-            "errors": errors if errors else None,
-            "message": f"Imported {assignments_created} assignments" + 
-                      (f" with {len(errors)} errors" if errors else "")
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing CSV: {str(e)}")
-
 
 # ===== EXISTING ENDPOINTS =====
 
