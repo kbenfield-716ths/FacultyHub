@@ -53,6 +53,9 @@ class FacultyInfo(BaseModel):
     is_admin: bool
     rank: str
     password_changed: bool
+    base_points: int
+    bonus_points: int
+    clinical_effort_pct: int
     
     class Config:
         from_attributes = True
@@ -145,7 +148,10 @@ async def get_current_user_info(
             email=current_user.email,
             is_admin=current_user.is_admin,
             rank=current_user.rank,
-            password_changed=current_user.password_changed
+            password_changed=current_user.password_changed,
+            base_points=current_user.base_points,
+            bonus_points=current_user.bonus_points or 0,
+            clinical_effort_pct=current_user.clinical_effort_pct
         )
     )
 
