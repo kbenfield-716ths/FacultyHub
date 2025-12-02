@@ -278,7 +278,9 @@
     
     async function checkAuth() {
       try {
-        const response = await fetch('/api/auth/me');
+        const response = await fetch('/api/auth/me', {
+          credentials: 'same-origin'
+        });
         if (!response.ok) { window.location.href = '/'; return; }
         const data = await response.json();
         if (!data.faculty.is_admin) { alert('Access denied. Admin privileges required.'); window.location.href = '/index.html'; }
@@ -302,7 +304,9 @@
       const countSpan = document.getElementById('providerCount');
       
       try {
-        const response = await fetch('/api/providers');
+        const response = await fetch('/api/providers', {
+          credentials: 'same-origin'
+        });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
         if (!Array.isArray(data)) throw new Error('Invalid response from server');
@@ -322,7 +326,9 @@
     async function loadFaculty() {
       const tbody = document.getElementById('providersTableBody');
       try {
-        const response = await fetch('/api/admin/faculty');
+        const response = await fetch('/api/admin/faculty', {
+          credentials: 'same-origin'
+        });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         allFaculty = await response.json();
         
@@ -375,6 +381,7 @@
       try {
         const response = await fetch(`/api/admin/faculty/${facultyId}`, {
           method: 'PATCH',
+          credentials: 'same-origin',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify(updateData)
         });
@@ -393,7 +400,10 @@
       if (!confirm(`${action} ${faculty.name}?`)) return;
       
       try {
-        const response = await fetch(`/api/admin/faculty/${facultyId}/toggle-admin`, { method: 'POST' });
+        const response = await fetch(`/api/admin/faculty/${facultyId}/toggle-admin`, {
+          method: 'POST',
+          credentials: 'same-origin'
+        });
         if (!response.ok) throw new Error('Failed to toggle admin status');
         alert('Admin status updated');
         await loadFaculty();
@@ -405,7 +415,10 @@
     async function deleteFaculty(facultyId, name) {
       if (!confirm(`Delete faculty '${name}'? This will deactivate their account.`)) return;
       try {
-        const response = await fetch(`/api/admin/faculty/${facultyId}`, { method: 'DELETE' });
+        const response = await fetch(`/api/admin/faculty/${facultyId}`, {
+          method: 'DELETE',
+          credentials: 'same-origin'
+        });
         if (!response.ok) throw new Error('Failed to delete faculty');
         alert(`Faculty '${name}' deactivated`);
         await loadFaculty();
@@ -420,7 +433,12 @@
       const email = document.getElementById('newProviderEmail').value.trim();
       if (!id || !name) { alert('Computing ID and Name are required'); return; }
       try {
-        const response = await fetch('/api/admin/providers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, name, email: email || null }) });
+        const response = await fetch('/api/admin/providers', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, name, email: email || null })
+        });
         if (!response.ok) { const error = await response.json(); throw new Error(error.detail || 'Failed to add faculty'); }
         alert(`Faculty '${name}' added successfully`);
         document.getElementById('newProviderId').value = '';
@@ -437,7 +455,9 @@
       document.getElementById('summaryText').textContent = 'Loading...';
       document.getElementById('signupsTbody').innerHTML = '';
       try {
-        const response = await fetch(`/api/admin/signups?month=${encodeURIComponent(month)}`);
+        const response = await fetch(`/api/admin/signups?month=${encodeURIComponent(month)}`, {
+          credentials: 'same-origin'
+        });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
         if (data.length === 0) { document.getElementById('summaryText').textContent = 'No signups yet for this month.'; return; }
@@ -462,7 +482,10 @@
       const month = document.getElementById('monthInput').value;
       if (!month) return;
       try {
-        const response = await fetch(`/api/admin/run_optimizer?month=${encodeURIComponent(month)}`, { method: 'POST' });
+        const response = await fetch(`/api/admin/run_optimizer?month=${encodeURIComponent(month)}`, {
+          method: 'POST',
+          credentials: 'same-origin'
+        });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
         alert(`Optimizer finished: ${data.assigned_shifts} shifts assigned`);
@@ -474,7 +497,9 @@
       const month = document.getElementById('monthInput').value;
       if (!month) return;
       try {
-        const response = await fetch(`/api/admin/assignments?month=${encodeURIComponent(month)}`);
+        const response = await fetch(`/api/admin/assignments?month=${encodeURIComponent(month)}`, {
+          credentials: 'same-origin'
+        });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
         if (data.length === 0) { document.getElementById('scheduleSection').style.display = 'none'; alert('No schedule generated. Run optimizer first.'); return; }
@@ -504,7 +529,9 @@
       const month = document.getElementById('monthInput').value;
       if (!month) return;
       try {
-        const response = await fetch(`/api/admin/signups_csv?month=${encodeURIComponent(month)}`);
+        const response = await fetch(`/api/admin/signups_csv?month=${encodeURIComponent(month)}`, {
+          credentials: 'same-origin'
+        });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const text = await response.text();
         const blob = new Blob([text], { type: 'text/csv' });
@@ -522,7 +549,10 @@
       const month = document.getElementById('monthInput').value;
       if (!confirm(`Clear ALL signups and schedule for ${month}?\n\nThis cannot be undone!`)) return;
       try {
-        const response = await fetch(`/api/admin/clear_month?month=${encodeURIComponent(month)}`, { method: 'DELETE' });
+        const response = await fetch(`/api/admin/clear_month?month=${encodeURIComponent(month)}`, {
+          method: 'DELETE',
+          credentials: 'same-origin'
+        });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         alert('Month cleared successfully');
         await loadSignups();
@@ -531,7 +561,9 @@
     
     async function loadOverview() {
       try {
-        const response = await fetch('/api/admin/service-weeks');
+        const response = await fetch('/api/admin/service-weeks', {
+          credentials: 'same-origin'
+        });
         const weeks = await response.json();
         const content = document.getElementById('overviewContent');
         if (weeks.length === 0) {
@@ -565,7 +597,12 @@
         sccm_conference: document.getElementById('sccmConference').value || null
       };
       try {
-        const response = await fetch('/api/admin/generate-service-weeks', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(config) });
+        const response = await fetch('/api/admin/generate-service-weeks', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(config)
+        });
         if (response.ok) { showAlert('configAlert', 'Successfully generated 52 weeks!', 'success'); await loadWeeks(); await loadOverview(); showTab('weeks'); }
         else { const error = await response.json(); showAlert('configAlert', error.detail || 'Failed to generate weeks', 'error'); }
       } catch (error) { showAlert('configAlert', 'Error: ' + error.message, 'error'); }
@@ -574,7 +611,10 @@
     async function clearAllWeeks() {
       if (!confirm('Delete ALL weeks? This will also remove all faculty requests. This cannot be undone.')) return;
       try {
-        const response = await fetch('/api/admin/service-weeks', { method: 'DELETE' });
+        const response = await fetch('/api/admin/service-weeks', {
+          method: 'DELETE',
+          credentials: 'same-origin'
+        });
         if (response.ok) { showAlert('configAlert', 'All weeks cleared successfully', 'success'); await loadWeeks(); await loadOverview(); }
         else showAlert('configAlert', 'Failed to clear weeks', 'error');
       } catch (error) { showAlert('configAlert', 'Error: ' + error.message, 'error'); }
@@ -582,7 +622,9 @@
     
     async function loadRequests() {
       try {
-        const response = await fetch('/api/admin/service-requests');
+        const response = await fetch('/api/admin/service-requests', {
+          credentials: 'same-origin'
+        });
         const requests = await response.json();
         const tbody = document.getElementById('requestsTableBody');
         tbody.innerHTML = '';
@@ -599,7 +641,9 @@
     
     async function loadWeeks() {
       try {
-        const response = await fetch('/api/admin/service-weeks');
+        const response = await fetch('/api/admin/service-weeks', {
+          credentials: 'same-origin'
+        });
         allWeeks = await response.json();
         const tbody = document.getElementById('weeksTableBody');
         tbody.innerHTML = '';
@@ -631,7 +675,12 @@
     
     async function saveCell(cell, weekId, field, value, type) {
       try {
-        const response = await fetch(`/api/admin/service-weeks/${weekId}`, { method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({[field]: value}) });
+        const response = await fetch(`/api/admin/service-weeks/${weekId}`, {
+          method: 'PATCH',
+          credentials: 'same-origin',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({[field]: value})
+        });
         if (response.ok) {
           if (type === 'number') cell.textContent = value + ' pts';
           else if (type === 'date') cell.textContent = formatDate(value);
@@ -643,7 +692,12 @@
     
     async function updateWeekType(weekId, type) {
       try {
-        const response = await fetch(`/api/admin/service-weeks/${weekId}`, { method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({week_type: type}) });
+        const response = await fetch(`/api/admin/service-weeks/${weekId}`, {
+          method: 'PATCH',
+          credentials: 'same-origin',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({week_type: type})
+        });
         if (response.ok) await loadOverview();
         else alert('Failed to update week type');
       } catch (error) { alert('Error: ' + error.message); }
@@ -652,7 +706,10 @@
     async function deleteWeek(weekId) {
       if (!confirm('Delete this week? This cannot be undone.')) return;
       try {
-        const response = await fetch(`/api/admin/service-weeks/${weekId}`, { method: 'DELETE' });
+        const response = await fetch(`/api/admin/service-weeks/${weekId}`, {
+          method: 'DELETE',
+          credentials: 'same-origin'
+        });
         if (response.ok) { await loadWeeks(); await loadOverview(); }
         else alert('Failed to delete week');
       } catch (error) { alert('Error: ' + error.message); }
@@ -701,7 +758,9 @@
       grid.style.display = 'none';
       
       try {
-        const response = await fetch(`/api/admin/service-weeks/heatmap?year=${year}`);
+        const response = await fetch(`/api/admin/service-weeks/heatmap?year=${year}`, {
+          credentials: 'same-origin'
+        });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         
         const data = await response.json();
