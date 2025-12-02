@@ -112,6 +112,16 @@ class Faculty(Base):
     bonus_points = Column(Integer, default=0)  # Earned from volunteering
     active = Column(Boolean, default=True)
     
+    # Moonlighting participation
+    moonlighter = Column(Boolean, default=False)  # Whether faculty does moonlighting shifts
+    
+    # Service week commitments (for inpatient scheduling)
+    # These define how many weeks per year this faculty member is expected to work each service
+    micu_weeks = Column(Integer, default=0)        # Number of MICU weeks per year
+    app_icu_weeks = Column(Integer, default=0)     # Number of APP-ICU weeks per year  
+    procedure_weeks = Column(Integer, default=0)   # Number of Procedure weeks per year
+    consult_weeks = Column(Integer, default=0)     # Number of Consult weeks per year
+    
     # Relationships
     unavailability_requests = relationship("UnavailabilityRequest", back_populates="faculty")
     service_assignments = relationship("ServiceWeekAssignment", back_populates="faculty")
@@ -121,8 +131,8 @@ class ServiceWeek(Base):
     """The 52 weeks of the academic year for service availability scheduling"""
     __tablename__ = "service_weeks"
     
-    id = Column(String, primary_key=True, index=True)  # "W01", "W02", etc.
-    week_number = Column(Integer, nullable=False, unique=True)
+    id = Column(String, primary_key=True, index=True)  # "W01-2026", "W02-2026", etc.
+    week_number = Column(Integer, nullable=False)
     label = Column(String, nullable=False)  # "Week 1 (Jul 7)"
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
