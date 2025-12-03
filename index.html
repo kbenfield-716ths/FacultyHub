@@ -348,7 +348,59 @@
         document.getElementById('loginButton').style.display = 'inline-block';
       }
     }
-
+async function checkAuth() {
+  try {
+    const response = await fetch(`${API_URL}/api/auth/check`, {
+      credentials: 'include'
+    });
+    const data = await response.json();
+    
+    if (data.authenticated) {
+      document.getElementById('userName').textContent = `Welcome, ${data.faculty_name}!`;
+      document.getElementById('userName').style.display = 'inline';
+      document.getElementById('logoutButton').style.display = 'inline-block';
+      document.getElementById('loginButton').style.display = 'none';
+      
+      // Show "Return to Admin" button if impersonating
+      if (data.is_impersonating) {
+        const existingBtn = document.getElementById('returnToAdminBtn');
+        if (!existingBtn) {
+          const returnBtn = document.createElement('button');
+          returnBtn.id = 'returnToAdminBtn';
+          returnBtn.className = 'logout-button';
+          returnBtn.textContent = '🔓 Return to Admin';
+          returnBtn.style.background = '#ff5722';
+          returnBtn.onclick = async () => {
+            const res = await fetch(`${API_URL}/api/admin/return-to-admin`, {
+              method: 'POST',
+              credentials: 'include'
+            });
+            if (res.ok) {
+              window.location.href = '/admin.html';
+            }
+          };
+          document.querySelector('.header-right').insertBefore(
+            returnBtn,
+            document.getElementById('logoutButton')
+          );
+        }
+      }
+      
+      document.getElementById('welcomeTitle').textContent = `Welcome back, ${data.faculty_name}!`;
+      
+      if (data.is_admin) {
+        document.getElementById('adminCard').style.display = 'block';
+      }
+    } else {
+      document.getElementById('loginButton').style.display = 'inline-block';
+      document.getElementById('logoutButton').style.display = 'none';
+      document.getElementById('userName').style.display = 'none';
+    }
+  } catch (error) {
+    console.error('Auth check failed:', error);
+    document.getElementById('loginButton').style.display = 'inline-block';
+  }
+}
     // Logout handler
     document.getElementById('logoutButton').addEventListener('click', async () => {
       try {
