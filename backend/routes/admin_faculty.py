@@ -11,6 +11,7 @@ from pydantic import BaseModel, EmailStr
 
 from backend.models import Faculty, ServiceWeekAssignment, ServiceWeek, UnavailabilityRequest, get_db
 from backend.auth import require_admin, hash_password, create_session
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
