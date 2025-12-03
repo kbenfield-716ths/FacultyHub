@@ -160,22 +160,25 @@ async def get_current_user_info(
 
 @router.get("/check")
 async def check_auth(
+    request: Request,
     current_user: Optional[Faculty] = Depends(get_optional_user)
 ):
-    """
-    Check if user is authenticated (doesn't throw error if not).
-    Used by frontend to check auth status.
-    """
     if current_user:
+        # Check if impersonating
+        session_token = request.cookies.get("session_token")
+        from backend.auth import get_session
+        session = get_session(session_token) if session_token else None
+        impersonated_by = session.get("impersonated_by") if session else None
+        
         return {
             "authenticated": True,
             "faculty_id": current_user.id,
             "faculty_name": current_user.name,
-            "is_admin": current_user.is_admin
+            "is_admin": current_user.is_admin,
+            "is_impersonating": bool(impersonated_by)
         }
     else:
         return {"authenticated": False}
-
 
 @router.post("/change-password")
 async def change_password(
