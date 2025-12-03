@@ -567,11 +567,6 @@ async def impersonate_faculty(
     admin_user: Faculty = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
-    """
-    Impersonate a faculty member for testing.
-    Creates a new session as the target faculty without requiring their password.
-    Admin only - for testing workflows.
-    """
     faculty = db.query(Faculty).filter_by(id=faculty_id).first()
     if not faculty:
         raise HTTPException(
@@ -579,14 +574,14 @@ async def impersonate_faculty(
             detail="Faculty not found"
         )
     
-    # Create session as this faculty member
+    # Create session with impersonation tracking
     session_token = create_session(
         faculty.id,
         faculty.name,
-        faculty.is_admin
+        faculty.is_admin,
+        impersonated_by=admin_user.id  # Store original admin ID
     )
     
-    # Set session cookie
     response.set_cookie(
         key="session_token",
         value=session_token,
@@ -602,7 +597,39 @@ async def impersonate_faculty(
         "faculty_name": faculty.name,
         "is_admin": faculty.is_admin
     }
-
+@router.post("/return-to-admin")
+async def return_to_admin(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db)
+):
+    """Return from impersonation back to original admin account."""
+    session_token = request.cookies.get("session_token")
+    if not session_token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    from backend.auth import get_session
+    session = get_session(session_token)
+    if not session or not session.get("impersonated_by"):
+        raise HTTPException(status_code=400, detail="Not currently impersonating")
+    
+    # Get the original admin
+    admin = db.query(Faculty).filter_by(id=session["impersonated_by"]).first()
+    if not admin:
+        raise HTTPException(status_code=404, detail="Original admin not found")
+    
+    # Create new session as admin
+    new_token = create_session(admin.id, admin.name, admin.is_admin)
+    
+    response.set_cookie(
+        key="session_token",
+        value=new_token,
+        httponly=True,
+        max_age=86400,
+        samesite="lax"
+    )
+    
+    return {"success": True, "message": f"Returned to {admin.name}"}
 
 @router.post("/reset/points")
 async def reset_all_points(
