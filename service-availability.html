@@ -482,15 +482,7 @@
       color: #4b5563;
     }
 
-    @media (max-width: 640px) {
-      .week-actions {
-        grid-template-columns: 1fr;
-      }
-      
-      .week-info {
-        flex-direction: column;
-        align-items: flex-start;
-      }
+  
       /* Demand indicator styles */
 .demand-indicator {
   margin-top: 8px;
@@ -562,6 +554,15 @@
   font-weight: 700;
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
+      @media (max-width: 640px) {
+      .week-actions {
+        grid-template-columns: 1fr;
+      }
+      
+      .week-info {
+        flex-direction: column;
+        align-items: flex-start;
+      }
     }
   </style>
 </head>
