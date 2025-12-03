@@ -3,14 +3,14 @@ Admin endpoints for faculty management.
 These require admin authentication.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
 from pydantic import BaseModel, EmailStr
 
-from backend.models import Faculty, ServiceWeekAssignment, ServiceWeek, get_db
-from backend.auth import require_admin, hash_password
+from backend.models import Faculty, ServiceWeekAssignment, ServiceWeek, UnavailabilityRequest, get_db
+from backend.auth import require_admin, hash_password, create_session
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -553,4 +553,147 @@ def get_faculty_stats(
         "admin_count": admins,
         "moonlighter_count": moonlighters,
         "by_rank": rank_counts
+    }
+
+
+# ==========================================
+# TESTING UTILITIES
+# ==========================================
+
+@router.post("/impersonate/{faculty_id}")
+async def impersonate_faculty(
+    faculty_id: str,
+    response: Response,
+    admin_user: Faculty = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Impersonate a faculty member for testing.
+    Creates a new session as the target faculty without requiring their password.
+    Admin only - for testing workflows.
+    """
+    faculty = db.query(Faculty).filter_by(id=faculty_id).first()
+    if not faculty:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Faculty not found"
+        )
+    
+    # Create session as this faculty member
+    session_token = create_session(
+        faculty.id,
+        faculty.name,
+        faculty.is_admin
+    )
+    
+    # Set session cookie
+    response.set_cookie(
+        key="session_token",
+        value=session_token,
+        httponly=True,
+        max_age=86400,
+        samesite="lax"
+    )
+    
+    return {
+        "success": True,
+        "message": f"Now logged in as {faculty.name}",
+        "faculty_id": faculty.id,
+        "faculty_name": faculty.name,
+        "is_admin": faculty.is_admin
+    }
+
+
+@router.post("/reset/points")
+async def reset_all_points(
+    admin_user: Faculty = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Reset all faculty bonus points to 0.
+    Keeps base points intact.
+    Admin only - for testing cycles.
+    """
+    faculty_list = db.query(Faculty).filter_by(active=True).all()
+    
+    reset_count = 0
+    for faculty in faculty_list:
+        faculty.bonus_points = 0
+        reset_count += 1
+    
+    db.commit()
+    
+    return {
+        "success": True,
+        "faculty_reset": reset_count,
+        "message": f"Reset bonus points for {reset_count} faculty members"
+    }
+
+
+@router.post("/reset/requests")
+async def reset_all_requests(
+    year: Optional[int] = None,
+    admin_user: Faculty = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Clear all unavailability requests.
+    If year provided, only clear that year.
+    Admin only - for testing cycles.
+    """
+    if year:
+        # Get week IDs for this year
+        week_ids = [w.id for w in db.query(ServiceWeek).filter_by(year=year).all()]
+        deleted = db.query(UnavailabilityRequest).filter(
+            UnavailabilityRequest.week_id.in_(week_ids)
+        ).delete(synchronize_session=False)
+    else:
+        deleted = db.query(UnavailabilityRequest).delete(synchronize_session=False)
+    
+    db.commit()
+    
+    return {
+        "success": True,
+        "requests_deleted": deleted,
+        "year": year or "all",
+        "message": f"Deleted {deleted} unavailability requests" + (f" for {year}" if year else "")
+    }
+
+
+@router.post("/reset/all")
+async def reset_everything(
+    year: Optional[int] = None,
+    admin_user: Faculty = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Complete reset for testing:
+    - Clear all unavailability requests
+    - Reset all bonus points to 0
+    Admin only - for starting fresh test cycles.
+    """
+    # Reset points
+    faculty_list = db.query(Faculty).filter_by(active=True).all()
+    faculty_count = 0
+    for faculty in faculty_list:
+        faculty.bonus_points = 0
+        faculty_count += 1
+    
+    # Clear requests
+    if year:
+        week_ids = [w.id for w in db.query(ServiceWeek).filter_by(year=year).all()]
+        requests_deleted = db.query(UnavailabilityRequest).filter(
+            UnavailabilityRequest.week_id.in_(week_ids)
+        ).delete(synchronize_session=False)
+    else:
+        requests_deleted = db.query(UnavailabilityRequest).delete(synchronize_session=False)
+    
+    db.commit()
+    
+    return {
+        "success": True,
+        "faculty_reset": faculty_count,
+        "requests_deleted": requests_deleted,
+        "year": year or "all",
+        "message": f"Complete reset: {faculty_count} faculty, {requests_deleted} requests cleared"
     }
