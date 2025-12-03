@@ -491,6 +491,77 @@
         flex-direction: column;
         align-items: flex-start;
       }
+      /* Demand indicator styles */
+.demand-indicator {
+  margin-top: 8px;
+  margin-bottom: 12px;
+}
+
+.demand-bar-container {
+  background: #e5e7eb;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.demand-bar {
+  height: 100%;
+  transition: width 0.3s ease;
+  border-radius: 4px;
+}
+
+.demand-bar.low { background: #10b981; }
+.demand-bar.medium { background: #f59e0b; }
+.demand-bar.high { background: #ef4444; }
+.demand-bar.critical { background: #991b1b; }
+.demand-bar.full { background: #991b1b; }
+
+.demand-text {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.demand-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.demand-badge.low { background: #d1fae5; color: #065f46; }
+.demand-badge.medium { background: #fed7aa; color: #92400e; }
+.demand-badge.high { background: #fecaca; color: #991b1b; }
+.demand-badge.critical { background: #fca5a5; color: #7f1d1d; }
+.demand-badge.full { background: #991b1b; color: white; }
+
+.cost-change {
+  font-size: 11px;
+  color: #ef4444;
+  font-weight: 700;
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.full-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #991b1b;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
     }
   </style>
 </head>
@@ -647,66 +718,105 @@
     }
 
     function renderWeeks() {
-      const container = document.getElementById('weeksContainer');
-      const filteredWeeks = filterWeeks(allWeeks);
-      
-      if (filteredWeeks.length === 0) {
-        container.innerHTML = '<div class="empty-state"><h3>No weeks match this filter</h3></div>';
-        return;
-      }
+  const container = document.getElementById('weeksContainer');
+  const filteredWeeks = filterWeeks(allWeeks);
+  
+  if (filteredWeeks.length === 0) {
+    container.innerHTML = '<div class="empty-state"><h3>No weeks match this filter</h3></div>';
+    return;
+  }
 
-      container.innerHTML = filteredWeeks.map(week => {
-        const isRequestedOff = selectedWeeks.has(week.id);
-        const isVolunteer = availableWeeks.has(week.id);
-        
-        return `
-          <div class="week-card">
-            <div class="week-info">
-              <span class="week-number">Week ${week.week_number}</span>
-              <div class="week-details">
-                <div class="week-label">${week.label}</div>
-                <div class="week-dates">${formatDate(week.start_date)} - ${formatDate(week.end_date)}</div>
-              </div>
-              <span class="week-type ${week.week_type}">${week.week_type.replace('_', ' ')}</span>
-            </div>
-            <div class="week-actions">
-              <button class="action-btn request-off ${isRequestedOff ? 'active' : ''}" 
-                      onclick="toggleRequestOff('${week.id}')">
-                <span class="checkmark">✓</span>
-                <div>
-                  <div class="btn-label">Request Off</div>
-                  <div class="btn-points">-${week.point_cost_off} pts</div>
-                </div>
-              </button>
-              <button class="action-btn volunteer ${isVolunteer ? 'active' : ''}" 
-                      onclick="toggleVolunteer('${week.id}')">
-                <span class="checkmark">✓</span>
-                <div>
-                  <div class="btn-label">Volunteer</div>
-                  <div class="btn-points">+${week.point_reward_work} pts</div>
-                </div>
-              </button>
-            </div>
+  container.innerHTML = filteredWeeks.map(week => {
+    const isRequestedOff = selectedWeeks.has(week.id);
+    const isVolunteer = availableWeeks.has(week.id);
+    
+    // Calculate demand bar width
+    const demandPercent = (week.request_count / week.max_capacity) * 100;
+    
+    // Check if cost increased from base
+    const costIncreased = week.point_cost_off > week.base_cost;
+    const costDiff = week.point_cost_off - week.base_cost;
+    
+    // Determine if can request off
+    const canRequestOff = !week.is_full || isRequestedOff;
+    
+    return `
+      <div class="week-card">
+        <div class="week-info">
+          <span class="week-number">Week ${week.week_number}</span>
+          <div class="week-details">
+            <div class="week-label">${week.label}</div>
+            <div class="week-dates">${formatDate(week.start_date)} - ${formatDate(week.end_date)}</div>
           </div>
-        `;
-      }).join('');
+          <span class="week-type ${week.week_type}">${week.week_type.replace('_', ' ')}</span>
+        </div>
+        
+        <!-- Demand Indicator -->
+        <div class="demand-indicator">
+          <div class="demand-bar-container">
+            <div class="demand-bar ${week.demand_level}" style="width: ${demandPercent}%"></div>
+          </div>
+          <div class="demand-text">
+            <span>${week.request_count}/${week.max_capacity} requests</span>
+            <span class="demand-badge ${week.demand_level}">
+              ${week.is_full ? 'FULL' : 
+                week.demand_level === 'critical' ? week.spots_remaining + ' left!' :
+                week.demand_level === 'high' ? 'High Demand' :
+                week.demand_level === 'medium' ? 'Medium' : 'Available'}
+            </span>
+          </div>
+        </div>
+        
+        <div class="week-actions">
+          <button class="action-btn request-off ${isRequestedOff ? 'active' : ''}" 
+                  onclick="toggleRequestOff('${week.id}')"
+                  ${!canRequestOff ? 'disabled' : ''}>
+            ${week.is_full && !isRequestedOff ? '<span class="full-badge">FULL</span>' : '<span class="checkmark">✓</span>'}
+            <div>
+              <div class="btn-label">Request Off</div>
+              <div class="btn-points">
+                -${week.point_cost_off} pts
+                ${costIncreased ? `<span class="cost-change">(+${costDiff})</span>` : ''}
+              </div>
+            </div>
+          </button>
+          <button class="action-btn volunteer ${isVolunteer ? 'active' : ''}" 
+                  onclick="toggleVolunteer('${week.id}')">
+            <span class="checkmark">✓</span>
+            <div>
+              <div class="btn-label">Volunteer</div>
+              <div class="btn-points">+${week.point_reward_work} pts</div>
+            </div>
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
 
-      updateStats();
-    }
+  updateStats();
+}
 
-    function toggleRequestOff(weekId) {
-      // Remove from volunteer if present
-      availableWeeks.delete(weekId);
-      
-      // Toggle request off
-      if (selectedWeeks.has(weekId)) {
-        selectedWeeks.delete(weekId);
-      } else {
-        selectedWeeks.add(weekId);
-      }
-      
-      renderWeeks();
-    }
+function toggleRequestOff(weekId) {
+  const week = allWeeks.find(w => w.id === weekId);
+  
+  // If week is full and not already selected by this user, show alert
+  if (week && week.is_full && !selectedWeeks.has(weekId)) {
+    alert(`Week ${week.week_number} (${week.label}) is full. Maximum ${week.max_capacity} faculty can request this week.`);
+    return;
+  }
+  
+  // Remove from volunteer if present
+  availableWeeks.delete(weekId);
+  
+  // Toggle request off
+  if (selectedWeeks.has(weekId)) {
+    selectedWeeks.delete(weekId);
+  } else {
+    selectedWeeks.add(weekId);
+  }
+  
+  renderWeeks();
+}
 
     function toggleVolunteer(weekId) {
       // Remove from request off if present
