@@ -159,7 +159,97 @@ async def get_service_weeks_heatmap(
     
     return result
 
-
+@router.get("/service-capacity-summary")
+async def get_service_capacity_summary(
+    year: int = 2026,
+    db: Session = Depends(get_db),
+    current_user: Faculty = Depends(require_admin)
+):
+    """
+    Get capacity summary showing expected weeks vs actual assignments
+    for each service type (MICU, APP-ICU, Procedures, Consults).
+    
+    This helps admins validate they have enough staff coverage before
+    building the schedule.
+    """
+    
+    # Get all active faculty with their expected service weeks
+    faculty_list = db.query(Faculty).filter(Faculty.active == True).all()
+    
+    # Calculate expected capacity by service type
+    expected = {
+        "MICU": sum(f.micu_weeks for f in faculty_list),
+        "APP-ICU": sum(f.app_icu_weeks for f in faculty_list),
+        "Procedures": sum(f.procedure_weeks for f in faculty_list),
+        "Consults": sum(f.consult_weeks for f in faculty_list)
+    }
+    
+    # Count actual assignments by service type for this year
+    from sqlalchemy import and_
+    
+    actual = {"MICU": 0, "APP-ICU": 0, "Procedures": 0, "Consults": 0}
+    
+    for service_type in actual.keys():
+        count = db.query(func.count(ServiceWeekAssignment.id)).join(
+            ServiceWeek, ServiceWeekAssignment.week_id == ServiceWeek.id
+        ).filter(
+            and_(
+                ServiceWeekAssignment.service_type == service_type,
+                ServiceWeek.year == year
+            )
+        ).scalar() or 0
+        actual[service_type] = count
+    
+    # Get total weeks needed (52 weeks * required staff per week)
+    total_weeks = db.query(ServiceWeek).filter(ServiceWeek.year == year).count()
+    
+    # Calculate capacity status for each service
+    result = []
+    for service_type in ["MICU", "APP-ICU", "Procedures", "Consults"]:
+        expected_weeks = expected[service_type]
+        assigned_weeks = actual[service_type]
+        remaining = expected_weeks - assigned_weeks
+        
+        # Status determination
+        if assigned_weeks == 0:
+            status = "not_started"
+            percent_filled = 0
+        elif remaining <= 0:
+            status = "complete"
+            percent_filled = 100
+        elif remaining <= expected_weeks * 0.2:
+            status = "almost_complete"
+            percent_filled = int((assigned_weeks / expected_weeks) * 100)
+        else:
+            status = "in_progress"
+            percent_filled = int((assigned_weeks / expected_weeks) * 100)
+        
+        result.append({
+            "service_type": service_type,
+            "expected_weeks": expected_weeks,
+            "assigned_weeks": assigned_weeks,
+            "remaining_weeks": remaining,
+            "percent_filled": percent_filled,
+            "status": status,
+            "faculty_count": sum(1 for f in faculty_list if getattr(f, f"{service_type.lower().replace('-', '_')}_weeks", 0) > 0)
+        })
+    
+    # Overall summary
+    total_expected = sum(expected.values())
+    total_assigned = sum(actual.values())
+    
+    return {
+        "year": year,
+        "total_weeks_in_year": total_weeks,
+        "services": result,
+        "totals": {
+            "expected_weeks": total_expected,
+            "assigned_weeks": total_assigned,
+            "remaining_weeks": total_expected - total_assigned,
+            "percent_complete": int((total_assigned / total_expected * 100)) if total_expected > 0 else 0
+        },
+        "active_faculty_count": len(faculty_list)
+    }
 # ===== CSV IMPORT ENDPOINT =====
 
 @router.post("/import-historic-assignments")
