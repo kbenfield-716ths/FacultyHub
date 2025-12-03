@@ -591,7 +591,7 @@
     // Load all service weeks
     async function loadWeeks() {
       try {
-        const response = await fetch(`${API_BASE}/api/admin/service-weeks`);
+        const response = await fetch(`${API_BASE}/api/service-weeks?year=2026`);
         if (!response.ok) throw new Error('Failed to load weeks');
         allWeeks = await response.json();
         
