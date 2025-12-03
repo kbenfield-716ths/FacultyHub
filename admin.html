@@ -510,18 +510,6 @@
               <td>${badges}</td>
               <td>
                 <div class="action-buttons">
-                  <button class="btn-secondary" onclick="editFaculty('${f.id}')">Edit</button>
-                  <button class="btn-${f.is_admin ? 'danger' : 'success'}" onclick="toggleAdmin('${f.id}', ${f.is_admin})">${f.is_admin ? 'Remove Admin' : 'Make Admin'}</button>
-                  <button class="btn-danger" onclick="deleteFaculty('${f.id}', '${f.name}')">Delete</button>
-                </div>
-              </td>
-            `;
-            row.innerHTML = `
-              <td><strong>${f.id}</strong></td>
-              <td>${f.name}</td>
-              ... existing columns ...
-              <td>
-                <div class="action-buttons">
                   <button class="btn-success" onclick="impersonateFaculty('${f.id}', '${f.name}')">🔐 Login As</button>
                   <button class="btn-secondary" onclick="editFaculty('${f.id}')">Edit</button>
                   <button class="btn-${f.is_admin ? 'danger' : 'success'}" onclick="toggleAdmin('${f.id}', ${f.is_admin})">${f.is_admin ? 'Remove Admin' : 'Make Admin'}</button>
