@@ -205,6 +205,99 @@
       <div class="card">
         <div class="card-header"><h2 class="card-title">Service Availability System Status</h2><button class="btn-secondary" onclick="loadOverview()">🔄 Refresh</button></div>
         <div id="overviewContent"><p style="color: #6b7280;">No weeks generated yet. Configure periods and generate weeks to get started.</p></div>
+      <!-- Add this section in the Service Overview tab -->
+<div class="capacity-summary-section" style="margin-bottom: 30px;">
+  <h3 style="margin-bottom: 16px; font-size: 18px; font-weight: 700;">📊 Service Capacity Overview</h3>
+  <div id="capacitySummary">
+    <div style="text-align: center; padding: 20px; color: #6b7280;">Loading capacity data...</div>
+  </div>
+</div>
+
+<style>
+.capacity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.capacity-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  border: 2px solid #e5e7eb;
+}
+
+.capacity-card h4 {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #1f2937;
+}
+
+.capacity-stats {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.capacity-bar {
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 12px 0;
+}
+
+.capacity-fill {
+  height: 100%;
+  background: #10b981;
+  transition: width 0.3s ease;
+}
+
+.capacity-fill.not_started { background: #9ca3af; }
+.capacity-fill.in_progress { background: #3b82f6; }
+.capacity-fill.almost_complete { background: #f59e0b; }
+.capacity-fill.complete { background: #10b981; }
+
+.capacity-summary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-top: 20px;
+}
+
+.capacity-summary h4 {
+  margin-bottom: 16px;
+  font-size: 18px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+}
+
+.summary-stat {
+  text-align: center;
+}
+
+.summary-stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.summary-stat-label {
+  font-size: 12px;
+  opacity: 0.9;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+</style>
+      
       </div>
     </div>
     
@@ -406,7 +499,70 @@
       await loadOverview();
       await loadWeeks();
     });
+    <script>
+async function loadCapacitySummary() {
+  try {
+    const response = await fetch(`${API_BASE}/api/admin/service-capacity-summary?year=2026`, {
+      credentials: 'include'
+    });
     
+    if (!response.ok) throw new Error('Failed to load capacity summary');
+    
+    const data = await response.json();
+    
+    const html = `
+      <div class="capacity-grid">
+        ${data.services.map(service => `
+          <div class="capacity-card">
+            <h4>${service.service_type}</h4>
+            <div class="capacity-stats">
+              <span><strong>${service.expected_weeks}</strong> weeks expected</span>
+              <span>${service.faculty_count} faculty</span>
+            </div>
+            <div class="capacity-bar">
+              <div class="capacity-fill ${service.status}" style="width: ${service.percent_filled}%"></div>
+            </div>
+            <div class="capacity-stats">
+              <span>${service.assigned_weeks} assigned</span>
+              <span style="color: ${service.remaining_weeks > 0 ? '#ef4444' : '#10b981'};">
+                ${service.remaining_weeks > 0 ? service.remaining_weeks + ' needed' : '✓ Complete'}
+              </span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      
+      <div class="capacity-summary">
+        <h4>Total Capacity (All Services)</h4>
+        <div class="summary-grid">
+          <div class="summary-stat">
+            <div class="summary-stat-value">${data.totals.expected_weeks}</div>
+            <div class="summary-stat-label">Expected Weeks</div>
+          </div>
+          <div class="summary-stat">
+            <div class="summary-stat-value">${data.totals.assigned_weeks}</div>
+            <div class="summary-stat-label">Assigned Weeks</div>
+          </div>
+          <div class="summary-stat">
+            <div class="summary-stat-value">${data.totals.remaining_weeks}</div>
+            <div class="summary-stat-label">Remaining</div>
+          </div>
+          <div class="summary-stat">
+            <div class="summary-stat-value">${data.totals.percent_complete}%</div>
+            <div class="summary-stat-label">Complete</div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.getElementById('capacitySummary').innerHTML = html;
+    
+  } catch (error) {
+    console.error('Error loading capacity summary:', error);
+    document.getElementById('capacitySummary').innerHTML = 
+      '<div style="color: #ef4444; padding: 20px;">Failed to load capacity summary</div>';
+  }
+}
     function setDefaultMonth() {
       const now = new Date();
       const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
