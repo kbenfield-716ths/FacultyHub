@@ -24,6 +24,7 @@ from .routes.admin_service import router as admin_service_router
 from .routes.auth import router as auth_router
 from .routes.service_requests import router as service_requests_router
 from .routes.service_weeks import router as service_weeks_router
+from .routes.schedule_routes import router as schedule_router
 
 app = FastAPI()
 app.add_middleware(GZipMiddleware, minimum_size=1000)
@@ -34,6 +35,7 @@ app.include_router(admin_faculty_router)
 app.include_router(admin_service_router)
 app.include_router(service_requests_router)
 app.include_router(service_weeks_router)
+app.include_router(schedule_router)
 
 # Serve static files (HTML, CSS, JS, icons, manifest)
 # HTML files are in the parent directory of backend/

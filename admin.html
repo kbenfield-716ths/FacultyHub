@@ -85,6 +85,18 @@
     .status-critical { background: #fee2e2 !important; border-color: #ef4444 !important; }
     .status-critical .week-count { color: #991b1b !important; }
     .status-critical .week-status { color: #991b1b !important; }
+    
+    /* Schedule viewer styles */
+    .schedule-modal-content { max-width: 95%; width: 1400px; }
+    .schedule-grid { overflow-x: auto; }
+    .schedule-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .schedule-table th { background: #f9fafb; padding: 10px 8px; text-align: left; font-weight: 600; color: #6b7280; font-size: 12px; text-transform: uppercase; border: 1px solid #e5e7eb; white-space: nowrap; }
+    .schedule-table td { padding: 8px; border: 1px solid #e5e7eb; vertical-align: top; }
+    .schedule-table tr:hover { background: #f9fafb; }
+    .schedule-week-complete { background: #d1fae5; }
+    .schedule-week-incomplete { background: #fee2e2; }
+    .assignment-badge { display: inline-block; padding: 2px 8px; margin: 2px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #dbeafe; color: #1e40af; }
+    .assignment-slot-empty { color: #dc2626; font-style: italic; font-size: 11px; }
   </style>
 </head>
 <body>
@@ -203,103 +215,142 @@
     
     <div id="tab-overview" class="tab-content">
       <div class="card">
-        <div class="card-header"><h2 class="card-title">Service Availability System Status</h2><button class="btn-secondary" onclick="loadOverview()">🔄 Refresh</button></div>
+        <div class="card-header">
+          <h2 class="card-title">Service Availability System Status</h2>
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <select id="scheduleYearSelect" style="padding: 8px 12px; border: 2px solid #e5e7eb; border-radius: 6px; font-weight: 600;">
+              <option value="2025">2025-2026</option>
+              <option value="2026" selected>2026-2027</option>
+              <option value="2027">2027-2028</option>
+            </select>
+            <button class="btn-success" onclick="generateServiceSchedule()" style="padding: 10px 20px;">🗓️ Generate Schedule</button>
+            <button class="btn-primary" onclick="viewServiceSchedule()" style="padding: 10px 20px;">📋 View Schedule</button>
+            <button class="btn-secondary" onclick="loadOverview()">🔄 Refresh</button>
+          </div>
+        </div>
         <div id="overviewContent"><p style="color: #6b7280;">No weeks generated yet. Configure periods and generate weeks to get started.</p></div>
-      <!-- Add this section in the Service Overview tab -->
-<div class="capacity-summary-section" style="margin-bottom: 30px;">
-  <h3 style="margin-bottom: 16px; font-size: 18px; font-weight: 700;">📊 Service Capacity Overview</h3>
-  <div id="capacitySummary">
-    <div style="text-align: center; padding: 20px; color: #6b7280;">Loading capacity data...</div>
-  </div>
-</div>
-
-<style>
-.capacity-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.capacity-card {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  border: 2px solid #e5e7eb;
-}
-
-.capacity-card h4 {
-  font-size: 16px;
-  font-weight: 700;
-  margin-bottom: 12px;
-  color: #1f2937;
-}
-
-.capacity-stats {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 8px;
-  font-size: 14px;
-}
-
-.capacity-bar {
-  height: 8px;
-  background: #e5e7eb;
-  border-radius: 4px;
-  overflow: hidden;
-  margin: 12px 0;
-}
-
-.capacity-fill {
-  height: 100%;
-  background: #10b981;
-  transition: width 0.3s ease;
-}
-
-.capacity-fill.not_started { background: #9ca3af; }
-.capacity-fill.in_progress { background: #3b82f6; }
-.capacity-fill.almost_complete { background: #f59e0b; }
-.capacity-fill.complete { background: #10b981; }
-
-.capacity-summary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-radius: 12px;
-  padding: 24px;
-  margin-top: 20px;
-}
-
-.capacity-summary h4 {
-  margin-bottom: 16px;
-  font-size: 18px;
-}
-
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 16px;
-}
-
-.summary-stat {
-  text-align: center;
-}
-
-.summary-stat-value {
-  font-size: 32px;
-  font-weight: 700;
-  margin-bottom: 4px;
-}
-
-.summary-stat-label {
-  font-size: 12px;
-  opacity: 0.9;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-</style>
-      
+        
+        <!-- Schedule Generation Info -->
+        <div style="margin-top: 20px; padding: 16px; background: #f9fafb; border-radius: 8px; border-left: 4px solid #667eea;">
+          <h4 style="margin-bottom: 8px; color: #1f2937;">📋 Inpatient Service Schedule Generation</h4>
+          <p style="color: #6b7280; font-size: 13px; line-height: 1.6; margin-bottom: 12px;">
+            The schedule generator assigns faculty to the 4 service types based on their allocated weeks. 
+            Each faculty can be scheduled ±1 week from their target to allow flexibility.
+          </p>
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+            <div style="text-align: center; padding: 12px; background: white; border-radius: 8px;">
+              <div style="font-size: 24px; font-weight: 700; color: #dc2626;">2</div>
+              <div style="font-size: 12px; color: #6b7280;">MICU per week</div>
+            </div>
+            <div style="text-align: center; padding: 12px; background: white; border-radius: 8px;">
+              <div style="font-size: 24px; font-weight: 700; color: #3b82f6;">1</div>
+              <div style="font-size: 12px; color: #6b7280;">APP-ICU per week</div>
+            </div>
+            <div style="text-align: center; padding: 12px; background: white; border-radius: 8px;">
+              <div style="font-size: 24px; font-weight: 700; color: #10b981;">1</div>
+              <div style="font-size: 12px; color: #6b7280;">Procedures per week</div>
+            </div>
+            <div style="text-align: center; padding: 12px; background: white; border-radius: 8px;">
+              <div style="font-size: 24px; font-weight: 700; color: #f59e0b;">1</div>
+              <div style="font-size: 12px; color: #6b7280;">Consults per week</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Capacity Summary Section -->
+        <div class="capacity-summary-section" style="margin-top: 30px;">
+          <h3 style="margin-bottom: 16px; font-size: 18px; font-weight: 700;">📊 Service Capacity Overview</h3>
+          <div id="capacitySummary">
+            <div style="text-align: center; padding: 20px; color: #6b7280;">Loading capacity data...</div>
+          </div>
+        </div>
       </div>
     </div>
+
+    <style>
+    .capacity-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .capacity-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      border: 2px solid #e5e7eb;
+    }
+
+    .capacity-card h4 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: #1f2937;
+    }
+
+    .capacity-stats {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .capacity-bar {
+      height: 8px;
+      background: #e5e7eb;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 12px 0;
+    }
+
+    .capacity-fill {
+      height: 100%;
+      background: #10b981;
+      transition: width 0.3s ease;
+    }
+
+    .capacity-fill.not_started { background: #9ca3af; }
+    .capacity-fill.in_progress { background: #3b82f6; }
+    .capacity-fill.almost_complete { background: #f59e0b; }
+    .capacity-fill.complete { background: #10b981; }
+
+    .capacity-summary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-top: 20px;
+    }
+
+    .capacity-summary h4 {
+      margin-bottom: 16px;
+      font-size: 18px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 16px;
+    }
+
+    .summary-stat {
+      text-align: center;
+    }
+
+    .summary-stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .summary-stat-label {
+      font-size: 12px;
+      opacity: 0.9;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    </style>
     
     <div id="tab-configure" class="tab-content">
       <div class="card">
@@ -418,6 +469,7 @@
       <div id="testingAlert" class="alert"></div>
     </div>
   </div>
+  
   <!-- Edit Faculty Modal -->
   <div id="editFacultyModal" class="modal">
     <div class="modal-content">
@@ -484,6 +536,19 @@
     </div>
   </div>
 
+  <!-- Service Schedule Modal -->
+  <div id="scheduleModal" class="modal">
+    <div class="modal-content schedule-modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">📋 Inpatient Service Schedule</h3>
+        <span class="close-btn" onclick="closeScheduleModal()">&times;</span>
+      </div>
+      <div id="scheduleModalContent">
+        <div class="loading">Loading schedule...</div>
+      </div>
+    </div>
+  </div>
+
   <script>
     const API_BASE = "";
     let allWeeks = [];
@@ -492,78 +557,80 @@
     let currentYear = 2026;
     
     window.addEventListener('DOMContentLoaded', async () => {
-  await checkAuth();
-  setDefaultMonth();
-  await loadProviders();
-  await loadFaculty();
-  await loadOverview();
-  await loadWeeks();
-  await loadCapacitySummary();
-});
-    
-async function loadCapacitySummary() {
-  try {
-    const response = await fetch(`${API_BASE}/api/admin/service-capacity-summary?year=2026`, {
-      credentials: 'include'
+      await checkAuth();
+      setDefaultMonth();
+      await loadProviders();
+      await loadFaculty();
+      await loadOverview();
+      await loadWeeks();
+      await loadCapacitySummary();
     });
     
-    if (!response.ok) throw new Error('Failed to load capacity summary');
-    
-    const data = await response.json();
-    
-    const html = `
-      <div class="capacity-grid">
-        ${data.services.map(service => `
-          <div class="capacity-card">
-            <h4>${service.service_type}</h4>
-            <div class="capacity-stats">
-              <span><strong>${service.expected_weeks}</strong> weeks expected</span>
-              <span>${service.faculty_count} faculty</span>
+    async function loadCapacitySummary() {
+      try {
+        const year = document.getElementById('scheduleYearSelect')?.value || 2026;
+        const response = await fetch(`${API_BASE}/api/admin/service-capacity-summary?year=${year}`, {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) throw new Error('Failed to load capacity summary');
+        
+        const data = await response.json();
+        
+        const html = `
+          <div class="capacity-grid">
+            ${data.services.map(service => `
+              <div class="capacity-card">
+                <h4>${service.service_type}</h4>
+                <div class="capacity-stats">
+                  <span><strong>${service.expected_weeks}</strong> weeks expected</span>
+                  <span>${service.faculty_count} faculty</span>
+                </div>
+                <div class="capacity-bar">
+                  <div class="capacity-fill ${service.status}" style="width: ${service.percent_filled}%"></div>
+                </div>
+                <div class="capacity-stats">
+                  <span>${service.assigned_weeks} assigned</span>
+                  <span style="color: ${service.remaining_weeks > 0 ? '#ef4444' : '#10b981'};">
+                    ${service.remaining_weeks > 0 ? service.remaining_weeks + ' needed' : '✓ Complete'}
+                  </span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          
+          <div class="capacity-summary">
+            <h4>Total Capacity (All Services)</h4>
+            <div class="summary-grid">
+              <div class="summary-stat">
+                <div class="summary-stat-value">${data.totals.expected_weeks}</div>
+                <div class="summary-stat-label">Expected Weeks</div>
+              </div>
+              <div class="summary-stat">
+                <div class="summary-stat-value">${data.totals.assigned_weeks}</div>
+                <div class="summary-stat-label">Assigned Weeks</div>
+              </div>
+              <div class="summary-stat">
+                <div class="summary-stat-value">${data.totals.remaining_weeks}</div>
+                <div class="summary-stat-label">Remaining</div>
+              </div>
+              <div class="summary-stat">
+                <div class="summary-stat-value">${data.totals.percent_complete}%</div>
+                <div class="summary-stat-label">Complete</div>
+              </div>
             </div>
-            <div class="capacity-bar">
-              <div class="capacity-fill ${service.status}" style="width: ${service.percent_filled}%"></div>
-            </div>
-            <div class="capacity-stats">
-              <span>${service.assigned_weeks} assigned</span>
-              <span style="color: ${service.remaining_weeks > 0 ? '#ef4444' : '#10b981'};">
-                ${service.remaining_weeks > 0 ? service.remaining_weeks + ' needed' : '✓ Complete'}
-              </span>
-            </div>
           </div>
-        `).join('')}
-      </div>
-      
-      <div class="capacity-summary">
-        <h4>Total Capacity (All Services)</h4>
-        <div class="summary-grid">
-          <div class="summary-stat">
-            <div class="summary-stat-value">${data.totals.expected_weeks}</div>
-            <div class="summary-stat-label">Expected Weeks</div>
-          </div>
-          <div class="summary-stat">
-            <div class="summary-stat-value">${data.totals.assigned_weeks}</div>
-            <div class="summary-stat-label">Assigned Weeks</div>
-          </div>
-          <div class="summary-stat">
-            <div class="summary-stat-value">${data.totals.remaining_weeks}</div>
-            <div class="summary-stat-label">Remaining</div>
-          </div>
-          <div class="summary-stat">
-            <div class="summary-stat-value">${data.totals.percent_complete}%</div>
-            <div class="summary-stat-label">Complete</div>
-          </div>
-        </div>
-      </div>
-    `;
+        `;
+        
+        document.getElementById('capacitySummary').innerHTML = html;
+        
+      } catch (error) {
+        console.error('Error loading capacity summary:', error);
+        document.getElementById('capacitySummary').innerHTML = 
+          '<div style="color: #ef4444; padding: 20px;">Failed to load capacity summary</div>';
+      }
+    }
     
-    document.getElementById('capacitySummary').innerHTML = html;
-    
-  } catch (error) {
-    console.error('Error loading capacity summary:', error);
-    document.getElementById('capacitySummary').innerHTML = 
-      '<div style="color: #ef4444; padding: 20px;">Failed to load capacity summary</div>';
-  }
-}
     function setDefaultMonth() {
       const now = new Date();
       const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -590,661 +657,181 @@ async function loadCapacitySummary() {
       if (tabName === 'requests') loadRequests();
       if (tabName === 'weeks') loadWeeks();
       if (tabName === 'overview') {
-      loadOverview();
-      loadCapacitySummary();}
+        loadOverview();
+        loadCapacitySummary();
+      }
       if (tabName === 'heatmap') loadHeatmap(currentYear);
     }
     
-    async function loadProviders() {
-      const errorDiv = document.getElementById('providerError');
-      const tbody = document.getElementById('providersTableBody');
-      const countSpan = document.getElementById('providerCount');
+    // Service Schedule Generation
+    async function generateServiceSchedule() {
+      const year = document.getElementById('scheduleYearSelect').value;
       
-      try {
-        const response = await fetch('/api/providers', {
-          credentials: 'same-origin'
-        });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-        if (!Array.isArray(data)) throw new Error('Invalid response from server');
-        
-        allProviders = data;
-        countSpan.textContent = `${allProviders.length} faculty`;
-        errorDiv.style.display = 'none';
-        await loadFaculty();
-      } catch (error) {
-        console.error('Error loading providers:', error);
-        errorDiv.textContent = `Error loading providers: ${error.message}`;
-        errorDiv.style.display = 'block';
-        countSpan.textContent = 'Error';
+      if (!confirm(`Generate inpatient service schedule for ${year}-${parseInt(year)+1}?\n\nThis will:\n• Clear any existing assignments\n• Assign faculty to MICU (2/week), APP-ICU (1/week), Procedures (1/week), Consults (1/week)\n• Respect unavailability requests\n• Allow ±1 week flexibility per service`)) {
+        return;
       }
-    }
-    
-    async function loadFaculty() {
-      const tbody = document.getElementById('providersTableBody');
-      try {
-        const response = await fetch('/api/admin/faculty', {
-          credentials: 'same-origin'
-        });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        allFaculty = await response.json();
-        
-        tbody.innerHTML = '';
-        if (allFaculty.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="13" style="text-align: center; padding: 20px; color: #6b7280;">No faculty yet.</td></tr>';
-        } else {
-          allFaculty.forEach(f => {
-            const row = document.createElement('tr');
-            
-            // Calculate total expected weeks
-            const expectedWeeks = f.micu_weeks + f.app_icu_weeks + f.procedure_weeks + f.consult_weeks;
-            const actualWeeks = f.service_weeks.total;
-            
-            // Build badges
-            let badges = '';
-            if (f.is_admin) badges += '<span class="badge badge-admin">ADMIN</span> ';
-            if (f.moonlighter) badges += '<span class="badge badge-moonlighter">🌙 MOONLIGHTER</span> ';
-            if (!f.active) badges += '<span class="badge badge-inactive">INACTIVE</span>';
-            
-            // Format weeks columns with expected/actual comparison
-            const formatWeeksCell = (expected, actual) => {
-              const className = expected > 0 && actual !== expected ? 'weeks-mismatch' : 'weeks-actual';
-              return `<div class="weeks-cell"><div class="weeks-expected">${expected}</div><div class="${className}">${actual}</div></div>`;
-            };
-            
-            const totalClass = expectedWeeks > 0 && actualWeeks !== expectedWeeks ? 'weeks-mismatch' : 'weeks-actual';
-            
-            row.innerHTML = `
-              <td><strong>${f.id}</strong></td>
-              <td>${f.name}</td>
-              <td style="font-size: 11px;">${f.email}</td>
-              <td style="text-transform: capitalize;">${f.rank}</td>
-              <td><strong>${f.clinical_effort_pct}%</strong></td>
-              <td><strong>${f.base_points + f.bonus_points}</strong></td>
-              <td>${formatWeeksCell(f.micu_weeks, f.service_weeks.MICU)}</td>
-              <td>${formatWeeksCell(f.app_icu_weeks, f.service_weeks.APP_ICU)}</td>
-              <td>${formatWeeksCell(f.procedure_weeks, f.service_weeks.Procedures)}</td>
-              <td>${formatWeeksCell(f.consult_weeks, f.service_weeks.Consults)}</td>
-              <td><div class="weeks-cell"><div class="weeks-expected">${expectedWeeks}</div><div class="${totalClass}">${actualWeeks}</div></div></td>
-              <td>${badges}</td>
-              <td>
-                <div class="action-buttons">
-                  <button class="btn-success" onclick="impersonateFaculty('${f.id}', '${f.name}')">🔐 Login As</button>
-                  <button class="btn-secondary" onclick="editFaculty('${f.id}')">Edit</button>
-                  <button class="btn-${f.is_admin ? 'danger' : 'success'}" onclick="toggleAdmin('${f.id}', ${f.is_admin})">${f.is_admin ? 'Remove Admin' : 'Make Admin'}</button>
-                  <button class="btn-danger" onclick="deleteFaculty('${f.id}', '${f.name}')">Delete</button>
-                </div>
-              </td>
-            `;
-            tbody.appendChild(row);
-          });
-        }
-      } catch (error) {
-        console.error('Error loading faculty:', error);
-        tbody.innerHTML = '<tr><td colspan="13" style="text-align: center; padding: 20px; color: #dc2626;">Failed to load faculty.</td></tr>';
-      }
-    }
-    
-    function editFaculty(facultyId) {
-      const faculty = allFaculty.find(f => f.id === facultyId);
-      if (!faculty) return;
-      
-      document.getElementById('editFacultyId').value = faculty.id;
-      document.getElementById('editName').value = faculty.name;
-      document.getElementById('editEmail').value = faculty.email;
-      document.getElementById('editRank').value = faculty.rank;
-      document.getElementById('editEffort').value = faculty.clinical_effort_pct;
-      document.getElementById('editPoints').value = faculty.base_points;
-      document.getElementById('editMoonlighter').checked = faculty.moonlighter;
-      document.getElementById('editMicuWeeks').value = faculty.micu_weeks;
-      document.getElementById('editAppIcuWeeks').value = faculty.app_icu_weeks;
-      document.getElementById('editProcedureWeeks').value = faculty.procedure_weeks;
-      document.getElementById('editConsultWeeks').value = faculty.consult_weeks;
-      
-      document.getElementById('editFacultyModal').classList.add('show');
-    }
-    
-    function closeEditModal() {
-      document.getElementById('editFacultyModal').classList.remove('show');
-    }
-    
-    document.getElementById('editFacultyForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const facultyId = document.getElementById('editFacultyId').value;
-      const updateData = {
-        name: document.getElementById('editName').value,
-        email: document.getElementById('editEmail').value,
-        rank: document.getElementById('editRank').value,
-        clinical_effort_pct: parseInt(document.getElementById('editEffort').value),
-        base_points: parseInt(document.getElementById('editPoints').value),
-        moonlighter: document.getElementById('editMoonlighter').checked,
-        micu_weeks: parseInt(document.getElementById('editMicuWeeks').value) || 0,
-        app_icu_weeks: parseInt(document.getElementById('editAppIcuWeeks').value) || 0,
-        procedure_weeks: parseInt(document.getElementById('editProcedureWeeks').value) || 0,
-        consult_weeks: parseInt(document.getElementById('editConsultWeeks').value) || 0
-      };
       
       try {
-        const response = await fetch(`/api/admin/faculty/${facultyId}`, {
-          method: 'PATCH',
-          credentials: 'same-origin',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(updateData)
-        });
-        if (!response.ok) throw new Error('Failed to update faculty');
-        alert('Faculty updated successfully');
-        closeEditModal();
-        await loadFaculty();
-      } catch (error) {
-        alert(`Error: ${error.message}`);
-      }
-    });
-    
-    async function toggleAdmin(facultyId, isCurrentlyAdmin) {
-      const action = isCurrentlyAdmin ? 'remove admin privileges from' : 'grant admin privileges to';
-      const faculty = allFaculty.find(f => f.id === facultyId);
-      if (!confirm(`${action} ${faculty.name}?`)) return;
-      
-      try {
-        const response = await fetch(`/api/admin/faculty/${facultyId}/toggle-admin`, {
+        const response = await fetch(`${API_BASE}/api/admin/generate-service-schedule`, {
           method: 'POST',
-          credentials: 'same-origin'
-        });
-        if (!response.ok) throw new Error('Failed to toggle admin status');
-        alert('Admin status updated');
-        await loadFaculty();
-      } catch (error) {
-        alert(`Error: ${error.message}`);
-      }
-    }
-    
-    async function deleteFaculty(facultyId, name) {
-      if (!confirm(`Delete faculty '${name}'? This will deactivate their account.`)) return;
-      try {
-        const response = await fetch(`/api/admin/faculty/${facultyId}`, {
-          method: 'DELETE',
-          credentials: 'same-origin'
-        });
-        if (!response.ok) throw new Error('Failed to delete faculty');
-        alert(`Faculty '${name}' deactivated`);
-        await loadFaculty();
-      } catch (error) {
-        alert(`Error: ${error.message}`);
-      }
-    }
-    
-    async function addProvider() {
-      const id = document.getElementById('newProviderId').value.trim();
-      const name = document.getElementById('newProviderName').value.trim();
-      const email = document.getElementById('newProviderEmail').value.trim();
-      if (!id || !name) { alert('Computing ID and Name are required'); return; }
-      try {
-        const response = await fetch('/api/admin/providers', {
-          method: 'POST',
-          credentials: 'same-origin',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, name, email: email || null })
-        });
-        if (!response.ok) { const error = await response.json(); throw new Error(error.detail || 'Failed to add faculty'); }
-        alert(`Faculty '${name}' added successfully`);
-        document.getElementById('newProviderId').value = '';
-        document.getElementById('newProviderName').value = '';
-        document.getElementById('newProviderEmail').value = '';
-        await loadProviders();
-      } catch (error) { alert(`Error: ${error.message}`); }
-    }
-    
-    async function loadSignups() {
-      const month = document.getElementById('monthInput').value;
-      if (!month) return;
-      document.getElementById('summaryMonth').textContent = month;
-      document.getElementById('summaryText').textContent = 'Loading...';
-      document.getElementById('signupsTbody').innerHTML = '';
-      try {
-        const response = await fetch(`/api/admin/signups?month=${encodeURIComponent(month)}`, {
-          credentials: 'same-origin'
-        });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-        if (data.length === 0) { document.getElementById('summaryText').textContent = 'No signups yet for this month.'; return; }
-        const byProvider = new Map();
-        for (const row of data) {
-          if (!byProvider.has(row.provider_id)) byProvider.set(row.provider_id, { provider_name: row.provider_name, desired_nights: row.desired_nights, dates: [] });
-          byProvider.get(row.provider_id).dates.push(row.date);
-        }
-        document.getElementById('summaryText').textContent = `${byProvider.size} faculty, ${data.length} faculty-nights`;
-        const tbody = document.getElementById('signupsTbody');
-        tbody.innerHTML = '';
-        const rows = Array.from(byProvider.values()).sort((a, b) => a.provider_name.localeCompare(b.provider_name));
-        rows.forEach(p => {
-          const row = document.createElement('tr');
-          row.innerHTML = `<td>${p.provider_name}</td><td>${p.dates.sort().join(', ')}</td><td>${p.dates.length}</td><td>${p.desired_nights}</td>`;
-          tbody.appendChild(row);
-        });
-      } catch (error) { console.error('Error loading signups:', error); document.getElementById('summaryText').textContent = 'Error loading signups.'; }
-    }
-    
-    async function runOptimizer() {
-      const month = document.getElementById('monthInput').value;
-      if (!month) return;
-      try {
-        const response = await fetch(`/api/admin/run_optimizer?month=${encodeURIComponent(month)}`, {
-          method: 'POST',
-          credentials: 'same-origin'
-        });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-        alert(`Optimizer finished: ${data.assigned_shifts} shifts assigned`);
-        await viewSchedule();
-      } catch (error) { alert(`Error: ${error.message}`); }
-    }
-    
-    async function viewSchedule() {
-      const month = document.getElementById('monthInput').value;
-      if (!month) return;
-      try {
-        const response = await fetch(`/api/admin/assignments?month=${encodeURIComponent(month)}`, {
-          credentials: 'same-origin'
-        });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-        if (data.length === 0) { document.getElementById('scheduleSection').style.display = 'none'; alert('No schedule generated. Run optimizer first.'); return; }
-        document.getElementById('scheduleSection').style.display = 'block';
-        const [year, monthNum] = month.split('-').map(Number);
-        const firstDay = new Date(year, monthNum - 1, 1);
-        const lastDay = new Date(year, monthNum, 0);
-        const assignmentsByDate = {};
-        data.forEach(a => { if (!assignmentsByDate[a.date]) assignmentsByDate[a.date] = []; assignmentsByDate[a.date].push(a.provider_name); });
-        let html = '<div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 12px;">';
-        ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(day => { html += `<div style="font-weight: 600; background: #f0f0f0; text-align: center; padding: 6px;">${day}</div>`; });
-        for (let i = 0; i < firstDay.getDay(); i++) html += '<div style="background: #fafafa; border: 1px solid #ddd; padding: 8px; min-height: 60px;"></div>';
-        for (let day = 1; day <= lastDay.getDate(); day++) {
-          const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-          const providers = assignmentsByDate[dateStr] || [];
-          const hasAssignments = providers.length > 0;
-          html += `<div style="border: 1px solid #ddd; padding: 8px; min-height: 60px; background: ${hasAssignments ? '#e6f3ff' : 'white'}; font-size: 0.8rem;"><div style="font-weight: 600; margin-bottom: 4px;">${day}</div>`;
-          if (hasAssignments) html += providers.map(name => `<div>${name}</div>`).join('');
-          html += '</div>';
-        }
-        html += '</div>';
-        document.getElementById('scheduleCalendar').innerHTML = html;
-      } catch (error) { console.error('Error loading schedule:', error); }
-    }
-    
-    async function downloadCsv() {
-      const month = document.getElementById('monthInput').value;
-      if (!month) return;
-      try {
-        const response = await fetch(`/api/admin/signups_csv?month=${encodeURIComponent(month)}`, {
-          credentials: 'same-origin'
-        });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const text = await response.text();
-        const blob = new Blob([text], { type: 'text/csv' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `signups_${month}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(a.href);
-      } catch (error) { alert('Error downloading CSV'); }
-    }
-    
-    async function clearMonth() {
-      const month = document.getElementById('monthInput').value;
-      if (!confirm(`Clear ALL signups and schedule for ${month}?\n\nThis cannot be undone!`)) return;
-      try {
-        const response = await fetch(`/api/admin/clear_month?month=${encodeURIComponent(month)}`, {
-          method: 'DELETE',
-          credentials: 'same-origin'
-        });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        alert('Month cleared successfully');
-        await loadSignups();
-      } catch (error) { alert(`Error: ${error.message}`); }
-    }
-    
-    async function loadOverview() {
-      try {
-        const response = await fetch('/api/admin/service-weeks', {
-          credentials: 'same-origin'
-        });
-        const weeks = await response.json();
-        const content = document.getElementById('overviewContent');
-        if (weeks.length === 0) {
-          content.innerHTML = '<p style="color: #6b7280;">No weeks generated yet. Configure periods and generate weeks to get started.</p>';
-        } else {
-          const types = {};
-          weeks.forEach(w => { types[w.week_type] = (types[w.week_type] || 0) + 1; });
-          let html = `<p style="margin-bottom: 16px;"><strong>${weeks.length} weeks</strong> generated for academic year ${weeks[0].start_date.substring(0, 4)}</p>`;
-          html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">';
-          for (const [type, count] of Object.entries(types)) {
-            html += `<div style="padding: 16px; background: #f9fafb; border-radius: 8px;"><div style="font-size: 24px; font-weight: 700; color: #1f2937;">${count}</div><div style="font-size: 13px; color: #6b7280; text-transform: capitalize;">${type.replace('_', ' ')} weeks</div></div>`;
-          }
-          html += '</div>';
-          content.innerHTML = html;
-        }
-      } catch (error) { console.error('Error loading overview:', error); }
-    }
-
-    // Impersonate a faculty member for testing
-    async function impersonateFaculty(facultyId, name) {
-      if (!confirm(`Switch to ${name}'s account?\n\nYou'll be logged in as this faculty member.`)) return;
-      
-      try {
-        const response = await fetch(`/api/admin/impersonate/${facultyId}`, {
-          method: 'POST',
-          credentials: 'same-origin'
+          body: JSON.stringify({
+            year: parseInt(year),
+            clear_existing: true
+          })
         });
         
-        if (!response.ok) throw new Error('Failed to impersonate faculty');
-        
         const data = await response.json();
-        alert(`✅ Now logged in as ${data.faculty_name}\n\nRedirecting to home page...`);
         
-        // Redirect to home page as the impersonated user
-        setTimeout(() => {
-          window.location.href = '/index.html';
-        }, 1000);
+        if (!response.ok) {
+          throw new Error(data.detail || 'Failed to generate schedule');
+        }
+        
+        let message = `✅ Schedule Generated!\n\n`;
+        message += `• ${data.assignments_created} assignments created\n`;
+        message += `• ${data.total_weeks} weeks processed\n\n`;
+        message += `Summary:\n`;
+        message += `• MICU: ${data.summary.MICU} assignments\n`;
+        message += `• APP-ICU: ${data.summary['APP-ICU']} assignments\n`;
+        message += `• Procedures: ${data.summary.Procedures} assignments\n`;
+        message += `• Consults: ${data.summary.Consults} assignments\n`;
+        
+        if (data.staffing_issues && data.staffing_issues.length > 0) {
+          message += `\n⚠️ Staffing Issues: ${data.staffing_issues.length} weeks understaffed`;
+        }
+        
+        if (data.capacity_issues && data.capacity_issues.length > 0) {
+          message += `\n⚠️ Capacity Issues: ${data.capacity_issues.length} faculty over/under target`;
+        }
+        
+        alert(message);
+        
+        // Refresh the capacity summary
+        await loadCapacitySummary();
+        
       } catch (error) {
         alert(`Error: ${error.message}`);
       }
     }
     
-    // Reset all faculty bonus points
-    async function resetPoints() {
-      if (!confirm('Reset all faculty bonus points to 0?\n\nBase points will remain intact.\n\nThis cannot be undone.')) return;
+    // View Service Schedule
+    async function viewServiceSchedule() {
+      const year = document.getElementById('scheduleYearSelect').value;
+      const modal = document.getElementById('scheduleModal');
+      const content = document.getElementById('scheduleModalContent');
+      
+      modal.classList.add('show');
+      content.innerHTML = '<div class="loading">Loading schedule...</div>';
       
       try {
-        const response = await fetch('/api/admin/reset/points', {
-          method: 'POST',
-          credentials: 'same-origin'
+        const response = await fetch(`${API_BASE}/api/admin/service-schedule?year=${year}`, {
+          credentials: 'include'
         });
-        
-        if (!response.ok) throw new Error('Failed to reset points');
-        
-        const data = await response.json();
-        showAlert('testingAlert', `✅ ${data.message}`, 'success');
-        await loadFaculty();
-      } catch (error) {
-        showAlert('testingAlert', `Error: ${error.message}`, 'error');
-      }
-    }
-    
-    // Clear all unavailability requests
-    async function resetRequests() {
-      const year = document.getElementById('resetYear').value;
-      const yearText = year ? ` for ${year}` : '';
-      
-      if (!confirm(`Delete ALL unavailability requests${yearText}?\n\nFaculty and weeks will remain.\n\nThis cannot be undone.`)) return;
-      
-      try {
-        const url = year 
-          ? `/api/admin/reset/requests?year=${year}`
-          : '/api/admin/reset/requests';
-        
-        const response = await fetch(url, {
-          method: 'POST',
-          credentials: 'same-origin'
-        });
-        
-        if (!response.ok) throw new Error('Failed to reset requests');
-        
-        const data = await response.json();
-        showAlert('testingAlert', `✅ ${data.message}`, 'success');
-        await loadRequests();
-      } catch (error) {
-        showAlert('testingAlert', `Error: ${error.message}`, 'error');
-      }
-    }
-    
-    // Complete reset: points + requests
-    async function resetAll() {
-      const year = document.getElementById('resetAllYear').value;
-      const yearText = year ? ` for ${year}` : '';
-      
-      if (!confirm(`⚠️ COMPLETE RESET${yearText}\n\n• Reset all faculty bonus points\n• Delete all unavailability requests\n\nThis cannot be undone!`)) return;
-      
-      try {
-        const url = year 
-          ? `/api/admin/reset/all?year=${year}`
-          : '/api/admin/reset/all';
-        
-        const response = await fetch(url, {
-          method: 'POST',
-          credentials: 'same-origin'
-        });
-        
-        if (!response.ok) throw new Error('Failed to complete reset');
-        
-        const data = await response.json();
-        showAlert('testingAlert', `✅ ${data.message}`, 'success');
-        await loadFaculty();
-        await loadRequests();
-      } catch (error) {
-        showAlert('testingAlert', `Error: ${error.message}`, 'error');
-      }
-    }
-    
-    document.getElementById('configForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const config = {
-        year: parseInt(document.getElementById('configYear').value),
-        start_date: document.getElementById('configStartDate').value,
-        summer_start: document.getElementById('summerStart').value || null,
-        summer_end: document.getElementById('summerEnd').value || null,
-        spring_break: document.getElementById('springBreak').value || null,
-        thanksgiving: document.getElementById('thanksgiving').value || null,
-        christmas: document.getElementById('christmas').value || null,
-        ats_conference: document.getElementById('atsConference').value || null,
-        chest_conference: document.getElementById('chestConference').value || null,
-        sccm_conference: document.getElementById('sccmConference').value || null
-      };
-      try {
-        const response = await fetch('/api/admin/generate-service-weeks', {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(config)
-        });
-        if (response.ok) { showAlert('configAlert', 'Successfully generated 52 weeks!', 'success'); await loadWeeks(); await loadOverview(); showTab('weeks'); }
-        else { const error = await response.json(); showAlert('configAlert', error.detail || 'Failed to generate weeks', 'error'); }
-      } catch (error) { showAlert('configAlert', 'Error: ' + error.message, 'error'); }
-    });
-    
-    async function clearAllWeeks() {
-      if (!confirm('Delete ALL weeks? This will also remove all faculty requests. This cannot be undone.')) return;
-      try {
-        const response = await fetch('/api/admin/service-weeks', {
-          method: 'DELETE',
-          credentials: 'same-origin'
-        });
-        if (response.ok) { showAlert('configAlert', 'All weeks cleared successfully', 'success'); await loadWeeks(); await loadOverview(); }
-        else showAlert('configAlert', 'Failed to clear weeks', 'error');
-      } catch (error) { showAlert('configAlert', 'Error: ' + error.message, 'error'); }
-    }
-    
-    async function loadRequests() {
-      try {
-        const response = await fetch('/api/admin/service-requests', {
-          credentials: 'same-origin'
-        });
-        const requests = await response.json();
-        const tbody = document.getElementById('requestsTableBody');
-        tbody.innerHTML = '';
-        if (requests.length === 0) { document.getElementById('requestsLoading').innerHTML = '<p style="color: #6b7280;">No requests yet.</p>'; return; }
-        requests.forEach(req => {
-          const row = document.createElement('tr');
-          row.innerHTML = `<td>${req.faculty_name}</td><td>${req.week_label}</td><td>${req.week_number}</td><td><span class="badge">${req.status}</span></td><td>${req.points_spent}</td><td>${req.points_earned}</td><td>${new Date(req.created_at).toLocaleDateString()}</td>`;
-          tbody.appendChild(row);
-        });
-        document.getElementById('requestsLoading').style.display = 'none';
-        document.getElementById('requestsContent').style.display = 'block';
-      } catch (error) { console.error('Error loading requests:', error); }
-    }
-    
-    async function loadWeeks() {
-      try {
-        const response = await fetch('/api/admin/service-weeks', {
-          credentials: 'same-origin'
-        });
-        allWeeks = await response.json();
-        const tbody = document.getElementById('weeksTableBody');
-        tbody.innerHTML = '';
-        if (allWeeks.length === 0) { document.getElementById('weeksLoading').innerHTML = '<p style="color: #6b7280;">No weeks generated. Go to Configure Periods tab.</p>'; return; }
-        allWeeks.forEach(week => {
-          const row = document.createElement('tr');
-          row.innerHTML = `<td>${week.week_number}</td><td class="editable-cell" onclick="editCell(this, '${week.id}', 'label', 'text')">${week.label}</td><td class="editable-cell" onclick="editCell(this, '${week.id}', 'start_date', 'date')">${formatDate(week.start_date)}</td><td class="editable-cell" onclick="editCell(this, '${week.id}', 'end_date', 'date')">${formatDate(week.end_date)}</td><td><select onchange="updateWeekType('${week.id}', this.value)" style="padding: 4px 8px; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 12px;"><option value="regular" ${week.week_type === 'regular' ? 'selected' : ''}>Regular</option><option value="summer" ${week.week_type === 'summer' ? 'selected' : ''}>Summer</option><option value="spring_break" ${week.week_type === 'spring_break' ? 'selected' : ''}>Spring Break</option><option value="thanksgiving" ${week.week_type === 'thanksgiving' ? 'selected' : ''}>Thanksgiving</option><option value="christmas" ${week.week_type === 'christmas' ? 'selected' : ''}>Christmas</option><option value="ats" ${week.week_type === 'ats' ? 'selected' : ''}>ATS</option><option value="chest" ${week.week_type === 'chest' ? 'selected' : ''}>CHEST</option><option value="sccm" ${week.week_type === 'sccm' ? 'selected' : ''}>SCCM</option></select></td><td class="editable-cell" onclick="editCell(this, '${week.id}', 'point_cost_off', 'number')">${week.point_cost_off} pts</td><td class="editable-cell" onclick="editCell(this, '${week.id}', 'point_reward_work', 'number')">${week.point_reward_work} pts</td><td><button class="btn-danger" onclick="deleteWeek('${week.id}')" style="padding: 6px 12px; font-size: 12px;">Delete</button></td>`;
-          tbody.appendChild(row);
-        });
-        document.getElementById('weeksLoading').style.display = 'none';
-        document.getElementById('weeksContent').style.display = 'block';
-      } catch (error) { console.error('Error loading weeks:', error); }
-    }
-    
-    function editCell(cell, weekId, field, type) {
-      const currentValue = cell.textContent.replace(' pts', '').trim();
-      const input = document.createElement('input');
-      input.type = type;
-      if (type === 'date') input.value = currentValue;
-      else if (type === 'number') input.value = parseInt(currentValue);
-      else input.value = currentValue;
-      input.style.width = '100%';
-      input.onblur = () => saveCell(cell, weekId, field, input.value, type);
-      input.onkeypress = (e) => { if (e.key === 'Enter') input.blur(); };
-      cell.innerHTML = '';
-      cell.appendChild(input);
-      input.focus();
-    }
-    
-    async function saveCell(cell, weekId, field, value, type) {
-      try {
-        const response = await fetch(`/api/admin/service-weeks/${weekId}`, {
-          method: 'PATCH',
-          credentials: 'same-origin',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({[field]: value})
-        });
-        if (response.ok) {
-          if (type === 'number') cell.textContent = value + ' pts';
-          else if (type === 'date') cell.textContent = formatDate(value);
-          else cell.textContent = value;
-          await loadOverview();
-        } else { alert('Failed to update'); await loadWeeks(); }
-      } catch (error) { alert('Error: ' + error.message); await loadWeeks(); }
-    }
-    
-    async function updateWeekType(weekId, type) {
-      try {
-        const response = await fetch(`/api/admin/service-weeks/${weekId}`, {
-          method: 'PATCH',
-          credentials: 'same-origin',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({week_type: type})
-        });
-        if (response.ok) await loadOverview();
-        else alert('Failed to update week type');
-      } catch (error) { alert('Error: ' + error.message); }
-    }
-    
-    async function deleteWeek(weekId) {
-      if (!confirm('Delete this week? This cannot be undone.')) return;
-      try {
-        const response = await fetch(`/api/admin/service-weeks/${weekId}`, {
-          method: 'DELETE',
-          credentials: 'same-origin'
-        });
-        if (response.ok) { await loadWeeks(); await loadOverview(); }
-        else alert('Failed to delete week');
-      } catch (error) { alert('Error: ' + error.message); }
-    }
-    
-    function formatDate(dateStr) {
-      if (!dateStr) return '';
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    }
-    
-    function showAlert(elementId, message, type) {
-      const alert = document.getElementById(elementId);
-      alert.textContent = message;
-      alert.className = `alert alert-${type} show`;
-      setTimeout(() => { alert.classList.remove('show'); }, 5000);
-    }
-    
-    async function loadHeatmap(year) {
-      currentYear = year;
-      
-      // Update button states
-      const btn2025 = document.getElementById('year2025Btn');
-      const btn2026 = document.getElementById('year2026Btn');
-      
-      if (year === 2025) {
-        btn2025.style.background = '#667eea';
-        btn2025.style.color = 'white';
-        btn2025.style.borderColor = '#667eea';
-        btn2026.style.background = 'white';
-        btn2026.style.color = '#6b7280';
-        btn2026.style.borderColor = '#e5e7eb';
-      } else {
-        btn2026.style.background = '#667eea';
-        btn2026.style.color = 'white';
-        btn2026.style.borderColor = '#667eea';
-        btn2025.style.background = 'white';
-        btn2025.style.color = '#6b7280';
-        btn2025.style.borderColor = '#e5e7eb';
-      }
-      
-      const loading = document.getElementById('heatmapLoading');
-      const grid = document.getElementById('heatmapGrid');
-      
-      loading.style.display = 'block';
-      grid.style.display = 'none';
-      
-      try {
-        const response = await fetch(`/api/admin/service-weeks/heatmap?year=${year}`, {
-          credentials: 'same-origin'
-        });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         
         const data = await response.json();
         
-        console.log('Heatmap data:', data);
+        if (!response.ok) {
+          throw new Error(data.detail || 'Failed to load schedule');
+        }
         
-        if (data.length === 0) {
-          loading.innerHTML = `<p style="color: #6b7280;">No weeks found for ${year}. Generate weeks in the Configure Periods tab.</p>`;
+        if (!data.schedule || data.schedule.length === 0) {
+          content.innerHTML = `
+            <div style="text-align: center; padding: 40px;">
+              <p style="color: #6b7280; font-size: 16px;">No schedule generated yet for ${year}-${parseInt(year)+1}.</p>
+              <p style="color: #6b7280; font-size: 14px; margin-top: 8px;">Click "Generate Schedule" to create assignments.</p>
+            </div>
+          `;
           return;
         }
         
-        // Render heatmap
-        grid.innerHTML = '';
-        grid.className = 'heatmap-grid';
+        // Build schedule table
+        let html = `
+          <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong>Year:</strong> ${data.year}-${data.year + 1} | 
+              <strong>Total Weeks:</strong> ${data.total_weeks} | 
+              <strong>Complete Weeks:</strong> ${data.complete_weeks} / ${data.total_weeks} | 
+              <strong>Total Assignments:</strong> ${data.total_assignments}
+            </div>
+            <button class="btn-danger" onclick="clearServiceSchedule(${year})">Clear Schedule</button>
+          </div>
+          <div class="schedule-grid">
+            <table class="schedule-table">
+              <thead>
+                <tr>
+                  <th style="width: 50px;">#</th>
+                  <th style="width: 140px;">Week</th>
+                  <th style="width: 100px;">Dates</th>
+                  <th style="width: 80px;">Type</th>
+                  <th>MICU (2)</th>
+                  <th>APP-ICU (1)</th>
+                  <th>Procedures (1)</th>
+                  <th>Consults (1)</th>
+                  <th style="width: 80px;">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
         
-        data.forEach(week => {
-          const cell = document.createElement('div');
-          cell.className = `week-cell status-${week.staffing_status}`;
+        data.schedule.forEach(week => {
+          const rowClass = week.is_complete ? 'schedule-week-complete' : 'schedule-week-incomplete';
           
-          console.log(`Week ${week.week_number}: status-${week.staffing_status}, unavailable=${week.unavailable_count}`);
+          const formatAssignments = (assignments, required) => {
+            if (assignments.length === 0) {
+              return `<span class="assignment-slot-empty">${required} needed</span>`;
+            }
+            let html = assignments.map(a => 
+              `<span class="assignment-badge">${a.faculty_name}</span>`
+            ).join('');
+            if (assignments.length < required) {
+              html += `<span class="assignment-slot-empty">+${required - assignments.length} needed</span>`;
+            }
+            return html;
+          };
           
-          cell.innerHTML = `
-            <div class="week-num">Week ${week.week_number}</div>
-            <div class="week-label">${week.label.split(' - ')[1] || week.label.split('(')[1]?.replace(')', '') || week.label}</div>
-            <div class="week-count">${week.unavailable_count}</div>
-            <div class="week-status">${week.staffing_status}</div>
+          html += `
+            <tr class="${rowClass}">
+              <td>${week.week_number}</td>
+              <td>${week.label}</td>
+              <td style="font-size: 11px;">${formatDate(week.start_date)} - ${formatDate(week.end_date)}</td>
+              <td style="text-transform: capitalize;">${week.week_type.replace('_', ' ')}</td>
+              <td>${formatAssignments(week.assignments.MICU, 2)}</td>
+              <td>${formatAssignments(week.assignments['APP-ICU'], 1)}</td>
+              <td>${formatAssignments(week.assignments.Procedures, 1)}</td>
+              <td>${formatAssignments(week.assignments.Consults, 1)}</td>
+              <td>
+                <span class="badge ${week.is_complete ? 'badge-active' : 'badge-inactive'}">
+                  ${week.is_complete ? '✓ Complete' : 'Incomplete'}
+                </span>
+              </td>
+            </tr>
           `;
-          cell.title = `${week.label}\n${week.unavailable_count} unavailable\n${week.volunteer_count} volunteers\nMin required: ${week.min_staff_required}`;
-          grid.appendChild(cell);
         });
         
-        loading.style.display = 'none';
-        grid.style.display = 'grid';
+        html += '</tbody></table></div>';
+        content.innerHTML = html;
         
       } catch (error) {
-        console.error('Error loading heatmap:', error);
-        loading.innerHTML = `<p style="color: #dc2626;">Error loading heatmap: ${error.message}</p>`;
+        content.innerHTML = `<div class="error-message">Error: ${error.message}</div>`;
       }
     }
-  </script>
-</body>
-</html>
+    
+    async function clearServiceSchedule(year) {
+      if (!confirm(`Clear ALL service assignments for ${year}-${parseInt(year)+1}?\n\nThis cannot be undone!`)) {
+        return;
+      }
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/admin/service-schedule?year=${year}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.detail || 'Failed to clear schedule');
+        }
+        
+        alert(`✅
