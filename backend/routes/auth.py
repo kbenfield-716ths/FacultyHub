@@ -26,8 +26,8 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 # ==========================================
 
 class LoginRequest(BaseModel):
-    """Login credentials."""
-    faculty_id: str
+    """Login credentials - accepts 'username' which maps to faculty_id."""
+    username: str
     password: str
 
 
@@ -79,10 +79,12 @@ async def login(
     """
     Authenticate faculty member and create session.
     Returns session cookie.
+    
+    The 'username' field is used as the faculty_id for lookup.
     """
-    # Authenticate user
+    # Authenticate user (username is the faculty_id)
     faculty = authenticate_faculty(
-        credentials.faculty_id,
+        credentials.username,
         credentials.password,
         db
     )
@@ -158,22 +160,25 @@ async def get_current_user_info(
 
 @router.get("/check")
 async def check_auth(
+    request: Request,
     current_user: Optional[Faculty] = Depends(get_optional_user)
 ):
-    """
-    Check if user is authenticated (doesn't throw error if not).
-    Used by frontend to check auth status.
-    """
     if current_user:
+        # Check if impersonating
+        session_token = request.cookies.get("session_token")
+        from backend.auth import get_session
+        session = get_session(session_token) if session_token else None
+        impersonated_by = session.get("impersonated_by") if session else None
+        
         return {
             "authenticated": True,
             "faculty_id": current_user.id,
             "faculty_name": current_user.name,
-            "is_admin": current_user.is_admin
+            "is_admin": current_user.is_admin,
+            "is_impersonating": bool(impersonated_by)
         }
     else:
         return {"authenticated": False}
-
 
 @router.post("/change-password")
 async def change_password(

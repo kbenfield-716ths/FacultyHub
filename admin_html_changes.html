@@ -1,0 +1,274 @@
+<!-- ============================================== -->
+<!-- CHANGES FOR admin.html - Service Overview Tab -->
+<!-- ============================================== -->
+
+<!-- 1. ADD THESE STYLES to the <style> section -->
+<style>
+/* Schedule viewer styles */
+.schedule-modal-content { max-width: 95%; width: 1400px; }
+.schedule-grid { overflow-x: auto; }
+.schedule-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.schedule-table th { background: #f9fafb; padding: 10px 8px; text-align: left; font-weight: 600; color: #6b7280; font-size: 12px; text-transform: uppercase; border: 1px solid #e5e7eb; white-space: nowrap; }
+.schedule-table td { padding: 8px; border: 1px solid #e5e7eb; vertical-align: top; }
+.schedule-table tr:hover { background: #f9fafb; }
+.schedule-week-complete { background: #d1fae5; }
+.schedule-week-incomplete { background: #fee2e2; }
+.assignment-badge { display: inline-block; padding: 2px 8px; margin: 2px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #dbeafe; color: #1e40af; }
+.assignment-slot-empty { color: #dc2626; font-style: italic; font-size: 11px; }
+</style>
+
+<!-- 2. REPLACE the tab-overview div with this updated version -->
+<div id="tab-overview" class="tab-content">
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Service Availability System Status</h2>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <select id="scheduleYearSelect" style="padding: 8px 12px; border: 2px solid #e5e7eb; border-radius: 6px; font-weight: 600;">
+          <option value="2025">2025-2026</option>
+          <option value="2026" selected>2026-2027</option>
+          <option value="2027">2027-2028</option>
+        </select>
+        <button class="btn-success" onclick="generateServiceSchedule()" style="padding: 10px 20px;">🗓️ Generate Schedule</button>
+        <button class="btn-primary" onclick="viewServiceSchedule()" style="padding: 10px 20px;">📋 View Schedule</button>
+        <button class="btn-secondary" onclick="loadOverview()">🔄 Refresh</button>
+      </div>
+    </div>
+    <div id="overviewContent"><p style="color: #6b7280;">No weeks generated yet. Configure periods and generate weeks to get started.</p></div>
+    
+    <!-- Schedule Generation Info -->
+    <div style="margin-top: 20px; padding: 16px; background: #f9fafb; border-radius: 8px; border-left: 4px solid #667eea;">
+      <h4 style="margin-bottom: 8px; color: #1f2937;">📋 Inpatient Service Schedule Generation</h4>
+      <p style="color: #6b7280; font-size: 13px; line-height: 1.6; margin-bottom: 12px;">
+        The schedule generator assigns faculty to the 4 service types based on their allocated weeks. 
+        Each faculty can be scheduled ±1 week from their target to allow flexibility.
+      </p>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+        <div style="text-align: center; padding: 12px; background: white; border-radius: 8px;">
+          <div style="font-size: 24px; font-weight: 700; color: #dc2626;">2</div>
+          <div style="font-size: 12px; color: #6b7280;">MICU per week</div>
+        </div>
+        <div style="text-align: center; padding: 12px; background: white; border-radius: 8px;">
+          <div style="font-size: 24px; font-weight: 700; color: #3b82f6;">1</div>
+          <div style="font-size: 12px; color: #6b7280;">APP-ICU per week</div>
+        </div>
+        <div style="text-align: center; padding: 12px; background: white; border-radius: 8px;">
+          <div style="font-size: 24px; font-weight: 700; color: #10b981;">1</div>
+          <div style="font-size: 12px; color: #6b7280;">Procedures per week</div>
+        </div>
+        <div style="text-align: center; padding: 12px; background: white; border-radius: 8px;">
+          <div style="font-size: 24px; font-weight: 700; color: #f59e0b;">1</div>
+          <div style="font-size: 12px; color: #6b7280;">Consults per week</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Capacity Summary Section -->
+    <div class="capacity-summary-section" style="margin-top: 30px;">
+      <h3 style="margin-bottom: 16px; font-size: 18px; font-weight: 700;">📊 Service Capacity Overview</h3>
+      <div id="capacitySummary">
+        <div style="text-align: center; padding: 20px; color: #6b7280;">Loading capacity data...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 3. ADD this modal HTML before the closing </body> tag -->
+<!-- Service Schedule Modal -->
+<div id="scheduleModal" class="modal">
+  <div class="modal-content schedule-modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">📋 Inpatient Service Schedule</h3>
+      <span class="close-btn" onclick="closeScheduleModal()">&times;</span>
+    </div>
+    <div id="scheduleModalContent">
+      <div class="loading">Loading schedule...</div>
+    </div>
+  </div>
+</div>
+
+<!-- 4. ADD these JavaScript functions inside the <script> tag -->
+<script>
+// Service Schedule Generation
+async function generateServiceSchedule() {
+  const year = document.getElementById('scheduleYearSelect').value;
+  
+  if (!confirm(`Generate inpatient service schedule for ${year}-${parseInt(year)+1}?\n\nThis will:\n• Clear any existing assignments\n• Assign faculty to MICU (2/week), APP-ICU (1/week), Procedures (1/week), Consults (1/week)\n• Respect unavailability requests\n• Allow ±1 week flexibility per service`)) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`${API_BASE}/api/admin/generate-service-schedule`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        year: parseInt(year),
+        clear_existing: true
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.detail || 'Failed to generate schedule');
+    }
+    
+    let message = `✅ Schedule Generated!\n\n`;
+    message += `• ${data.assignments_created} assignments created\n`;
+    message += `• ${data.total_weeks} weeks processed\n\n`;
+    message += `Summary:\n`;
+    message += `• MICU: ${data.summary.MICU} assignments\n`;
+    message += `• APP-ICU: ${data.summary['APP-ICU']} assignments\n`;
+    message += `• Procedures: ${data.summary.Procedures} assignments\n`;
+    message += `• Consults: ${data.summary.Consults} assignments\n`;
+    
+    if (data.staffing_issues && data.staffing_issues.length > 0) {
+      message += `\n⚠️ Staffing Issues: ${data.staffing_issues.length} weeks understaffed`;
+    }
+    
+    if (data.capacity_issues && data.capacity_issues.length > 0) {
+      message += `\n⚠️ Capacity Issues: ${data.capacity_issues.length} faculty over/under target`;
+    }
+    
+    alert(message);
+    
+    // Refresh the capacity summary
+    await loadCapacitySummary();
+    
+  } catch (error) {
+    alert(`Error: ${error.message}`);
+  }
+}
+
+// View Service Schedule
+async function viewServiceSchedule() {
+  const year = document.getElementById('scheduleYearSelect').value;
+  const modal = document.getElementById('scheduleModal');
+  const content = document.getElementById('scheduleModalContent');
+  
+  modal.classList.add('show');
+  content.innerHTML = '<div class="loading">Loading schedule...</div>';
+  
+  try {
+    const response = await fetch(`${API_BASE}/api/admin/service-schedule?year=${year}`, {
+      credentials: 'include'
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.detail || 'Failed to load schedule');
+    }
+    
+    if (!data.schedule || data.schedule.length === 0) {
+      content.innerHTML = `
+        <div style="text-align: center; padding: 40px;">
+          <p style="color: #6b7280; font-size: 16px;">No schedule generated yet for ${year}-${parseInt(year)+1}.</p>
+          <p style="color: #6b7280; font-size: 14px; margin-top: 8px;">Click "Generate Schedule" to create assignments.</p>
+        </div>
+      `;
+      return;
+    }
+    
+    // Build schedule table
+    let html = `
+      <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <strong>Year:</strong> ${data.year}-${data.year + 1} | 
+          <strong>Total Weeks:</strong> ${data.total_weeks} | 
+          <strong>Complete Weeks:</strong> ${data.complete_weeks} / ${data.total_weeks} | 
+          <strong>Total Assignments:</strong> ${data.total_assignments}
+        </div>
+        <button class="btn-danger" onclick="clearServiceSchedule(${year})">Clear Schedule</button>
+      </div>
+      <div class="schedule-grid">
+        <table class="schedule-table">
+          <thead>
+            <tr>
+              <th style="width: 50px;">#</th>
+              <th style="width: 140px;">Week</th>
+              <th style="width: 100px;">Dates</th>
+              <th style="width: 80px;">Type</th>
+              <th>MICU (2)</th>
+              <th>APP-ICU (1)</th>
+              <th>Procedures (1)</th>
+              <th>Consults (1)</th>
+              <th style="width: 80px;">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+    
+    data.schedule.forEach(week => {
+      const rowClass = week.is_complete ? 'schedule-week-complete' : 'schedule-week-incomplete';
+      
+      const formatAssignments = (assignments, required) => {
+        if (assignments.length === 0) {
+          return `<span class="assignment-slot-empty">${required} needed</span>`;
+        }
+        let html = assignments.map(a => 
+          `<span class="assignment-badge">${a.faculty_name}</span>`
+        ).join('');
+        if (assignments.length < required) {
+          html += `<span class="assignment-slot-empty">+${required - assignments.length} needed</span>`;
+        }
+        return html;
+      };
+      
+      html += `
+        <tr class="${rowClass}">
+          <td>${week.week_number}</td>
+          <td>${week.label}</td>
+          <td style="font-size: 11px;">${formatDate(week.start_date)} - ${formatDate(week.end_date)}</td>
+          <td style="text-transform: capitalize;">${week.week_type.replace('_', ' ')}</td>
+          <td>${formatAssignments(week.assignments.MICU, 2)}</td>
+          <td>${formatAssignments(week.assignments['APP-ICU'], 1)}</td>
+          <td>${formatAssignments(week.assignments.Procedures, 1)}</td>
+          <td>${formatAssignments(week.assignments.Consults, 1)}</td>
+          <td>
+            <span class="badge ${week.is_complete ? 'badge-active' : 'badge-inactive'}">
+              ${week.is_complete ? '✓ Complete' : 'Incomplete'}
+            </span>
+          </td>
+        </tr>
+      `;
+    });
+    
+    html += '</tbody></table></div>';
+    content.innerHTML = html;
+    
+  } catch (error) {
+    content.innerHTML = `<div class="error-message">Error: ${error.message}</div>`;
+  }
+}
+
+async function clearServiceSchedule(year) {
+  if (!confirm(`Clear ALL service assignments for ${year}-${parseInt(year)+1}?\n\nThis cannot be undone!`)) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`${API_BASE}/api/admin/service-schedule?year=${year}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.detail || 'Failed to clear schedule');
+    }
+    
+    alert(`✅ Cleared ${data.assignments_deleted} assignments for ${year}-${parseInt(year)+1}`);
+    closeScheduleModal();
+    await loadCapacitySummary();
+    
+  } catch (error) {
+    alert(`Error: ${error.message}`);
+  }
+}
+
+function closeScheduleModal() {
+  document.getElementById('scheduleModal').classList.remove('show');
+}
+</script>

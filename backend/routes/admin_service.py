@@ -130,15 +130,17 @@ async def get_service_weeks_heatmap(
         assigned_count = db.query(func.count(ServiceWeekAssignment.id)).filter(
             ServiceWeekAssignment.week_id == week.id
         ).scalar() or 0
+
+        # Calculate staffing status based on unavailability levels
+        # High unavailability = popular week that needs attention
+        # Thresholds: 
+        #   Good: <= 7 unavailable (low demand)
+        #   Tight: 8-11 unavailable (moderate demand)
+        #   Critical: >= 12 unavailable (high demand, premium week)
         
-        # Calculate staffing status
-        # Assume total active faculty minus unavailable gives available pool
-        total_active = db.query(func.count(Faculty.id)).filter(Faculty.active == True).scalar() or 0
-        available_pool = total_active - unavailable_count if total_active > 0 else 0
-        
-        if available_pool >= week.min_staff_required + 3:
+        if unavailable_count <= 7:
             staffing_status = "good"
-        elif available_pool >= week.min_staff_required:
+        elif unavailable_count <= 11:
             staffing_status = "tight"
         else:
             staffing_status = "critical"
@@ -157,7 +159,97 @@ async def get_service_weeks_heatmap(
     
     return result
 
-
+@router.get("/service-capacity-summary")
+async def get_service_capacity_summary(
+    year: int = 2026,
+    db: Session = Depends(get_db),
+    current_user: Faculty = Depends(require_admin)
+):
+    """
+    Get capacity summary showing expected weeks vs actual assignments
+    for each service type (MICU, APP-ICU, Procedures, Consults).
+    
+    This helps admins validate they have enough staff coverage before
+    building the schedule.
+    """
+    
+    # Get all active faculty with their expected service weeks
+    faculty_list = db.query(Faculty).filter(Faculty.active == True).all()
+    
+    # Calculate expected capacity by service type
+    expected = {
+        "MICU": sum(f.micu_weeks for f in faculty_list),
+        "APP-ICU": sum(f.app_icu_weeks for f in faculty_list),
+        "Procedures": sum(f.procedure_weeks for f in faculty_list),
+        "Consults": sum(f.consult_weeks for f in faculty_list)
+    }
+    
+    # Count actual assignments by service type for this year
+    from sqlalchemy import and_
+    
+    actual = {"MICU": 0, "APP-ICU": 0, "Procedures": 0, "Consults": 0}
+    
+    for service_type in actual.keys():
+        count = db.query(func.count(ServiceWeekAssignment.id)).join(
+            ServiceWeek, ServiceWeekAssignment.week_id == ServiceWeek.id
+        ).filter(
+            and_(
+                ServiceWeekAssignment.service_type == service_type,
+                ServiceWeek.year == year
+            )
+        ).scalar() or 0
+        actual[service_type] = count
+    
+    # Get total weeks needed (52 weeks * required staff per week)
+    total_weeks = db.query(ServiceWeek).filter(ServiceWeek.year == year).count()
+    
+    # Calculate capacity status for each service
+    result = []
+    for service_type in ["MICU", "APP-ICU", "Procedures", "Consults"]:
+        expected_weeks = expected[service_type]
+        assigned_weeks = actual[service_type]
+        remaining = expected_weeks - assigned_weeks
+        
+        # Status determination
+        if assigned_weeks == 0:
+            status = "not_started"
+            percent_filled = 0
+        elif remaining <= 0:
+            status = "complete"
+            percent_filled = 100
+        elif remaining <= expected_weeks * 0.2:
+            status = "almost_complete"
+            percent_filled = int((assigned_weeks / expected_weeks) * 100)
+        else:
+            status = "in_progress"
+            percent_filled = int((assigned_weeks / expected_weeks) * 100)
+        
+        result.append({
+            "service_type": service_type,
+            "expected_weeks": expected_weeks,
+            "assigned_weeks": assigned_weeks,
+            "remaining_weeks": remaining,
+            "percent_filled": percent_filled,
+            "status": status,
+            "faculty_count": sum(1 for f in faculty_list if getattr(f, f"{service_type.lower().replace('-', '_')}_weeks", 0) > 0)
+        })
+    
+    # Overall summary
+    total_expected = sum(expected.values())
+    total_assigned = sum(actual.values())
+    
+    return {
+        "year": year,
+        "total_weeks_in_year": total_weeks,
+        "services": result,
+        "totals": {
+            "expected_weeks": total_expected,
+            "assigned_weeks": total_assigned,
+            "remaining_weeks": total_expected - total_assigned,
+            "percent_complete": int((total_assigned / total_expected * 100)) if total_expected > 0 else 0
+        },
+        "active_faculty_count": len(faculty_list)
+    }
 # ===== CSV IMPORT ENDPOINT =====
 
 @router.post("/import-historic-assignments")
@@ -260,12 +352,34 @@ async def import_historic_assignments(
                 errors.append(f"Row {row_num}: {str(e)}")
                 continue
         
+        # Calculate historic_unavailable_count for each week based on assignments
+        week_faculty_map = {}
+        for assignment in db.query(ServiceWeekAssignment).filter(
+            ServiceWeekAssignment.imported == True,
+            ServiceWeekAssignment.week_id.like(f"%-{year}")  # Only this year
+        ).all():
+            if assignment.week_id not in week_faculty_map:
+                week_faculty_map[assignment.week_id] = set()
+            week_faculty_map[assignment.week_id].add(assignment.faculty_id)
+        
+        # Update historic_unavailable_count  
+        total_active = db.query(func.count(Faculty.id)).filter(Faculty.active == True).scalar() or 0
+        weeks_updated_count = 0
+        
+        for week_id, faculty_set in week_faculty_map.items():
+            week = db.query(ServiceWeek).filter_by(id=week_id).first()
+            if week and total_active > 0:
+                faculty_working = len(faculty_set)
+                week.historic_unavailable_count = max(0, total_active - faculty_working)
+                weeks_updated_count += 1
+        
         db.commit()
         
         return {
             "success": True,
             "assignments_created": assignments_created,
             "weeks_marked_premium": weeks_marked_premium,
+            "weeks_updated": weeks_updated_count,
             "errors": errors if errors else None,
             "message": f"Imported {assignments_created} assignments" + 
                       (f" with {len(errors)} errors" if errors else "")
@@ -273,7 +387,6 @@ async def import_historic_assignments(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing CSV: {str(e)}")
-
 
 # ===== EXISTING ENDPOINTS =====
 
@@ -404,13 +517,9 @@ async def generate_service_weeks(
     - Requested: Volunteering for holiday coverage (earns bonus points)
     """
     
-    # Check if weeks already exist for this year
-    existing = db.query(ServiceWeek).filter(ServiceWeek.year == request.year).first()
-    if existing:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Weeks already exist for {request.year}. Clear them first."
-        )
+    # Check which weeks already exist and skip them (preserve historic data)
+    existing_weeks = {w.week_number for w in db.query(ServiceWeek).filter(ServiceWeek.year == request.year).all()}
+    weeks_skipped = 0
     
     # Parse start date
     start_date = datetime.strptime(request.start_date, "%Y-%m-%d").date()
@@ -487,6 +596,12 @@ async def generate_service_weeks(
     current_date = start_date
     
     for week_num in range(1, 53):
+        # Skip if week already exists (preserve data)
+        if week_num in existing_weeks:
+            weeks_skipped += 1
+            current_date = current_date + timedelta(days=7)
+            continue
+            
         end_date = current_date + timedelta(days=6)
         
         # Default values
@@ -549,9 +664,10 @@ async def generate_service_weeks(
     return {
         "success": True,
         "weeks_created": len(weeks_created),
+        "weeks_skipped": weeks_skipped,
         "year": request.year,
         "start_date": request.start_date,
-        "end_date": weeks_created[-1].end_date.isoformat()
+        "end_date": weeks_created[-1].end_date.isoformat() if weeks_created else None
     }
 
 

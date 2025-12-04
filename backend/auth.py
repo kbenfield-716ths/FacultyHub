@@ -47,15 +47,23 @@ def create_session_token() -> str:
     return secrets.token_urlsafe(32)
 
 
-def create_session(faculty_id: str, faculty_name: str, is_admin: bool) -> str:
-    """Create a new session and return the session token."""
+def create_session(faculty_id: str, faculty_name: str, is_admin: bool, impersonated_by: Optional[str] = None) -> str:
+    """Create a new session and return the session token.
+    
+    Args:
+        faculty_id: ID of the faculty member
+        faculty_name: Name of the faculty member
+        is_admin: Whether the faculty member is an admin
+        impersonated_by: Optional faculty ID of the admin who is impersonating this user
+    """
     token = create_session_token()
     active_sessions[token] = {
         "faculty_id": faculty_id,
         "faculty_name": faculty_name,
         "is_admin": is_admin,
         "created_at": datetime.utcnow(),
-        "last_activity": datetime.utcnow()
+        "last_activity": datetime.utcnow(),
+        "impersonated_by": impersonated_by  # Store original admin ID if impersonating
     }
     return token
 

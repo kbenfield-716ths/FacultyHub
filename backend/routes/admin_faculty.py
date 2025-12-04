@@ -3,14 +3,15 @@ Admin endpoints for faculty management.
 These require admin authentication.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
 from pydantic import BaseModel, EmailStr
 
-from backend.models import Faculty, ServiceWeekAssignment, ServiceWeek, get_db
-from backend.auth import require_admin, hash_password
+from backend.models import Faculty, ServiceWeekAssignment, ServiceWeek, UnavailabilityRequest, get_db
+from backend.auth import require_admin, hash_password, create_session
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -29,6 +30,11 @@ class FacultyCreate(BaseModel):
     bonus_points: int = 0
     active: bool = True
     is_admin: bool = False
+    moonlighter: bool = False
+    micu_weeks: int = 0
+    app_icu_weeks: int = 0
+    procedure_weeks: int = 0
+    consult_weeks: int = 0
 
 
 class FacultyUpdate(BaseModel):
@@ -41,6 +47,11 @@ class FacultyUpdate(BaseModel):
     bonus_points: Optional[int] = None
     active: Optional[bool] = None
     is_admin: Optional[bool] = None
+    moonlighter: Optional[bool] = None
+    micu_weeks: Optional[int] = None
+    app_icu_weeks: Optional[int] = None
+    procedure_weeks: Optional[int] = None
+    consult_weeks: Optional[int] = None
 
 
 class ServiceAssignmentSummary(BaseModel):
@@ -66,6 +77,13 @@ class FacultyResponse(BaseModel):
     is_admin: bool
     password_changed: bool
     registered: bool
+    # Service week commitments (expected weeks per year)
+    moonlighter: bool
+    micu_weeks: int
+    app_icu_weeks: int
+    procedure_weeks: int
+    consult_weeks: int
+    # Actual service assignments (weeks worked)
     service_weeks: ServiceAssignmentSummary
     
     class Config:
@@ -137,6 +155,11 @@ def get_all_faculty(
             is_admin=faculty.is_admin,
             password_changed=faculty.password_changed,
             registered=faculty.registered,
+            moonlighter=faculty.moonlighter,
+            micu_weeks=faculty.micu_weeks,
+            app_icu_weeks=faculty.app_icu_weeks,
+            procedure_weeks=faculty.procedure_weeks,
+            consult_weeks=faculty.consult_weeks,
             service_weeks=service_weeks
         ))
     
@@ -197,6 +220,11 @@ def get_faculty(
         is_admin=faculty.is_admin,
         password_changed=faculty.password_changed,
         registered=faculty.registered,
+        moonlighter=faculty.moonlighter,
+        micu_weeks=faculty.micu_weeks,
+        app_icu_weeks=faculty.app_icu_weeks,
+        procedure_weeks=faculty.procedure_weeks,
+        consult_weeks=faculty.consult_weeks,
         service_weeks=service_weeks
     )
 
@@ -246,6 +274,11 @@ def create_faculty(
         bonus_points=faculty_data.bonus_points,
         active=faculty_data.active,
         is_admin=faculty_data.is_admin,
+        moonlighter=faculty_data.moonlighter,
+        micu_weeks=faculty_data.micu_weeks,
+        app_icu_weeks=faculty_data.app_icu_weeks,
+        procedure_weeks=faculty_data.procedure_weeks,
+        consult_weeks=faculty_data.consult_weeks,
         password_hash=hash_password("PCCM2025!"),
         password_changed=False,
         registered=True
@@ -269,6 +302,11 @@ def create_faculty(
         is_admin=new_faculty.is_admin,
         password_changed=new_faculty.password_changed,
         registered=new_faculty.registered,
+        moonlighter=new_faculty.moonlighter,
+        micu_weeks=new_faculty.micu_weeks,
+        app_icu_weeks=new_faculty.app_icu_weeks,
+        procedure_weeks=new_faculty.procedure_weeks,
+        consult_weeks=new_faculty.consult_weeks,
         service_weeks=ServiceAssignmentSummary()
     )
 
@@ -357,6 +395,11 @@ def update_faculty(
         is_admin=faculty.is_admin,
         password_changed=faculty.password_changed,
         registered=faculty.registered,
+        moonlighter=faculty.moonlighter,
+        micu_weeks=faculty.micu_weeks,
+        app_icu_weeks=faculty.app_icu_weeks,
+        procedure_weeks=faculty.procedure_weeks,
+        consult_weeks=faculty.consult_weeks,
         service_weeks=service_weeks
     )
 
@@ -476,6 +519,11 @@ def toggle_admin_status(
         is_admin=faculty.is_admin,
         password_changed=faculty.password_changed,
         registered=faculty.registered,
+        moonlighter=faculty.moonlighter,
+        micu_weeks=faculty.micu_weeks,
+        app_icu_weeks=faculty.app_icu_weeks,
+        procedure_weeks=faculty.procedure_weeks,
+        consult_weeks=faculty.consult_weeks,
         service_weeks=service_weeks
     )
 
@@ -492,6 +540,7 @@ def get_faculty_stats(
     total = db.query(Faculty).count()
     active = db.query(Faculty).filter_by(active=True).count()
     admins = db.query(Faculty).filter_by(is_admin=True).count()
+    moonlighters = db.query(Faculty).filter_by(moonlighter=True, active=True).count()
     
     # Count by rank
     rank_counts = {}
@@ -503,5 +552,176 @@ def get_faculty_stats(
         "total_faculty": total,
         "active_faculty": active,
         "admin_count": admins,
+        "moonlighter_count": moonlighters,
         "by_rank": rank_counts
+    }
+
+
+# ==========================================
+# TESTING UTILITIES
+# ==========================================
+
+@router.post("/impersonate/{faculty_id}")
+async def impersonate_faculty(
+    faculty_id: str,
+    response: Response,
+    admin_user: Faculty = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    faculty = db.query(Faculty).filter_by(id=faculty_id).first()
+    if not faculty:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Faculty not found"
+        )
+    
+    # Create session with impersonation tracking
+    session_token = create_session(
+        faculty.id,
+        faculty.name,
+        faculty.is_admin,
+        impersonated_by=admin_user.id  # Store original admin ID
+    )
+    
+    response.set_cookie(
+        key="session_token",
+        value=session_token,
+        httponly=True,
+        max_age=86400,
+        samesite="lax"
+    )
+    
+    return {
+        "success": True,
+        "message": f"Now logged in as {faculty.name}",
+        "faculty_id": faculty.id,
+        "faculty_name": faculty.name,
+        "is_admin": faculty.is_admin
+    }
+@router.post("/return-to-admin")
+async def return_to_admin(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db)
+):
+    """Return from impersonation back to original admin account."""
+    session_token = request.cookies.get("session_token")
+    if not session_token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    from backend.auth import get_session
+    session = get_session(session_token)
+    if not session or not session.get("impersonated_by"):
+        raise HTTPException(status_code=400, detail="Not currently impersonating")
+    
+    # Get the original admin
+    admin = db.query(Faculty).filter_by(id=session["impersonated_by"]).first()
+    if not admin:
+        raise HTTPException(status_code=404, detail="Original admin not found")
+    
+    # Create new session as admin
+    new_token = create_session(admin.id, admin.name, admin.is_admin)
+    
+    response.set_cookie(
+        key="session_token",
+        value=new_token,
+        httponly=True,
+        max_age=86400,
+        samesite="lax"
+    )
+    
+    return {"success": True, "message": f"Returned to {admin.name}"}
+
+@router.post("/reset/points")
+async def reset_all_points(
+    admin_user: Faculty = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Reset all faculty bonus points to 0.
+    Keeps base points intact.
+    Admin only - for testing cycles.
+    """
+    faculty_list = db.query(Faculty).filter_by(active=True).all()
+    
+    reset_count = 0
+    for faculty in faculty_list:
+        faculty.bonus_points = 0
+        reset_count += 1
+    
+    db.commit()
+    
+    return {
+        "success": True,
+        "faculty_reset": reset_count,
+        "message": f"Reset bonus points for {reset_count} faculty members"
+    }
+
+
+@router.post("/reset/requests")
+async def reset_all_requests(
+    year: Optional[int] = None,
+    admin_user: Faculty = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Clear all unavailability requests.
+    If year provided, only clear that year.
+    Admin only - for testing cycles.
+    """
+    if year:
+        # Get week IDs for this year
+        week_ids = [w.id for w in db.query(ServiceWeek).filter_by(year=year).all()]
+        deleted = db.query(UnavailabilityRequest).filter(
+            UnavailabilityRequest.week_id.in_(week_ids)
+        ).delete(synchronize_session=False)
+    else:
+        deleted = db.query(UnavailabilityRequest).delete(synchronize_session=False)
+    
+    db.commit()
+    
+    return {
+        "success": True,
+        "requests_deleted": deleted,
+        "year": year or "all",
+        "message": f"Deleted {deleted} unavailability requests" + (f" for {year}" if year else "")
+    }
+
+
+@router.post("/reset/all")
+async def reset_everything(
+    year: Optional[int] = None,
+    admin_user: Faculty = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Complete reset for testing:
+    - Clear all unavailability requests
+    - Reset all bonus points to 0
+    Admin only - for starting fresh test cycles.
+    """
+    # Reset points
+    faculty_list = db.query(Faculty).filter_by(active=True).all()
+    faculty_count = 0
+    for faculty in faculty_list:
+        faculty.bonus_points = 0
+        faculty_count += 1
+    
+    # Clear requests
+    if year:
+        week_ids = [w.id for w in db.query(ServiceWeek).filter_by(year=year).all()]
+        requests_deleted = db.query(UnavailabilityRequest).filter(
+            UnavailabilityRequest.week_id.in_(week_ids)
+        ).delete(synchronize_session=False)
+    else:
+        requests_deleted = db.query(UnavailabilityRequest).delete(synchronize_session=False)
+    
+    db.commit()
+    
+    return {
+        "success": True,
+        "faculty_reset": faculty_count,
+        "requests_deleted": requests_deleted,
+        "year": year or "all",
+        "message": f"Complete reset: {faculty_count} faculty, {requests_deleted} requests cleared"
     }

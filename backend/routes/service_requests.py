@@ -5,6 +5,7 @@ These allow faculty to submit their unavailable/available weeks.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List
 from pydantic import BaseModel
 from datetime import datetime
@@ -15,6 +16,9 @@ from backend.auth import get_current_user
 
 router = APIRouter(prefix="/api/service-requests", tags=["service-requests"])
 
+# Constants
+MAX_CAPACITY = 17
+
 # ==========================================
 # PYDANTIC MODELS
 # ==========================================
@@ -23,7 +27,7 @@ class UnavailabilityRequestInput(BaseModel):
     """Model for a single availability request.
     
     Note: points_spent and points_earned are calculated server-side
-    based on the week's configuration. Client values are ignored for security.
+    based on the week's configuration and current demand.
     """
     week_id: str
     status: str  # "unavailable" or "available"
@@ -54,6 +58,20 @@ class UnavailabilityRequestResponse(BaseModel):
         from_attributes = True
 
 
+def calculate_dynamic_cost(base_cost: int, request_count: int) -> int:
+    """Calculate dynamic point cost based on current demand."""
+    if request_count <= 5:
+        return base_cost
+    elif request_count <= 10:
+        return base_cost + 5
+    elif request_count <= 14:
+        return base_cost + 10
+    elif request_count <= 16:
+        return base_cost + 15
+    else:
+        return base_cost + 20
+
+
 # ==========================================
 # ENDPOINTS
 # ==========================================
@@ -68,13 +86,15 @@ def submit_unavailability_requests(
     Submit or update availability requests for the current faculty member.
     This replaces all existing requests for this faculty member.
     
-    Points are calculated server-side based on week configuration for security.
+    Points are calculated server-side based on week configuration and
+    current demand (dynamic pricing). Enforces 17-person capacity limit.
     """
     try:
         # Delete existing requests for this faculty
         db.query(UnavailabilityRequest).filter(
             UnavailabilityRequest.faculty_id == current_user.id
         ).delete()
+        db.flush()  # Ensure deletions are committed before counting
         
         # Track totals for validation
         total_points_spent = 0
@@ -98,10 +118,24 @@ def submit_unavailability_requests(
                     detail=f"Invalid status: {req.status}. Must be 'unavailable' or 'available'"
                 )
             
-            # Calculate points server-side based on week configuration
-            # This prevents clients from submitting incorrect point values
+            # Check capacity for unavailable requests
             if req.status == "unavailable":
-                points_spent = week.point_cost_off
+                # Count current requests for this week (excluding current user)
+                current_requests = db.query(func.count(UnavailabilityRequest.id)).filter(
+                    UnavailabilityRequest.week_id == req.week_id,
+                    UnavailabilityRequest.status == "unavailable"
+                ).scalar() or 0
+                
+                # Enforce capacity limit
+                if current_requests >= MAX_CAPACITY:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Week {week.week_number} ({week.label}) is full. Maximum {MAX_CAPACITY} faculty can request this week."
+                    )
+                
+                # Calculate dynamic cost based on current demand
+                dynamic_cost = calculate_dynamic_cost(week.point_cost_off, current_requests)
+                points_spent = dynamic_cost
                 points_earned = 0
             else:  # available (volunteering)
                 points_spent = 0
