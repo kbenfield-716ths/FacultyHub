@@ -11,6 +11,7 @@ import csv
 import io
 
 from sqlalchemy.orm import Session
+from sqlalchemy import delete  # <-- ADD THIS LINE
 
 from .models import (
     SessionLocal, init_db,
@@ -465,9 +466,6 @@ def delete_provider(
 
 
 # ---------- Admin: Clear data ----------
-
-@app.delete("/api/admin/clear_month")
-from sqlalchemy import delete  # Add this at the top with other imports
 
 @app.delete("/api/admin/clear_month")
 def clear_month_data(
