@@ -492,14 +492,15 @@
     let currentYear = 2026;
     
     window.addEventListener('DOMContentLoaded', async () => {
-      await checkAuth();
-      setDefaultMonth();
-      await loadProviders();
-      await loadFaculty();
-      await loadOverview();
-      await loadWeeks();
-    });
-    <script>
+  await checkAuth();
+  setDefaultMonth();
+  await loadProviders();
+  await loadFaculty();
+  await loadOverview();
+  await loadWeeks();
+  await loadCapacitySummary();
+});
+    
 async function loadCapacitySummary() {
   try {
     const response = await fetch(`${API_BASE}/api/admin/service-capacity-summary?year=2026`, {
@@ -588,7 +589,7 @@ async function loadCapacitySummary() {
       event.target.classList.add('active');
       if (tabName === 'requests') loadRequests();
       if (tabName === 'weeks') loadWeeks();
-      if (tabName === 'overview') loadOverview();
+      if (tabName === 'overview') loadOverview();loadCapacitySummary();
       if (tabName === 'heatmap') loadHeatmap(currentYear);
     }
     
