@@ -408,12 +408,34 @@ def delete_provider(provider_id: str, db: Session = Depends(get_db)):
 # ---------- Admin: Clear data ----------
 
 @app.delete("/api/admin/clear_month")
-def clear_month_data(month: str, db: Session = Depends(get_db)):
+from sqlalchemy import delete  # Add this at the top with other imports
+
+@app.delete("/api/admin/clear_month")
+def clear_month_data(
+    month: str,
+    current_user: Faculty = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
     Clear all signups and assignments for a specific month.
     Does not delete providers.
+    Month format: YYYY-MM (e.g., "2026-01")
     """
-    year, month_num = map(int, month.split("-"))
+    if not current_user.is_admin:
+        raise HTTPException(403, "Admin access required")
+    
+    # Parse and validate month format
+    try:
+        parts = month.split("-")
+        if len(parts) != 2:
+            raise ValueError("Invalid format")
+        year = int(parts[0])
+        month_num = int(parts[1])
+        if month_num < 1 or month_num > 12:
+            raise ValueError("Month must be between 1 and 12")
+    except (ValueError, IndexError) as e:
+        raise HTTPException(400, f"Invalid month format. Expected YYYY-MM (e.g., 2026-01), got: {month}")
+    
     month_row = (
         db.query(Month)
         .filter(Month.year == year, Month.month == month_num)
@@ -423,27 +445,41 @@ def clear_month_data(month: str, db: Session = Depends(get_db)):
     if not month_row:
         return {"status": "ok", "message": "No data found for this month"}
     
+    # Get shift IDs first
     shift_ids = [s.id for s in month_row.shifts]
     
-    # Delete assignments
-    assignment_count = db.query(Assignment).filter(Assignment.shift_id.in_(shift_ids)).delete(synchronize_session=False)
+    if not shift_ids:
+        # No shifts, just delete the month
+        db.delete(month_row)
+        db.commit()
+        return {"status": "ok", "message": f"Deleted empty month {month}"}
+    
+    # Use SQLAlchemy delete() to avoid StaleDataError
+    # Delete assignments first
+    assignment_count = db.execute(
+        delete(Assignment).where(Assignment.shift_id.in_(shift_ids))
+    ).rowcount
     
     # Delete signups
-    signup_count = db.query(Signup).filter(Signup.shift_id.in_(shift_ids)).delete(synchronize_session=False)
+    signup_count = db.execute(
+        delete(Signup).where(Signup.shift_id.in_(shift_ids))
+    ).rowcount
     
     # Delete shifts
-    db.query(Shift).filter(Shift.month_id == month_row.id).delete(synchronize_session=False)
+    shift_count = db.execute(
+        delete(Shift).where(Shift.month_id == month_row.id)
+    ).rowcount
     
     # Delete month
     db.delete(month_row)
+    
+    # Commit all deletions
     db.commit()
     
     return {
         "status": "ok",
-        "message": f"Cleared {signup_count} signups and {assignment_count} assignments for {month}"
+        "message": f"Cleared month {month}: {signup_count} signups, {assignment_count} assignments, {shift_count} shifts"
     }
-
-
 @app.delete("/api/admin/clear_all")
 def clear_all_data(confirm: str, db: Session = Depends(get_db)):
     """
