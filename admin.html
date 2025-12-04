@@ -89,26 +89,30 @@
     .status-good { background: #d1fae5 !important; border-color: #10b981 !important; }
     .status-good .week-count { color: #065f46 !important; }
     .status-good .week-status { color: #065f46 !important; }
-    
     .status-tight { background: #fef3c7 !important; border-color: #f59e0b !important; }
     .status-tight .week-count { color: #92400e !important; }
     .status-tight .week-status { color: #92400e !important; }
-    
     .status-critical { background: #fee2e2 !important; border-color: #ef4444 !important; }
     .status-critical .week-count { color: #991b1b !important; }
     .status-critical .week-status { color: #991b1b !important; }
-    
-    /* Schedule viewer styles */
-    .schedule-modal-content { max-width: 95%; width: 1400px; }
-    .schedule-grid { overflow-x: auto; }
-    .schedule-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .schedule-table th { background: #f9fafb; padding: 10px 8px; text-align: left; font-weight: 600; color: #6b7280; font-size: 12px; text-transform: uppercase; border: 1px solid #e5e7eb; white-space: nowrap; }
-    .schedule-table td { padding: 8px; border: 1px solid #e5e7eb; vertical-align: top; }
-    .schedule-table tr:hover { background: #f9fafb; }
-    .schedule-week-complete { background: #d1fae5; }
-    .schedule-week-incomplete { background: #fee2e2; }
-    .assignment-badge { display: inline-block; padding: 2px 8px; margin: 2px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #dbeafe; color: #1e40af; }
-    .assignment-slot-empty { color: #dc2626; font-style: italic; font-size: 11px; }
+
+    /* Capacity styles */
+    .capacity-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .capacity-card { background: white; border-radius: 12px; padding: 20px; border: 2px solid #e5e7eb; }
+    .capacity-card h4 { font-size: 16px; font-weight: 700; margin-bottom: 12px; color: #1f2937; }
+    .capacity-stats { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
+    .capacity-bar { height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; margin: 12px 0; }
+    .capacity-fill { height: 100%; background: #10b981; transition: width 0.3s ease; }
+    .capacity-fill.not_started { background: #9ca3af; }
+    .capacity-fill.in_progress { background: #3b82f6; }
+    .capacity-fill.almost_complete { background: #f59e0b; }
+    .capacity-fill.complete { background: #10b981; }
+    .capacity-summary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 12px; padding: 24px; margin-top: 20px; }
+    .capacity-summary h4 { margin-bottom: 16px; font-size: 18px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
+    .summary-stat { text-align: center; }
+    .summary-stat-value { font-size: 32px; font-weight: 700; margin-bottom: 4px; }
+    .summary-stat-label { font-size: 12px; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px; }
   </style>
 </head>
 <body>
@@ -164,6 +168,7 @@
       </div>
     </div>
     
+    <!-- PROVIDERS TAB -->
     <div id="tab-providers" class="tab-content active">
       <div class="card">
         <div class="card-header">
@@ -206,6 +211,7 @@
       </div>
     </div>
     
+    <!-- MOONLIGHTING TAB -->
     <div id="tab-moonlighting" class="tab-content">
       <div class="card">
         <div class="card-header"><h2 class="card-title">Moonlighting Schedule Management</h2></div>
@@ -217,155 +223,80 @@
           <button class="btn-secondary" onclick="downloadCsv()">Download CSV</button>
           <button class="btn-danger" onclick="clearMonth()">Clear Month</button>
         </div>
-        <div id="summary" style="margin-bottom: 16px; font-size: 0.95rem; background: #f3f4f8; border-radius: 6px; padding: 8px 10px;"><div><strong>Summary for <span id="summaryMonth"></span></strong></div><div id="summaryText">No data loaded yet.</div></div>
-        <div><h3 style="margin: 20px 0 10px;">Signups</h3>
-          <table><thead><tr><th>Faculty</th><th>Dates Selected</th><th># Dates</th><th>Desired Nights/Mo</th></tr></thead><tbody id="signupsTbody"></tbody></table>
+        <div id="summary" style="margin-bottom: 16px; font-size: 0.95rem; background: #f3f4f8; border-radius: 6px; padding: 8px 10px;">
+          <div><strong>Summary for <span id="summaryMonth"></span></strong></div>
+          <div id="summaryText">No data loaded yet.</div>
         </div>
-        <div id="scheduleSection" style="display:none; margin-top: 30px;"><h3>Generated Schedule</h3><div id="scheduleCalendar"></div></div>
+        <div>
+          <h3 style="margin: 20px 0 10px;">Signups</h3>
+          <table>
+            <thead><tr><th>Faculty</th><th>Dates Selected</th><th># Dates</th><th>Desired Nights/Mo</th></tr></thead>
+            <tbody id="signupsTbody"></tbody>
+          </table>
+        </div>
+        <div id="scheduleSection" style="display:none; margin-top: 30px;">
+          <h3>Generated Schedule</h3>
+          <div id="scheduleCalendar"></div>
+        </div>
       </div>
     </div>
 
-    
-      <!-- Updated Tab Overview -->
-      <div id="tab-overview" class="tab-content">
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Service Availability System Status</h2>
-            <div style="display: flex; gap: 12px; align-items: center;">
-              <select id="scheduleYearSelect" style="padding: 8px 12px; border: 2px solid #e5e7eb; border-radius: 6px; font-weight: 600;">
-                <option value="2025">2025-2026</option>
-                <option value="2026" selected>2026-2027</option>
-                <option value="2027">2027-2028</option>
-              </select>
-              <button class="btn-success" onclick="generateServiceSchedule()" style="padding: 10px 20px;">🗓️ Generate Schedule</button>
-              <button class="btn-primary" onclick="viewServiceSchedule()" style="padding: 10px 20px;">📋 View Schedule</button>
-              <button class="btn-secondary" onclick="loadOverview()">🔄 Refresh</button>
+    <!-- SERVICE OVERVIEW TAB -->
+    <div id="tab-overview" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Service Availability System Status</h2>
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <select id="scheduleYearSelect" style="padding: 8px 12px; border: 2px solid #e5e7eb; border-radius: 6px; font-weight: 600;">
+              <option value="2025">2025-2026</option>
+              <option value="2026" selected>2026-2027</option>
+              <option value="2027">2027-2028</option>
+            </select>
+            <button class="btn-success" onclick="generateServiceSchedule()" style="padding: 10px 20px;">🗓️ Generate Schedule</button>
+            <button class="btn-primary" onclick="viewServiceSchedule()" style="padding: 10px 20px;">📋 View Schedule</button>
+            <button class="btn-secondary" onclick="loadOverview()">🔄 Refresh</button>
+          </div>
+        </div>
+        <div id="overviewContent"><p style="color: #6b7280;">No weeks generated yet. Configure periods and generate weeks to get started.</p></div>
+        
+        <!-- Schedule Generation Info -->
+        <div style="margin-top: 20px; padding: 16px; background: #f9fafb; border-radius: 8px; border-left: 4px solid #667eea;">
+          <h4 style="margin-bottom: 8px; color: #1f2937;">📋 Inpatient Service Schedule Generation</h4>
+          <p style="color: #6b7280; font-size: 13px; line-height: 1.6; margin-bottom: 12px;">
+            The schedule generator assigns faculty to the 4 service types based on their allocated weeks. 
+            Each faculty can be scheduled ±1 week from their target to allow flexibility.
+          </p>
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+            <div style="text-align: center; padding: 12px; background: white; border-radius: 8px;">
+              <div style="font-size: 24px; font-weight: 700; color: #dc2626;">2</div>
+              <div style="font-size: 12px; color: #6b7280;">MICU per week</div>
+            </div>
+            <div style="text-align: center; padding: 12px; background: white; border-radius: 8px;">
+              <div style="font-size: 24px; font-weight: 700; color: #3b82f6;">1</div>
+              <div style="font-size: 12px; color: #6b7280;">APP-ICU per week</div>
+            </div>
+            <div style="text-align: center; padding: 12px; background: white; border-radius: 8px;">
+              <div style="font-size: 24px; font-weight: 700; color: #10b981;">1</div>
+              <div style="font-size: 12px; color: #6b7280;">Procedures per week</div>
+            </div>
+            <div style="text-align: center; padding: 12px; background: white; border-radius: 8px;">
+              <div style="font-size: 24px; font-weight: 700; color: #f59e0b;">1</div>
+              <div style="font-size: 12px; color: #6b7280;">Consults per week</div>
             </div>
           </div>
-          <div id="overviewContent"><p style="color: #6b7280;">No weeks generated yet. Configure periods and generate weeks to get started.</p></div>
-          
-          <!-- Schedule Generation Info -->
-          <div style="margin-top: 20px; padding: 16px; background: #f9fafb; border-radius: 8px; border-left: 4px solid #667eea;">
-            <h4 style="margin-bottom: 8px; color: #1f2937;">📋 Inpatient Service Schedule Generation</h4>
-            <p style="color: #6b7280; font-size: 13px; line-height: 1.6; margin-bottom: 12px;">
-              The schedule generator assigns faculty to the 4 service types based on their allocated weeks. 
-              Each faculty can be scheduled ±1 week from their target to allow flexibility.
-            </p>
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
-              <div style="text-align: center; padding: 12px; background: white; border-radius: 8px;">
-                <div style="font-size: 24px; font-weight: 700; color: #dc2626;">2</div>
-                <div style="font-size: 12px; color: #6b7280;">MICU per week</div>
-              </div>
-              <div style="text-align: center; padding: 12px; background: white; border-radius: 8px;">
-                <div style="font-size: 24px; font-weight: 700; color: #3b82f6;">1</div>
-                <div style="font-size: 12px; color: #6b7280;">APP-ICU per week</div>
-              </div>
-              <div style="text-align: center; padding: 12px; background: white; border-radius: 8px;">
-                <div style="font-size: 24px; font-weight: 700; color: #10b981;">1</div>
-                <div style="font-size: 12px; color: #6b7280;">Procedures per week</div>
-              </div>
-              <div style="text-align: center; padding: 12px; background: white; border-radius: 8px;">
-                <div style="font-size: 24px; font-weight: 700; color: #f59e0b;">1</div>
-                <div style="font-size: 12px; color: #6b7280;">Consults per week</div>
-              </div>
-            </div>
+        </div>
+   
+        <!-- Capacity Summary Section -->
+        <div class="capacity-summary-section" style="margin-top: 30px;">
+          <h3 style="margin-bottom: 16px; font-size: 18px; font-weight: 700;">📊 Service Capacity Overview</h3>
+          <div id="capacitySummary">
+            <div style="text-align: center; padding: 20px; color: #6b7280;">Loading capacity data...</div>
           </div>
-     
-    <!-- Capacity Summary Section -->
-    <div class="capacity-summary-section" style="margin-top: 30px;">
-      <h3 style="margin-bottom: 16px; font-size: 18px; font-weight: 700;">📊 Service Capacity Overview</h3>
-      <div id="capacitySummary">
-        <div style="text-align: center; padding: 20px; color: #6b7280;">Loading capacity data...</div>
+        </div>
       </div>
     </div>
-  </div>
-</div>
-
-    <style>
-    .capacity-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 16px;
-      margin-bottom: 20px;
-    }
-
-    .capacity-card {
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-      border: 2px solid #e5e7eb;
-    }
-
-    .capacity-card h4 {
-      font-size: 16px;
-      font-weight: 700;
-      margin-bottom: 12px;
-      color: #1f2937;
-    }
-
-    .capacity-stats {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 8px;
-      font-size: 14px;
-    }
-
-    .capacity-bar {
-      height: 8px;
-      background: #e5e7eb;
-      border-radius: 4px;
-      overflow: hidden;
-      margin: 12px 0;
-    }
-
-    .capacity-fill {
-      height: 100%;
-      background: #10b981;
-      transition: width 0.3s ease;
-    }
-
-    .capacity-fill.not_started { background: #9ca3af; }
-    .capacity-fill.in_progress { background: #3b82f6; }
-    .capacity-fill.almost_complete { background: #f59e0b; }
-    .capacity-fill.complete { background: #10b981; }
-
-    .capacity-summary {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border-radius: 12px;
-      padding: 24px;
-      margin-top: 20px;
-    }
-
-    .capacity-summary h4 {
-      margin-bottom: 16px;
-      font-size: 18px;
-    }
-
-    .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 16px;
-    }
-
-    .summary-stat {
-      text-align: center;
-    }
-
-    .summary-stat-value {
-      font-size: 32px;
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-
-    .summary-stat-label {
-      font-size: 12px;
-      opacity: 0.9;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    </style>
     
+    <!-- CONFIGURE TAB -->
     <div id="tab-configure" class="tab-content">
       <div class="card">
         <div class="card-header"><h2 class="card-title">Define Special Periods & Generate 52 Weeks</h2></div>
@@ -397,6 +328,7 @@
       </div>
     </div>
     
+    <!-- REQUESTS TAB -->
     <div id="tab-requests" class="tab-content">
       <div class="card">
         <div class="card-header"><h2 class="card-title">Service Availability Requests</h2><button class="btn-secondary" onclick="loadRequests()">🔄 Refresh</button></div>
@@ -407,6 +339,7 @@
       </div>
     </div>
     
+    <!-- WEEKS TAB -->
     <div id="tab-weeks" class="tab-content">
       <div class="card">
         <div class="card-header"><h2 class="card-title">Edit 52-Week Schedule</h2><button class="btn-secondary" onclick="loadWeeks()">🔄 Refresh</button></div>
@@ -418,71 +351,72 @@
         </div>
       </div>
     </div>
-  </div>
   
-  <div id="tab-testing" class="tab-content">
-    <div class="card">
-      <div class="card-header">
-        <h2 class="card-title">🧪 Testing Utilities</h2>
-        <p style="color: #dc2626; font-size: 13px; font-weight: 600;">⚠️ Admin Only - Use for testing workflows</p>
-      </div>
-      
-      <div style="margin-bottom: 40px;">
-        <h3 style="margin-bottom: 16px; color: #1f2937;">Faculty Impersonation</h3>
-        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
-          Click "Login As" next to any faculty member in the Manage Providers tab to instantly switch to their account.
-          No password required. Perfect for testing the faculty workflow from different perspectives.
-        </p>
-        <div style="padding: 16px; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 8px;">
-          <strong style="color: #92400e;">💡 Tip:</strong> 
-          <span style="color: #78350f;">After testing, logout and log back in as admin to return to admin view.</span>
+    <!-- TESTING TAB -->
+    <div id="tab-testing" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">🧪 Testing Utilities</h2>
+          <p style="color: #dc2626; font-size: 13px; font-weight: 600;">⚠️ Admin Only - Use for testing workflows</p>
         </div>
-      </div>
-      
-      <div style="margin-bottom: 40px;">
-        <h3 style="margin-bottom: 16px; color: #1f2937;">Reset Utilities</h3>
-        <p style="color: #6b7280; margin-bottom: 24px; line-height: 1.6;">
-          Use these tools to reset data between testing cycles. Perfect for testing the point-based allocation system multiple times.
-        </p>
         
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
-          <div style="padding: 24px; background: white; border: 2px solid #e5e7eb; border-radius: 12px;">
-            <h4 style="margin-bottom: 12px; color: #1f2937; font-size: 16px;">Reset Faculty Points</h4>
-            <p style="color: #6b7280; font-size: 13px; margin-bottom: 16px; line-height: 1.5;">
-              Reset all faculty bonus points to 0. Base points remain intact.
-            </p>
-            <button class="btn-primary" onclick="resetPoints()" style="width: 100%;">Reset All Points</button>
-          </div>
-          
-          <div style="padding: 24px; background: white; border: 2px solid #e5e7eb; border-radius: 12px;">
-            <h4 style="margin-bottom: 12px; color: #1f2937; font-size: 16px;">Clear Requests</h4>
-            <p style="color: #6b7280; font-size: 13px; margin-bottom: 16px; line-height: 1.5;">
-              Delete all unavailability requests. Faculty and weeks remain.
-            </p>
-            <div style="margin-bottom: 12px;">
-              <label style="display: block; font-size: 12px; color: #6b7280; margin-bottom: 4px;">Year (optional)</label>
-              <input type="number" id="resetYear" placeholder="2026" style="width: 100%; padding: 8px; border: 2px solid #e5e7eb; border-radius: 6px;">
-            </div>
-            <button class="btn-danger" onclick="resetRequests()" style="width: 100%;">Clear Requests</button>
-          </div>
-          
-          <div style="padding: 24px; background: white; border: 2px solid #e5e7eb; border-radius: 12px;">
-            <h4 style="margin-bottom: 12px; color: #1f2937; font-size: 16px;">Complete Reset</h4>
-            <p style="color: #6b7280; font-size: 13px; margin-bottom: 16px; line-height: 1.5;">
-              Reset points AND clear requests. Fresh start for testing.
-            </p>
-            <div style="margin-bottom: 12px;">
-              <label style="display: block; font-size: 12px; color: #6b7280; margin-bottom: 4px;">Year (optional)</label>
-              <input type="number" id="resetAllYear" placeholder="2026" style="width: 100%; padding: 8px; border: 2px solid #e5e7eb; border-radius: 6px;">
-            </div>
-            <button class="btn-danger" onclick="resetAll()" style="width: 100%; background: #dc2626;">Complete Reset</button>
+        <div style="margin-bottom: 40px;">
+          <h3 style="margin-bottom: 16px; color: #1f2937;">Faculty Impersonation</h3>
+          <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+            Click "Login As" next to any faculty member in the Manage Providers tab to instantly switch to their account.
+            No password required. Perfect for testing the faculty workflow from different perspectives.
+          </p>
+          <div style="padding: 16px; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 8px;">
+            <strong style="color: #92400e;">💡 Tip:</strong> 
+            <span style="color: #78350f;">After testing, logout and log back in as admin to return to admin view.</span>
           </div>
         </div>
+        
+        <div style="margin-bottom: 40px;">
+          <h3 style="margin-bottom: 16px; color: #1f2937;">Reset Utilities</h3>
+          <p style="color: #6b7280; margin-bottom: 24px; line-height: 1.6;">
+            Use these tools to reset data between testing cycles. Perfect for testing the point-based allocation system multiple times.
+          </p>
+          
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+            <div style="padding: 24px; background: white; border: 2px solid #e5e7eb; border-radius: 12px;">
+              <h4 style="margin-bottom: 12px; color: #1f2937; font-size: 16px;">Reset Faculty Points</h4>
+              <p style="color: #6b7280; font-size: 13px; margin-bottom: 16px; line-height: 1.5;">
+                Reset all faculty bonus points to 0. Base points remain intact.
+              </p>
+              <button class="btn-primary" onclick="resetPoints()" style="width: 100%;">Reset All Points</button>
+            </div>
+            
+            <div style="padding: 24px; background: white; border: 2px solid #e5e7eb; border-radius: 12px;">
+              <h4 style="margin-bottom: 12px; color: #1f2937; font-size: 16px;">Clear Requests</h4>
+              <p style="color: #6b7280; font-size: 13px; margin-bottom: 16px; line-height: 1.5;">
+                Delete all unavailability requests. Faculty and weeks remain.
+              </p>
+              <div style="margin-bottom: 12px;">
+                <label style="display: block; font-size: 12px; color: #6b7280; margin-bottom: 4px;">Year (optional)</label>
+                <input type="number" id="resetYear" placeholder="2026" style="width: 100%; padding: 8px; border: 2px solid #e5e7eb; border-radius: 6px;">
+              </div>
+              <button class="btn-danger" onclick="resetRequests()" style="width: 100%;">Clear Requests</button>
+            </div>
+            
+            <div style="padding: 24px; background: white; border: 2px solid #e5e7eb; border-radius: 12px;">
+              <h4 style="margin-bottom: 12px; color: #1f2937; font-size: 16px;">Complete Reset</h4>
+              <p style="color: #6b7280; font-size: 13px; margin-bottom: 16px; line-height: 1.5;">
+                Reset points AND clear requests. Fresh start for testing.
+              </p>
+              <div style="margin-bottom: 12px;">
+                <label style="display: block; font-size: 12px; color: #6b7280; margin-bottom: 4px;">Year (optional)</label>
+                <input type="number" id="resetAllYear" placeholder="2026" style="width: 100%; padding: 8px; border: 2px solid #e5e7eb; border-radius: 6px;">
+              </div>
+              <button class="btn-danger" onclick="resetAll()" style="width: 100%; background: #dc2626;">Complete Reset</button>
+            </div>
+          </div>
+        </div>
+        
+        <div id="testingAlert" class="alert"></div>
       </div>
-      
-      <div id="testingAlert" class="alert"></div>
     </div>
-  </div>
+  </div><!-- end admin-container -->
   
   <!-- Edit Faculty Modal -->
   <div id="editFacultyModal" class="modal">
@@ -549,190 +483,7 @@
       </form>
     </div>
   </div>
-// Service Schedule Generation
-async function generateServiceSchedule() {
-  const year = document.getElementById('scheduleYearSelect').value;
-  
-  if (!confirm(`Generate inpatient service schedule for ${year}-${parseInt(year)+1}?\n\nThis will:\n• Clear any existing assignments\n• Assign faculty to MICU (2/week), APP-ICU (1/week), Procedures (1/week), Consults (1/week)\n• Respect unavailability requests\n• Allow ±1 week flexibility per service`)) {
-    return;
-  }
-  
-  try {
-    const response = await fetch(`${API_BASE}/api/admin/generate-service-schedule`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        year: parseInt(year),
-        clear_existing: true
-      })
-    });
-    
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.detail || 'Failed to generate schedule');
-    }
-    
-    let message = `✅ Schedule Generated!\n\n`;
-    message += `• ${data.assignments_created} assignments created\n`;
-    message += `• ${data.total_weeks} weeks processed\n\n`;
-    message += `Summary:\n`;
-    message += `• MICU: ${data.summary.MICU} assignments\n`;
-    message += `• APP-ICU: ${data.summary['APP-ICU']} assignments\n`;
-    message += `• Procedures: ${data.summary.Procedures} assignments\n`;
-    message += `• Consults: ${data.summary.Consults} assignments\n`;
-    
-    if (data.staffing_issues && data.staffing_issues.length > 0) {
-      message += `\n⚠️ Staffing Issues: ${data.staffing_issues.length} weeks understaffed`;
-    }
-    
-    if (data.capacity_issues && data.capacity_issues.length > 0) {
-      message += `\n⚠️ Capacity Issues: ${data.capacity_issues.length} faculty over/under target`;
-    }
-    
-    alert(message);
-    
-    // Refresh the capacity summary
-    await loadCapacitySummary();
-    
-  } catch (error) {
-    alert(`Error: ${error.message}`);
-  }
-}
 
-// View Service Schedule
-async function viewServiceSchedule() {
-  const year = document.getElementById('scheduleYearSelect').value;
-  const modal = document.getElementById('scheduleModal');
-  const content = document.getElementById('scheduleModalContent');
-  
-  modal.classList.add('show');
-  content.innerHTML = '<div class="loading">Loading schedule...</div>';
-  
-  try {
-    const response = await fetch(`${API_BASE}/api/admin/service-schedule?year=${year}`, {
-      credentials: 'include'
-    });
-    
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.detail || 'Failed to load schedule');
-    }
-    
-    if (!data.schedule || data.schedule.length === 0) {
-      content.innerHTML = `
-        <div style="text-align: center; padding: 40px;">
-          <p style="color: #6b7280; font-size: 16px;">No schedule generated yet for ${year}-${parseInt(year)+1}.</p>
-          <p style="color: #6b7280; font-size: 14px; margin-top: 8px;">Click "Generate Schedule" to create assignments.</p>
-        </div>
-      `;
-      return;
-    }
-    
-    // Build schedule table
-    let html = `
-      <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
-        <div>
-          <strong>Year:</strong> ${data.year}-${data.year + 1} | 
-          <strong>Total Weeks:</strong> ${data.total_weeks} | 
-          <strong>Complete Weeks:</strong> ${data.complete_weeks} / ${data.total_weeks} | 
-          <strong>Total Assignments:</strong> ${data.total_assignments}
-        </div>
-        <button class="btn-danger" onclick="clearServiceSchedule(${year})">Clear Schedule</button>
-      </div>
-      <div class="schedule-grid">
-        <table class="schedule-table">
-          <thead>
-            <tr>
-              <th style="width: 50px;">#</th>
-              <th style="width: 140px;">Week</th>
-              <th style="width: 100px;">Dates</th>
-              <th style="width: 80px;">Type</th>
-              <th>MICU (2)</th>
-              <th>APP-ICU (1)</th>
-              <th>Procedures (1)</th>
-              <th>Consults (1)</th>
-              <th style="width: 80px;">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-    `;
-    
-    data.schedule.forEach(week => {
-      const rowClass = week.is_complete ? 'schedule-week-complete' : 'schedule-week-incomplete';
-      
-      const formatAssignments = (assignments, required) => {
-        if (assignments.length === 0) {
-          return `<span class="assignment-slot-empty">${required} needed</span>`;
-        }
-        let html = assignments.map(a => 
-          `<span class="assignment-badge">${a.faculty_name}</span>`
-        ).join('');
-        if (assignments.length < required) {
-          html += `<span class="assignment-slot-empty">+${required - assignments.length} needed</span>`;
-        }
-        return html;
-      };
-      
-      html += `
-        <tr class="${rowClass}">
-          <td>${week.week_number}</td>
-          <td>${week.label}</td>
-          <td style="font-size: 11px;">${formatDate(week.start_date)} - ${formatDate(week.end_date)}</td>
-          <td style="text-transform: capitalize;">${week.week_type.replace('_', ' ')}</td>
-          <td>${formatAssignments(week.assignments.MICU, 2)}</td>
-          <td>${formatAssignments(week.assignments['APP-ICU'], 1)}</td>
-          <td>${formatAssignments(week.assignments.Procedures, 1)}</td>
-          <td>${formatAssignments(week.assignments.Consults, 1)}</td>
-          <td>
-            <span class="badge ${week.is_complete ? 'badge-active' : 'badge-inactive'}">
-              ${week.is_complete ? '✓ Complete' : 'Incomplete'}
-            </span>
-          </td>
-        </tr>
-      `;
-    });
-    
-    html += '</tbody></table></div>';
-    content.innerHTML = html;
-    
-  } catch (error) {
-    content.innerHTML = `<div class="error-message">Error: ${error.message}</div>`;
-  }
-}
-
-async function clearServiceSchedule(year) {
-  if (!confirm(`Clear ALL service assignments for ${year}-${parseInt(year)+1}?\n\nThis cannot be undone!`)) {
-    return;
-  }
-  
-  try {
-    const response = await fetch(`${API_BASE}/api/admin/service-schedule?year=${year}`, {
-      method: 'DELETE',
-      credentials: 'include'
-    });
-    
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.detail || 'Failed to clear schedule');
-    }
-    
-    alert(`✅ Cleared ${data.assignments_deleted} assignments for ${year}-${parseInt(year)+1}`);
-    closeScheduleModal();
-    await loadCapacitySummary();
-    
-  } catch (error) {
-    alert(`Error: ${error.message}`);
-  }
-}
-
-function closeScheduleModal() {
-  document.getElementById('scheduleModal').classList.remove('show');
-}
-</script>
   <!-- Service Schedule Modal -->
   <div id="scheduleModal" class="modal">
     <div class="modal-content schedule-modal-content">
@@ -763,12 +514,223 @@ function closeScheduleModal() {
       await loadCapacitySummary();
     });
     
+    // ==================== UTILITY FUNCTIONS ====================
+    
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+    
+    function setDefaultMonth() {
+      const now = new Date();
+      const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      document.getElementById('monthInput').value = monthStr;
+      document.getElementById('summaryMonth').textContent = monthStr;
+    }
+    
+    async function checkAuth() {
+      try {
+        const response = await fetch('/api/auth/me', { credentials: 'same-origin' });
+        if (!response.ok) { window.location.href = '/'; return; }
+        const data = await response.json();
+        if (!data.faculty.is_admin) { alert('Access denied. Admin privileges required.'); window.location.href = '/index.html'; }
+      } catch (error) { console.error('Auth check failed:', error); window.location.href = '/'; }
+    }
+    
+    function showTab(tabName) {
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById('tab-' + tabName).classList.add('active');
+      event.target.classList.add('active');
+      if (tabName === 'requests') loadRequests();
+      if (tabName === 'weeks') loadWeeks();
+      if (tabName === 'overview') {
+        loadOverview();
+        loadCapacitySummary();
+      }
+      if (tabName === 'heatmap') loadHeatmap(currentYear);
+    }
+    
+    // ==================== SERVICE SCHEDULE FUNCTIONS ====================
+    
+    async function generateServiceSchedule() {
+      const year = document.getElementById('scheduleYearSelect').value;
+      
+      if (!confirm(`Generate inpatient service schedule for ${year}-${parseInt(year)+1}?\n\nThis will:\n• Clear any existing assignments\n• Assign faculty to MICU (2/week), APP-ICU (1/week), Procedures (1/week), Consults (1/week)\n• Respect unavailability requests\n• Allow ±1 week flexibility per service`)) {
+        return;
+      }
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/admin/generate-service-schedule`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ year: parseInt(year), clear_existing: true })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.detail || 'Failed to generate schedule');
+        }
+        
+        let message = `✅ Schedule Generated!\n\n`;
+        message += `• ${data.assignments_created} assignments created\n`;
+        message += `• ${data.total_weeks} weeks processed\n\n`;
+        message += `Summary:\n`;
+        message += `• MICU: ${data.summary.MICU} assignments\n`;
+        message += `• APP-ICU: ${data.summary['APP-ICU']} assignments\n`;
+        message += `• Procedures: ${data.summary.Procedures} assignments\n`;
+        message += `• Consults: ${data.summary.Consults} assignments\n`;
+        
+        if (data.staffing_issues && data.staffing_issues.length > 0) {
+          message += `\n⚠️ Staffing Issues: ${data.staffing_issues.length} weeks understaffed`;
+        }
+        
+        if (data.capacity_issues && data.capacity_issues.length > 0) {
+          message += `\n⚠️ Capacity Issues: ${data.capacity_issues.length} faculty over/under target`;
+        }
+        
+        alert(message);
+        await loadCapacitySummary();
+        
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    }
+    
+    async function viewServiceSchedule() {
+      const year = document.getElementById('scheduleYearSelect').value;
+      const modal = document.getElementById('scheduleModal');
+      const content = document.getElementById('scheduleModalContent');
+      
+      modal.classList.add('show');
+      content.innerHTML = '<div class="loading">Loading schedule...</div>';
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/admin/service-schedule?year=${year}`, { credentials: 'include' });
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.detail || 'Failed to load schedule');
+        }
+        
+        if (!data.schedule || data.schedule.length === 0) {
+          content.innerHTML = `
+            <div style="text-align: center; padding: 40px;">
+              <p style="color: #6b7280; font-size: 16px;">No schedule generated yet for ${year}-${parseInt(year)+1}.</p>
+              <p style="color: #6b7280; font-size: 14px; margin-top: 8px;">Click "Generate Schedule" to create assignments.</p>
+            </div>
+          `;
+          return;
+        }
+        
+        let html = `
+          <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong>Year:</strong> ${data.year}-${data.year + 1} | 
+              <strong>Total Weeks:</strong> ${data.total_weeks} | 
+              <strong>Complete Weeks:</strong> ${data.complete_weeks} / ${data.total_weeks} | 
+              <strong>Total Assignments:</strong> ${data.total_assignments}
+            </div>
+            <button class="btn-danger" onclick="clearServiceSchedule(${year})">Clear Schedule</button>
+          </div>
+          <div class="schedule-grid">
+            <table class="schedule-table">
+              <thead>
+                <tr>
+                  <th style="width: 50px;">#</th>
+                  <th style="width: 140px;">Week</th>
+                  <th style="width: 100px;">Dates</th>
+                  <th style="width: 80px;">Type</th>
+                  <th>MICU (2)</th>
+                  <th>APP-ICU (1)</th>
+                  <th>Procedures (1)</th>
+                  <th>Consults (1)</th>
+                  <th style="width: 80px;">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+        
+        data.schedule.forEach(week => {
+          const rowClass = week.is_complete ? 'schedule-week-complete' : 'schedule-week-incomplete';
+          
+          const formatAssignments = (assignments, required) => {
+            if (!assignments || assignments.length === 0) {
+              return `<span class="assignment-slot-empty">${required} needed</span>`;
+            }
+            let html = assignments.map(a => `<span class="assignment-badge">${a.faculty_name}</span>`).join('');
+            if (assignments.length < required) {
+              html += `<span class="assignment-slot-empty">+${required - assignments.length} needed</span>`;
+            }
+            return html;
+          };
+          
+          html += `
+            <tr class="${rowClass}">
+              <td>${week.week_number}</td>
+              <td>${week.label}</td>
+              <td style="font-size: 11px;">${formatDate(week.start_date)} - ${formatDate(week.end_date)}</td>
+              <td style="text-transform: capitalize;">${week.week_type.replace('_', ' ')}</td>
+              <td>${formatAssignments(week.assignments.MICU, 2)}</td>
+              <td>${formatAssignments(week.assignments['APP-ICU'], 1)}</td>
+              <td>${formatAssignments(week.assignments.Procedures, 1)}</td>
+              <td>${formatAssignments(week.assignments.Consults, 1)}</td>
+              <td>
+                <span class="badge ${week.is_complete ? 'badge-active' : 'badge-inactive'}">
+                  ${week.is_complete ? '✓ Complete' : 'Incomplete'}
+                </span>
+              </td>
+            </tr>
+          `;
+        });
+        
+        html += '</tbody></table></div>';
+        content.innerHTML = html;
+        
+      } catch (error) {
+        content.innerHTML = `<div class="error-message">Error: ${error.message}</div>`;
+      }
+    }
+    
+    async function clearServiceSchedule(year) {
+      if (!confirm(`Clear ALL service assignments for ${year}-${parseInt(year)+1}?\n\nThis cannot be undone!`)) {
+        return;
+      }
+      
+      try {
+        const response = await fetch(`${API_BASE}/api/admin/service-schedule?year=${year}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.detail || 'Failed to clear schedule');
+        }
+        
+        alert(`✅ Cleared ${data.assignments_deleted} assignments for ${year}-${parseInt(year)+1}`);
+        closeScheduleModal();
+        await loadCapacitySummary();
+        
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    }
+    
+    function closeScheduleModal() {
+      document.getElementById('scheduleModal').classList.remove('show');
+    }
+    
+    // ==================== CAPACITY SUMMARY ====================
+    
     async function loadCapacitySummary() {
       try {
         const year = document.getElementById('scheduleYearSelect')?.value || 2026;
-        const response = await fetch(`${API_BASE}/api/admin/service-capacity-summary?year=${year}`, {
-          credentials: 'include'
-        });
+        const response = await fetch(`${API_BASE}/api/admin/service-capacity-summary?year=${year}`, { credentials: 'include' });
         
         if (!response.ok) throw new Error('Failed to load capacity summary');
         
@@ -828,220 +790,622 @@ function closeScheduleModal() {
       }
     }
     
-    function setDefaultMonth() {
-      const now = new Date();
-      const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      document.getElementById('monthInput').value = monthStr;
-      document.getElementById('summaryMonth').textContent = monthStr;
+    // ==================== PROVIDER/FACULTY FUNCTIONS ====================
+    
+    async function loadProviders() {
+      const errorDiv = document.getElementById('providerError');
+      const countSpan = document.getElementById('providerCount');
+      
+      try {
+        const response = await fetch('/api/providers', { credentials: 'same-origin' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        if (!Array.isArray(data)) throw new Error('Invalid response from server');
+        
+        allProviders = data;
+        countSpan.textContent = `${allProviders.length} faculty`;
+        errorDiv.style.display = 'none';
+        await loadFaculty();
+      } catch (error) {
+        console.error('Error loading providers:', error);
+        errorDiv.textContent = `Error loading providers: ${error.message}`;
+        errorDiv.style.display = 'block';
+        countSpan.textContent = 'Error';
+      }
     }
     
-    async function checkAuth() {
+    async function loadFaculty() {
+      const tbody = document.getElementById('providersTableBody');
       try {
-        const response = await fetch('/api/auth/me', {
+        const response = await fetch('/api/admin/faculty', { credentials: 'same-origin' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        allFaculty = await response.json();
+        
+        tbody.innerHTML = '';
+        if (allFaculty.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="13" style="text-align: center; padding: 20px; color: #6b7280;">No faculty yet.</td></tr>';
+        } else {
+          allFaculty.forEach(f => {
+            const row = document.createElement('tr');
+            const expectedWeeks = f.micu_weeks + f.app_icu_weeks + f.procedure_weeks + f.consult_weeks;
+            const actualWeeks = f.service_weeks.total;
+            
+            let badges = '';
+            if (f.is_admin) badges += '<span class="badge badge-admin">ADMIN</span> ';
+            if (f.moonlighter) badges += '<span class="badge badge-moonlighter">🌙 MOONLIGHTER</span> ';
+            if (!f.active) badges += '<span class="badge badge-inactive">INACTIVE</span>';
+            
+            const formatWeeksCell = (expected, actual) => {
+              const className = expected > 0 && actual !== expected ? 'weeks-mismatch' : 'weeks-actual';
+              return `<div class="weeks-cell"><div class="weeks-expected">${expected}</div><div class="${className}">${actual}</div></div>`;
+            };
+            
+            const totalClass = expectedWeeks > 0 && actualWeeks !== expectedWeeks ? 'weeks-mismatch' : 'weeks-actual';
+            
+            row.innerHTML = `
+              <td><strong>${f.id}</strong></td>
+              <td>${f.name}</td>
+              <td style="font-size: 11px;">${f.email}</td>
+              <td style="text-transform: capitalize;">${f.rank}</td>
+              <td><strong>${f.clinical_effort_pct}%</strong></td>
+              <td><strong>${f.base_points + f.bonus_points}</strong></td>
+              <td>${formatWeeksCell(f.micu_weeks, f.service_weeks.MICU)}</td>
+              <td>${formatWeeksCell(f.app_icu_weeks, f.service_weeks.APP_ICU)}</td>
+              <td>${formatWeeksCell(f.procedure_weeks, f.service_weeks.Procedures)}</td>
+              <td>${formatWeeksCell(f.consult_weeks, f.service_weeks.Consults)}</td>
+              <td><div class="weeks-cell"><div class="weeks-expected">${expectedWeeks}</div><div class="${totalClass}">${actualWeeks}</div></div></td>
+              <td>${badges}</td>
+              <td>
+                <div class="action-buttons">
+                  <button class="btn-success" onclick="impersonateFaculty('${f.id}', '${f.name}')">🔐 Login As</button>
+                  <button class="btn-secondary" onclick="editFaculty('${f.id}')">Edit</button>
+                  <button class="btn-${f.is_admin ? 'danger' : 'success'}" onclick="toggleAdmin('${f.id}', ${f.is_admin})">${f.is_admin ? 'Remove Admin' : 'Make Admin'}</button>
+                  <button class="btn-danger" onclick="deleteFaculty('${f.id}', '${f.name}')">Delete</button>
+                </div>
+              </td>
+            `;
+            tbody.appendChild(row);
+          });
+        }
+      } catch (error) {
+        console.error('Error loading faculty:', error);
+        tbody.innerHTML = '<tr><td colspan="13" style="text-align: center; padding: 20px; color: #dc2626;">Failed to load faculty.</td></tr>';
+      }
+    }
+    
+    function editFaculty(facultyId) {
+      const faculty = allFaculty.find(f => f.id === facultyId);
+      if (!faculty) return;
+      
+      document.getElementById('editFacultyId').value = faculty.id;
+      document.getElementById('editName').value = faculty.name;
+      document.getElementById('editEmail').value = faculty.email;
+      document.getElementById('editRank').value = faculty.rank;
+      document.getElementById('editEffort').value = faculty.clinical_effort_pct;
+      document.getElementById('editPoints').value = faculty.base_points;
+      document.getElementById('editMoonlighter').checked = faculty.moonlighter;
+      document.getElementById('editMicuWeeks').value = faculty.micu_weeks;
+      document.getElementById('editAppIcuWeeks').value = faculty.app_icu_weeks;
+      document.getElementById('editProcedureWeeks').value = faculty.procedure_weeks;
+      document.getElementById('editConsultWeeks').value = faculty.consult_weeks;
+      
+      document.getElementById('editFacultyModal').classList.add('show');
+    }
+    
+    function closeEditModal() {
+      document.getElementById('editFacultyModal').classList.remove('show');
+    }
+    
+    document.getElementById('editFacultyForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const facultyId = document.getElementById('editFacultyId').value;
+      const updateData = {
+        name: document.getElementById('editName').value,
+        email: document.getElementById('editEmail').value,
+        rank: document.getElementById('editRank').value,
+        clinical_effort_pct: parseInt(document.getElementById('editEffort').value),
+        base_points: parseInt(document.getElementById('editPoints').value),
+        moonlighter: document.getElementById('editMoonlighter').checked,
+        micu_weeks: parseInt(document.getElementById('editMicuWeeks').value) || 0,
+        app_icu_weeks: parseInt(document.getElementById('editAppIcuWeeks').value) || 0,
+        procedure_weeks: parseInt(document.getElementById('editProcedureWeeks').value) || 0,
+        consult_weeks: parseInt(document.getElementById('editConsultWeeks').value) || 0
+      };
+      
+      try {
+        const response = await fetch(`/api/admin/faculty/${facultyId}`, {
+          method: 'PATCH',
+          credentials: 'same-origin',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(updateData)
+        });
+        if (!response.ok) throw new Error('Failed to update faculty');
+        alert('Faculty updated successfully');
+        closeEditModal();
+        await loadFaculty();
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    });
+    
+    async function toggleAdmin(facultyId, isCurrentlyAdmin) {
+      const action = isCurrentlyAdmin ? 'remove admin privileges from' : 'grant admin privileges to';
+      const faculty = allFaculty.find(f => f.id === facultyId);
+      if (!confirm(`${action} ${faculty.name}?`)) return;
+      
+      try {
+        const response = await fetch(`/api/admin/faculty/${facultyId}/toggle-admin`, {
+          method: 'POST',
           credentials: 'same-origin'
         });
-        if (!response.ok) { window.location.href = '/'; return; }
-        const data = await response.json();
-        if (!data.faculty.is_admin) { alert('Access denied. Admin privileges required.'); window.location.href = '/index.html'; }
-      } catch (error) { console.error('Auth check failed:', error); window.location.href = '/'; }
-    }
-    
-    function showTab(tabName) {
-      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-      document.getElementById('tab-' + tabName).classList.add('active');
-      event.target.classList.add('active');
-      if (tabName === 'requests') loadRequests();
-      if (tabName === 'weeks') loadWeeks();
-      if (tabName === 'overview') {
-        loadOverview();
-        loadCapacitySummary();
-      }
-      if (tabName === 'heatmap') loadHeatmap(currentYear);
-    }
-    
-    // Service Schedule Generation
-    async function generateServiceSchedule() {
-      const year = document.getElementById('scheduleYearSelect').value;
-      
-      if (!confirm(`Generate inpatient service schedule for ${year}-${parseInt(year)+1}?\n\nThis will:\n• Clear any existing assignments\n• Assign faculty to MICU (2/week), APP-ICU (1/week), Procedures (1/week), Consults (1/week)\n• Respect unavailability requests\n• Allow ±1 week flexibility per service`)) {
-        return;
-      }
-      
-      try {
-        const response = await fetch(`${API_BASE}/api/admin/generate-service-schedule`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            year: parseInt(year),
-            clear_existing: true
-          })
-        });
-        
-        const data = await response.json();
-        
-        if (!response.ok) {
-          throw new Error(data.detail || 'Failed to generate schedule');
-        }
-        
-        let message = `✅ Schedule Generated!\n\n`;
-        message += `• ${data.assignments_created} assignments created\n`;
-        message += `• ${data.total_weeks} weeks processed\n\n`;
-        message += `Summary:\n`;
-        message += `• MICU: ${data.summary.MICU} assignments\n`;
-        message += `• APP-ICU: ${data.summary['APP-ICU']} assignments\n`;
-        message += `• Procedures: ${data.summary.Procedures} assignments\n`;
-        message += `• Consults: ${data.summary.Consults} assignments\n`;
-        
-        if (data.staffing_issues && data.staffing_issues.length > 0) {
-          message += `\n⚠️ Staffing Issues: ${data.staffing_issues.length} weeks understaffed`;
-        }
-        
-        if (data.capacity_issues && data.capacity_issues.length > 0) {
-          message += `\n⚠️ Capacity Issues: ${data.capacity_issues.length} faculty over/under target`;
-        }
-        
-        alert(message);
-        
-        // Refresh the capacity summary
-        await loadCapacitySummary();
-        
+        if (!response.ok) throw new Error('Failed to toggle admin status');
+        alert('Admin status updated');
+        await loadFaculty();
       } catch (error) {
         alert(`Error: ${error.message}`);
       }
     }
     
-    // View Service Schedule
-    async function viewServiceSchedule() {
-      const year = document.getElementById('scheduleYearSelect').value;
-      const modal = document.getElementById('scheduleModal');
-      const content = document.getElementById('scheduleModalContent');
-      
-      modal.classList.add('show');
-      content.innerHTML = '<div class="loading">Loading schedule...</div>';
-      
+    async function deleteFaculty(facultyId, name) {
+      if (!confirm(`Delete faculty '${name}'? This will deactivate their account.`)) return;
       try {
-        const response = await fetch(`${API_BASE}/api/admin/service-schedule?year=${year}`, {
-          credentials: 'include'
+        const response = await fetch(`/api/admin/faculty/${facultyId}`, {
+          method: 'DELETE',
+          credentials: 'same-origin'
         });
-        
-        const data = await response.json();
-        
-        if (!response.ok) {
-          throw new Error(data.detail || 'Failed to load schedule');
-        }
-        
-        if (!data.schedule || data.schedule.length === 0) {
-          content.innerHTML = `
-            <div style="text-align: center; padding: 40px;">
-              <p style="color: #6b7280; font-size: 16px;">No schedule generated yet for ${year}-${parseInt(year)+1}.</p>
-              <p style="color: #6b7280; font-size: 14px; margin-top: 8px;">Click "Generate Schedule" to create assignments.</p>
-            </div>
-          `;
-          return;
-        }
-        
-        // Build schedule table
-        let html = `
-          <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
-            <div>
-              <strong>Year:</strong> ${data.year}-${data.year + 1} | 
-              <strong>Total Weeks:</strong> ${data.total_weeks} | 
-              <strong>Complete Weeks:</strong> ${data.complete_weeks} / ${data.total_weeks} | 
-              <strong>Total Assignments:</strong> ${data.total_assignments}
-            </div>
-            <button class="btn-danger" onclick="clearServiceSchedule(${year})">Clear Schedule</button>
-          </div>
-          <div class="schedule-grid">
-            <table class="schedule-table">
-              <thead>
-                <tr>
-                  <th style="width: 50px;">#</th>
-                  <th style="width: 140px;">Week</th>
-                  <th style="width: 100px;">Dates</th>
-                  <th style="width: 80px;">Type</th>
-                  <th>MICU (2)</th>
-                  <th>APP-ICU (1)</th>
-                  <th>Procedures (1)</th>
-                  <th>Consults (1)</th>
-                  <th style="width: 80px;">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-        `;
-        
-        data.schedule.forEach(week => {
-          const rowClass = week.is_complete ? 'schedule-week-complete' : 'schedule-week-incomplete';
-          
-          const formatAssignments = (assignments, required) => {
-            if (assignments.length === 0) {
-              return `<span class="assignment-slot-empty">${required} needed</span>`;
-            }
-            let html = assignments.map(a => 
-              `<span class="assignment-badge">${a.faculty_name}</span>`
-            ).join('');
-            if (assignments.length < required) {
-              html += `<span class="assignment-slot-empty">+${required - assignments.length} needed</span>`;
-            }
-            return html;
-          };
-          
-          html += `
-            <tr class="${rowClass}">
-              <td>${week.week_number}</td>
-              <td>${week.label}</td>
-              <td style="font-size: 11px;">${formatDate(week.start_date)} - ${formatDate(week.end_date)}</td>
-              <td style="text-transform: capitalize;">${week.week_type.replace('_', ' ')}</td>
-              <td>${formatAssignments(week.assignments.MICU, 2)}</td>
-              <td>${formatAssignments(week.assignments['APP-ICU'], 1)}</td>
-              <td>${formatAssignments(week.assignments.Procedures, 1)}</td>
-              <td>${formatAssignments(week.assignments.Consults, 1)}</td>
-              <td>
-                <span class="badge ${week.is_complete ? 'badge-active' : 'badge-inactive'}">
-                  ${week.is_complete ? '✓ Complete' : 'Incomplete'}
-                </span>
-              </td>
-            </tr>
-          `;
-        });
-        
-        html += '</tbody></table></div>';
-        content.innerHTML = html;
-        
+        if (!response.ok) throw new Error('Failed to delete faculty');
+        alert(`Faculty '${name}' deactivated`);
+        await loadFaculty();
       } catch (error) {
-        content.innerHTML = `<div class="error-message">Error: ${error.message}</div>`;
+        alert(`Error: ${error.message}`);
       }
     }
     
-    async function clearServiceSchedule(year) {
-      if (!confirm(`Clear ALL service assignments for ${year}-${parseInt(year)+1}?\n\nThis cannot be undone!`)) {
-        return;
+    async function addProvider() {
+      const id = document.getElementById('newProviderId').value.trim();
+      const name = document.getElementById('newProviderName').value.trim();
+      const email = document.getElementById('newProviderEmail').value.trim();
+      if (!id || !name) { alert('Computing ID and Name are required'); return; }
+      try {
+        const response = await fetch('/api/admin/providers', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, name, email: email || null })
+        });
+        if (!response.ok) { const error = await response.json(); throw new Error(error.detail || 'Failed to add faculty'); }
+        alert(`Faculty '${name}' added successfully`);
+        document.getElementById('newProviderId').value = '';
+        document.getElementById('newProviderName').value = '';
+        document.getElementById('newProviderEmail').value = '';
+        await loadProviders();
+      } catch (error) { alert(`Error: ${error.message}`); }
+    }
+    
+    async function impersonateFaculty(facultyId, facultyName) {
+      if (!confirm(`Login as ${facultyName}? You will be logged out of your admin session.`)) return;
+      try {
+        const response = await fetch(`/api/admin/impersonate/${facultyId}`, {
+          method: 'POST',
+          credentials: 'same-origin'
+        });
+        if (!response.ok) throw new Error('Failed to impersonate');
+        window.location.href = '/index.html';
+      } catch (error) {
+        alert(`Error: ${error.message}`);
       }
+    }
+    
+    // ==================== OVERVIEW FUNCTIONS ====================
+    
+    async function loadOverview() {
+      const overviewContent = document.getElementById('overviewContent');
+      try {
+        const year = document.getElementById('scheduleYearSelect')?.value || 2026;
+        const response = await fetch(`/api/admin/service-weeks?year=${year}`, { credentials: 'same-origin' });
+        if (!response.ok) throw new Error('Failed to load overview');
+        const weeks = await response.json();
+        
+        if (weeks.length === 0) {
+          overviewContent.innerHTML = '<p style="color: #6b7280;">No weeks generated yet. Configure periods and generate weeks to get started.</p>';
+          return;
+        }
+        
+        overviewContent.innerHTML = `
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+            <div style="padding: 16px; background: #f9fafb; border-radius: 8px; text-align: center;">
+              <div style="font-size: 32px; font-weight: 700; color: #667eea;">${weeks.length}</div>
+              <div style="font-size: 13px; color: #6b7280;">Total Weeks</div>
+            </div>
+            <div style="padding: 16px; background: #f9fafb; border-radius: 8px; text-align: center;">
+              <div style="font-size: 32px; font-weight: 700; color: #10b981;">${weeks.filter(w => w.week_type === 'regular').length}</div>
+              <div style="font-size: 13px; color: #6b7280;">Regular Weeks</div>
+            </div>
+            <div style="padding: 16px; background: #f9fafb; border-radius: 8px; text-align: center;">
+              <div style="font-size: 32px; font-weight: 700; color: #f59e0b;">${weeks.filter(w => w.week_type === 'holiday').length}</div>
+              <div style="font-size: 13px; color: #6b7280;">Holiday Weeks</div>
+            </div>
+            <div style="padding: 16px; background: #f9fafb; border-radius: 8px; text-align: center;">
+              <div style="font-size: 32px; font-weight: 700; color: #3b82f6;">${weeks.filter(w => w.week_type === 'conference').length}</div>
+              <div style="font-size: 13px; color: #6b7280;">Conference Weeks</div>
+            </div>
+          </div>
+        `;
+      } catch (error) {
+        console.error('Error loading overview:', error);
+        overviewContent.innerHTML = `<div class="error-message">Error: ${error.message}</div>`;
+      }
+    }
+    
+    // ==================== HEATMAP FUNCTIONS ====================
+    
+    async function loadHeatmap(year) {
+      currentYear = year;
+      
+      // Update button states
+      document.getElementById('year2025Btn').classList.toggle('active', year === 2025);
+      document.getElementById('year2026Btn').classList.toggle('active', year === 2026);
+      document.getElementById('year2025Btn').style.background = year === 2025 ? '#667eea' : 'white';
+      document.getElementById('year2025Btn').style.color = year === 2025 ? 'white' : '#6b7280';
+      document.getElementById('year2025Btn').style.borderColor = year === 2025 ? '#667eea' : '#e5e7eb';
+      document.getElementById('year2026Btn').style.background = year === 2026 ? '#667eea' : 'white';
+      document.getElementById('year2026Btn').style.color = year === 2026 ? 'white' : '#6b7280';
+      document.getElementById('year2026Btn').style.borderColor = year === 2026 ? '#667eea' : '#e5e7eb';
+      
+      const loading = document.getElementById('heatmapLoading');
+      const grid = document.getElementById('heatmapGrid');
+      
+      loading.style.display = 'block';
+      grid.style.display = 'none';
       
       try {
-        const response = await fetch(`${API_BASE}/api/admin/service-schedule?year=${year}`, {
+        const response = await fetch(`/api/admin/service-weeks?year=${year}`, { credentials: 'same-origin' });
+        if (!response.ok) throw new Error('Failed to load heatmap data');
+        const weeks = await response.json();
+        
+        if (weeks.length === 0) {
+          grid.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 40px;">No weeks found for this year. Generate weeks in Configure Periods tab.</p>';
+        } else {
+          grid.innerHTML = weeks.map(week => {
+            const count = week.unavailability_count || 0;
+            let statusClass = 'status-good';
+            let statusText = 'Good';
+            if (count >= 5) { statusClass = 'status-critical'; statusText = 'Critical'; }
+            else if (count >= 3) { statusClass = 'status-tight'; statusText = 'Tight'; }
+            
+            return `
+              <div class="week-cell ${statusClass}">
+                <div class="week-num">Week ${week.week_number}</div>
+                <div class="week-label">${week.label}</div>
+                <div class="week-count">${count}</div>
+                <div class="week-status">${statusText}</div>
+              </div>
+            `;
+          }).join('');
+        }
+        
+        loading.style.display = 'none';
+        grid.style.display = 'grid';
+      } catch (error) {
+        console.error('Error loading heatmap:', error);
+        loading.textContent = `Error: ${error.message}`;
+      }
+    }
+    
+    // ==================== WEEKS MANAGEMENT ====================
+    
+    async function loadWeeks() {
+      const loading = document.getElementById('weeksLoading');
+      const content = document.getElementById('weeksContent');
+      const tbody = document.getElementById('weeksTableBody');
+      
+      loading.style.display = 'block';
+      content.style.display = 'none';
+      
+      try {
+        const response = await fetch('/api/admin/service-weeks', { credentials: 'same-origin' });
+        if (!response.ok) throw new Error('Failed to load weeks');
+        allWeeks = await response.json();
+        
+        tbody.innerHTML = '';
+        if (allWeeks.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: #6b7280;">No weeks configured. Use Configure Periods to generate.</td></tr>';
+        } else {
+          allWeeks.forEach(week => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td><strong>${week.week_number}</strong></td>
+              <td>${week.label}</td>
+              <td>${week.start_date}</td>
+              <td>${week.end_date}</td>
+              <td style="text-transform: capitalize;">${week.week_type.replace('_', ' ')}</td>
+              <td>${week.point_cost}</td>
+              <td>${week.point_reward}</td>
+              <td><button class="btn-secondary" onclick="editWeek(${week.id})">Edit</button></td>
+            `;
+            tbody.appendChild(row);
+          });
+        }
+        
+        loading.style.display = 'none';
+        content.style.display = 'block';
+      } catch (error) {
+        console.error('Error loading weeks:', error);
+        loading.textContent = `Error: ${error.message}`;
+      }
+    }
+    
+    async function editWeek(weekId) {
+      // TODO: Implement week editing modal
+      alert('Week editing coming soon!');
+    }
+    
+    async function clearAllWeeks() {
+      if (!confirm('Clear ALL weeks? This cannot be undone!')) return;
+      try {
+        const response = await fetch('/api/admin/service-weeks', {
           method: 'DELETE',
-          credentials: 'include'
+          credentials: 'same-origin'
+        });
+        if (!response.ok) throw new Error('Failed to clear weeks');
+        alert('All weeks cleared');
+        await loadWeeks();
+        await loadOverview();
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    }
+    
+    // ==================== REQUESTS FUNCTIONS ====================
+    
+    async function loadRequests() {
+      const loading = document.getElementById('requestsLoading');
+      const content = document.getElementById('requestsContent');
+      const tbody = document.getElementById('requestsTableBody');
+      
+      loading.style.display = 'block';
+      content.style.display = 'none';
+      
+      try {
+        const response = await fetch('/api/admin/unavailability-requests', { credentials: 'same-origin' });
+        if (!response.ok) throw new Error('Failed to load requests');
+        const requests = await response.json();
+        
+        tbody.innerHTML = '';
+        if (requests.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #6b7280;">No requests yet.</td></tr>';
+        } else {
+          requests.forEach(req => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${req.faculty_name}</td>
+              <td>${req.week_label}</td>
+              <td>${req.week_number}</td>
+              <td><span class="badge badge-${req.status === 'approved' ? 'active' : 'inactive'}">${req.status}</span></td>
+              <td>${req.points_spent || 0}</td>
+              <td>${req.points_earned || 0}</td>
+              <td>${new Date(req.created_at).toLocaleDateString()}</td>
+            `;
+            tbody.appendChild(row);
+          });
+        }
+        
+        loading.style.display = 'none';
+        content.style.display = 'block';
+      } catch (error) {
+        console.error('Error loading requests:', error);
+        loading.textContent = `Error: ${error.message}`;
+      }
+    }
+    
+    // ==================== MOONLIGHTING FUNCTIONS ====================
+    
+    async function loadSignups() {
+      const month = document.getElementById('monthInput').value;
+      if (!month) return;
+      document.getElementById('summaryMonth').textContent = month;
+      document.getElementById('summaryText').textContent = 'Loading...';
+      document.getElementById('signupsTbody').innerHTML = '';
+      
+      try {
+        const response = await fetch(`/api/admin/signups?month=${encodeURIComponent(month)}`, { credentials: 'same-origin' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        
+        if (data.length === 0) {
+          document.getElementById('summaryText').textContent = 'No signups for this month.';
+          return;
+        }
+        
+        // Group by provider
+        const byProvider = {};
+        data.forEach(signup => {
+          if (!byProvider[signup.provider_id]) {
+            byProvider[signup.provider_id] = {
+              name: signup.provider_name,
+              dates: [],
+              desired_nights: signup.desired_nights
+            };
+          }
+          byProvider[signup.provider_id].dates.push(signup.date);
+        });
+        
+        const tbody = document.getElementById('signupsTbody');
+        Object.entries(byProvider).forEach(([id, info]) => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${info.name}</td>
+            <td style="font-size: 12px;">${info.dates.join(', ')}</td>
+            <td>${info.dates.length}</td>
+            <td>${info.desired_nights}</td>
+          `;
+          tbody.appendChild(row);
+        });
+        
+        document.getElementById('summaryText').textContent = `${Object.keys(byProvider).length} faculty signed up`;
+      } catch (error) {
+        document.getElementById('summaryText').textContent = `Error: ${error.message}`;
+      }
+    }
+    
+    async function runOptimizer() {
+      const month = document.getElementById('monthInput').value;
+      if (!month) { alert('Select a month first'); return; }
+      
+      try {
+        const response = await fetch(`/api/admin/run_optimizer?month=${month}`, {
+          method: 'POST',
+          credentials: 'same-origin'
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'Optimizer failed');
+        alert(`Schedule generated! ${data.assigned_shifts} shifts assigned.`);
+        viewSchedule();
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    }
+    
+    async function viewSchedule() {
+      const month = document.getElementById('monthInput').value;
+      if (!month) return;
+      
+      try {
+        const response = await fetch(`/api/admin/assignments?month=${month}`, { credentials: 'same-origin' });
+        const data = await response.json();
+        
+        if (data.length === 0) {
+          document.getElementById('scheduleSection').style.display = 'none';
+          return;
+        }
+        
+        const calendar = document.getElementById('scheduleCalendar');
+        calendar.innerHTML = data.map(a => `<div style="padding: 8px; margin: 4px; background: #dbeafe; border-radius: 4px;">${a.date}: ${a.provider_name}</div>`).join('');
+        document.getElementById('scheduleSection').style.display = 'block';
+      } catch (error) {
+        console.error('Error viewing schedule:', error);
+      }
+    }
+    
+    function downloadCsv() {
+      const month = document.getElementById('monthInput').value;
+      if (!month) { alert('Select a month first'); return; }
+      window.open(`/api/admin/signups_csv?month=${month}`, '_blank');
+    }
+    
+    async function clearMonth() {
+      const month = document.getElementById('monthInput').value;
+      if (!month) { alert('Select a month first'); return; }
+      if (!confirm(`Clear all data for ${month}?`)) return;
+      
+      try {
+        const response = await fetch(`/api/admin/clear_month?month=${month}`, {
+          method: 'DELETE',
+          credentials: 'same-origin'
+        });
+        const data = await response.json();
+        alert(data.message);
+        loadSignups();
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    }
+    
+    // ==================== TESTING UTILITIES ====================
+    
+    async function resetPoints() {
+      if (!confirm('Reset all faculty bonus points to 0?')) return;
+      try {
+        const response = await fetch('/api/admin/reset-points', {
+          method: 'POST',
+          credentials: 'same-origin'
+        });
+        if (!response.ok) throw new Error('Failed to reset points');
+        showTestingAlert('Points reset successfully', 'success');
+        await loadFaculty();
+      } catch (error) {
+        showTestingAlert(`Error: ${error.message}`, 'error');
+      }
+    }
+    
+    async function resetRequests() {
+      const year = document.getElementById('resetYear').value;
+      if (!confirm(`Clear all unavailability requests${year ? ` for ${year}` : ''}?`)) return;
+      try {
+        const url = year ? `/api/admin/reset-requests?year=${year}` : '/api/admin/reset-requests';
+        const response = await fetch(url, {
+          method: 'POST',
+          credentials: 'same-origin'
+        });
+        if (!response.ok) throw new Error('Failed to clear requests');
+        showTestingAlert('Requests cleared successfully', 'success');
+        await loadRequests();
+      } catch (error) {
+        showTestingAlert(`Error: ${error.message}`, 'error');
+      }
+    }
+    
+    async function resetAll() {
+      const year = document.getElementById('resetAllYear').value;
+      if (!confirm(`Complete reset: clear points AND requests${year ? ` for ${year}` : ''}? This cannot be undone!`)) return;
+      try {
+        await resetPoints();
+        document.getElementById('resetYear').value = year;
+        await resetRequests();
+        showTestingAlert('Complete reset successful', 'success');
+      } catch (error) {
+        showTestingAlert(`Error: ${error.message}`, 'error');
+      }
+    }
+    
+    function showTestingAlert(message, type) {
+      const alert = document.getElementById('testingAlert');
+      alert.textContent = message;
+      alert.className = `alert alert-${type} show`;
+      setTimeout(() => { alert.classList.remove('show'); }, 3000);
+    }
+    
+    // ==================== CONFIGURE FORM ====================
+    
+    document.getElementById('configForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const alert = document.getElementById('configAlert');
+      
+      const config = {
+        year: parseInt(document.getElementById('configYear').value),
+        start_date: document.getElementById('configStartDate').value,
+        summer_start: document.getElementById('summerStart').value || null,
+        summer_end: document.getElementById('summerEnd').value || null,
+        spring_break: document.getElementById('springBreak').value || null,
+        thanksgiving: document.getElementById('thanksgiving').value || null,
+        christmas: document.getElementById('christmas').value || null,
+        ats_conference: document.getElementById('atsConference').value || null,
+        chest_conference: document.getElementById('chestConference').value || null,
+        sccm_conference: document.getElementById('sccmConference').value || null
+      };
+      
+      try {
+        const response = await fetch('/api/admin/generate-weeks', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config)
         });
         
         const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'Failed to generate weeks');
         
-        if (!response.ok) {
-          throw new Error(data.detail || 'Failed to clear schedule');
-        }
+        alert.textContent = `✅ Generated ${data.weeks_created} weeks for ${config.year}-${config.year + 1}`;
+        alert.className = 'alert alert-success show';
         
-        alert(`✅
-
-        <div id="scheduleModal" class="modal">
-  <div class="modal-content schedule-modal-content">
-    <div class="modal-header">
-      <h3 class="modal-title">📋 Inpatient Service Schedule</h3>
-      <span class="close-btn" onclick="closeScheduleModal()">&times;</span>
-    </div>
-    <div id="scheduleModalContent">
-      <div class="loading">Loading schedule...</div>
-    </div>
-  </div>
-</div>
+        await loadWeeks();
+        await loadOverview();
+        await loadHeatmap(config.year);
+      } catch (error) {
+        alert.textContent = `❌ Error: ${error.message}`;
+        alert.className = 'alert alert-error show';
+      }
+    });
+  </script>
 </body>
+</html>
