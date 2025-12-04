@@ -14,14 +14,14 @@ from sqlalchemy.orm import Session
 
 from .models import (
     SessionLocal, init_db,
-    Provider, Month, Shift, Signup, Assignment
+    Provider, Month, Shift, Signup, Assignment, Faculty
 )
 from .optimizer_bridge import run_optimizer_for_month
 from .notion_integration import get_notion_kb
 from fastapi.middleware.gzip import GZipMiddleware
 from .routes.admin_faculty import router as admin_faculty_router
 from .routes.admin_service import router as admin_service_router
-from .routes.auth import router as auth_router
+from .routes.auth import router as auth_router, get_current_user
 from .routes.service_requests import router as service_requests_router
 from .routes.service_weeks import router as service_weeks_router
 from .routes.schedule_routes import router as schedule_router
@@ -169,10 +169,36 @@ def startup_event():
 # API ROUTES - MUST COME BEFORE STATIC FILE ROUTES
 # ========================================
 
+# ---------- Current user endpoint ----------
+
+@app.get("/api/me")
+def get_current_user_info(
+    current_user: Faculty = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get current logged-in user info."""
+    return {
+        "faculty_id": current_user.id,
+        "faculty_name": current_user.name,
+        "email": current_user.email,
+        "is_admin": current_user.is_admin,
+        "moonlighter": current_user.moonlighter
+    }
+
+
 # ---------- Signup endpoint ----------
 
 @app.post("/api/signup")
-def save_signup(payload: SignupPayload, db: Session = Depends(get_db)):
+def save_signup(
+    payload: SignupPayload,
+    current_user: Faculty = Depends(get_current_user),  # <-- ADD AUTH
+    db: Session = Depends(get_db)
+):
+    """Save moonlighting signup - requires authentication."""
+    # Verify the user is signing up for themselves
+    if payload.provider_id != current_user.id:
+        raise HTTPException(403, "You can only sign up for yourself")
+    
     # Ensure provider exists (or update name/email if needed)
     provider = db.query(Provider).get(payload.provider_id)
     if not provider:
@@ -227,7 +253,7 @@ def save_signup(payload: SignupPayload, db: Session = Depends(get_db)):
         db.add(su)
 
     db.commit()
-    return {"status": "ok"}
+    return {"status": "ok", "message": f"Signup saved for {payload.provider_name}"}
 
 
 # ---------- Admin: list signups ----------
@@ -235,6 +261,7 @@ def save_signup(payload: SignupPayload, db: Session = Depends(get_db)):
 @app.get("/api/admin/signups", response_model=List[SignupOut])
 def list_signups(
     month: Optional[str] = None,
+    current_user: Faculty = Depends(get_current_user),  # <-- ADD AUTH
     db: Session = Depends(get_db),
 ):
     """
@@ -245,6 +272,9 @@ def list_signups(
     - desired_nights
     - locked
     """
+    if not current_user.is_admin:
+        raise HTTPException(403, "Admin access required")
+    
     q = (
         db.query(
             Signup.provider_id,
@@ -287,11 +317,15 @@ def list_signups(
 @app.get("/api/admin/assignments", response_model=List[AssignmentOut])
 def list_assignments(
     month: Optional[str] = None,
+    current_user: Faculty = Depends(get_current_user),  # <-- ADD AUTH
     db: Session = Depends(get_db),
 ):
     """
     Return the generated schedule (assignments) for a month.
     """
+    if not current_user.is_admin:
+        raise HTTPException(403, "Admin access required")
+    
     q = (
         db.query(
             Assignment.provider_id,
@@ -328,7 +362,10 @@ def list_assignments(
 # ---------- Providers list (for dropdown) ----------
 
 @app.get("/api/providers", response_model=List[ProviderOut])
-def list_providers(db: Session = Depends(get_db)):
+def list_providers(
+    current_user: Faculty = Depends(get_current_user),  # <-- ADD AUTH
+    db: Session = Depends(get_db)
+):
     """Get all providers for moonlighting system."""
     providers = db.query(Provider).order_by(Provider.name).all()
     return providers
@@ -337,10 +374,17 @@ def list_providers(db: Session = Depends(get_db)):
 # ---------- Admin: Provider management ----------
 
 @app.post("/api/admin/providers")
-def create_provider(provider: ProviderCreate, db: Session = Depends(get_db)):
+def create_provider(
+    provider: ProviderCreate,
+    current_user: Faculty = Depends(get_current_user),  # <-- ADD AUTH
+    db: Session = Depends(get_db)
+):
     """
     Add a new provider.
     """
+    if not current_user.is_admin:
+        raise HTTPException(403, "Admin access required")
+    
     existing = db.query(Provider).filter(Provider.id == provider.id).first()
     if existing:
         raise HTTPException(400, f"Provider with id '{provider.id}' already exists")
@@ -362,11 +406,19 @@ def create_provider(provider: ProviderCreate, db: Session = Depends(get_db)):
 
 
 @app.put("/api/admin/providers/{provider_id}")
-def update_provider(provider_id: str, provider: ProviderUpdate, db: Session = Depends(get_db)):
+def update_provider(
+    provider_id: str,
+    provider: ProviderUpdate,
+    current_user: Faculty = Depends(get_current_user),  # <-- ADD AUTH
+    db: Session = Depends(get_db)
+):
     """
     Update an existing provider's name and/or email.
     Provider ID cannot be changed.
     """
+    if not current_user.is_admin:
+        raise HTTPException(403, "Admin access required")
+    
     existing = db.query(Provider).filter(Provider.id == provider_id).first()
     if not existing:
         raise HTTPException(404, f"Provider '{provider_id}' not found")
@@ -386,10 +438,17 @@ def update_provider(provider_id: str, provider: ProviderUpdate, db: Session = De
 
 
 @app.delete("/api/admin/providers/{provider_id}")
-def delete_provider(provider_id: str, db: Session = Depends(get_db)):
+def delete_provider(
+    provider_id: str,
+    current_user: Faculty = Depends(get_current_user),  # <-- ADD AUTH
+    db: Session = Depends(get_db)
+):
     """
     Delete a provider and all their signups/assignments.
     """
+    if not current_user.is_admin:
+        raise HTTPException(403, "Admin access required")
+    
     provider = db.query(Provider).filter(Provider.id == provider_id).first()
     if not provider:
         raise HTTPException(404, f"Provider '{provider_id}' not found")
@@ -408,11 +467,18 @@ def delete_provider(provider_id: str, db: Session = Depends(get_db)):
 # ---------- Admin: Clear data ----------
 
 @app.delete("/api/admin/clear_month")
-def clear_month_data(month: str, db: Session = Depends(get_db)):
+def clear_month_data(
+    month: str,
+    current_user: Faculty = Depends(get_current_user),  # <-- ADD AUTH
+    db: Session = Depends(get_db)
+):
     """
     Clear all signups and assignments for a specific month.
     Does not delete providers.
     """
+    if not current_user.is_admin:
+        raise HTTPException(403, "Admin access required")
+    
     year, month_num = map(int, month.split("-"))
     month_row = (
         db.query(Month)
@@ -445,12 +511,19 @@ def clear_month_data(month: str, db: Session = Depends(get_db)):
 
 
 @app.delete("/api/admin/clear_all")
-def clear_all_data(confirm: str, db: Session = Depends(get_db)):
+def clear_all_data(
+    confirm: str,
+    current_user: Faculty = Depends(get_current_user),  # <-- ADD AUTH
+    db: Session = Depends(get_db)
+):
     """
     Clear ALL data (signups, assignments, shifts, months).
     Does not delete providers.
     Requires confirmation string.
     """
+    if not current_user.is_admin:
+        raise HTTPException(403, "Admin access required")
+    
     if confirm != "DELETE_ALL_DATA":
         raise HTTPException(400, "Confirmation string required: DELETE_ALL_DATA")
     
@@ -478,11 +551,15 @@ def run_optimizer_endpoint(
     month: str,
     strategy: str = "balanced",
     night_slots: int = 1,
+    current_user: Faculty = Depends(get_current_user),  # <-- ADD AUTH
     db: Session = Depends(get_db),
 ):
     """
     Run the scheduling optimizer for a given month ("YYYY-MM").
     """
+    if not current_user.is_admin:
+        raise HTTPException(403, "Admin access required")
+    
     try:
         year, month_num = map(int, month.split("-"))
         month_row = (
@@ -524,12 +601,16 @@ def run_optimizer_endpoint(
 @app.get("/api/admin/signups_csv", response_class=PlainTextResponse)
 def signups_csv(
     month: str,
+    current_user: Faculty = Depends(get_current_user),  # <-- ADD AUTH
     db: Session = Depends(get_db),
 ):
     """
     Export all signups for a given month as CSV in optimizer format:
     faculty_id,name,desired_nights,requested_dates,priority
     """
+    if not current_user.is_admin:
+        raise HTTPException(403, "Admin access required")
+    
     year, mnum = map(int, month.split("-"))
 
     # Get all signups for this month grouped by provider
