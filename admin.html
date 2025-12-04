@@ -589,7 +589,10 @@ async function loadCapacitySummary() {
       event.target.classList.add('active');
       if (tabName === 'requests') loadRequests();
       if (tabName === 'weeks') loadWeeks();
-      if (tabName === 'overview') loadOverview();loadCapacitySummary();
+      if (tabName === 'overview') {
+      loadOverview();
+      loadCapacitySummary();
+    }
       if (tabName === 'heatmap') loadHeatmap(currentYear);
     }
     
