@@ -244,9 +244,11 @@
             locked_dates: []
           };
 
+          // CRITICAL FIX: Add credentials for session-based auth
           const res = await fetch(`${API_BASE}/api/signup`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: 'same-origin',  // <-- ADDED THIS
             body: JSON.stringify(payload),
           });
 
@@ -257,14 +259,15 @@
         }
 
         alert("✅ Signup saved successfully!");
+        console.log("Moonlighting signup successful");
       } catch (err) {
-        console.error(err);
+        console.error("Signup error:", err);
         alert(`❌ There was a problem saving your signup: ${err.message}`);
       }
     });
 
-    // Load user from localStorage
-    function loadCurrentUser() {
+    // Load user from session via API call
+    async function loadCurrentUser() {
       // Check URL params first
       if (paramProviderId && paramProviderName) {
         provider_id = paramProviderId;
@@ -273,7 +276,25 @@
         return;
       }
 
-      // Check localStorage
+      // Try to fetch current user from session
+      try {
+        const res = await fetch(`${API_BASE}/api/me`, {
+          credentials: 'same-origin'
+        });
+        
+        if (res.ok) {
+          const user = await res.json();
+          provider_id = user.faculty_id;
+          provider_name = user.faculty_name;
+          console.log(`Loaded user from session: ${provider_name} (${provider_id})`);
+          updateProviderDisplay();
+          return;
+        }
+      } catch (err) {
+        console.error("Failed to fetch current user:", err);
+      }
+
+      // Fallback to localStorage
       const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
       if (currentUser.faculty_id) {
         provider_id = currentUser.faculty_id;
