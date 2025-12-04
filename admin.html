@@ -1059,7 +1059,8 @@
       grid.style.display = 'none';
       
       try {
-        const response = await fetch(`/api/admin/service-weeks?year=${year}`, { credentials: 'same-origin' });
+        // Use the heatmap endpoint which includes unavailable_count
+        const response = await fetch(`/api/admin/service-weeks/heatmap?year=${year}`, { credentials: 'same-origin' });
         if (!response.ok) throw new Error('Failed to load heatmap data');
         const weeks = await response.json();
         
@@ -1067,11 +1068,18 @@
           grid.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 40px;">No weeks found for this year. Generate weeks in Configure Periods tab.</p>';
         } else {
           grid.innerHTML = weeks.map(week => {
-            const count = week.unavailability_count || 0;
+            // API returns unavailable_count (not unavailability_count)
+            const count = week.unavailable_count || 0;
+            // Use the staffing_status from API or calculate based on count
             let statusClass = 'status-good';
             let statusText = 'Good';
-            if (count >= 5) { statusClass = 'status-critical'; statusText = 'Critical'; }
-            else if (count >= 3) { statusClass = 'status-tight'; statusText = 'Tight'; }
+            if (week.staffing_status === 'critical' || count >= 12) { 
+              statusClass = 'status-critical'; 
+              statusText = 'Critical'; 
+            } else if (week.staffing_status === 'tight' || count >= 8) { 
+              statusClass = 'status-tight'; 
+              statusText = 'Tight'; 
+            }
             
             return `
               <div class="week-cell ${statusClass}">
@@ -1113,15 +1121,16 @@
         } else {
           allWeeks.forEach(week => {
             const row = document.createElement('tr');
+            // API returns point_cost_off and point_reward_work
             row.innerHTML = `
               <td><strong>${week.week_number}</strong></td>
               <td>${week.label}</td>
               <td>${week.start_date}</td>
               <td>${week.end_date}</td>
               <td style="text-transform: capitalize;">${week.week_type.replace('_', ' ')}</td>
-              <td>${week.point_cost}</td>
-              <td>${week.point_reward}</td>
-              <td><button class="btn-secondary" onclick="editWeek(${week.id})">Edit</button></td>
+              <td>${week.point_cost_off}</td>
+              <td>${week.point_reward_work}</td>
+              <td><button class="btn-secondary" onclick="editWeek('${week.id}')">Edit</button></td>
             `;
             tbody.appendChild(row);
           });
@@ -1167,7 +1176,8 @@
       content.style.display = 'none';
       
       try {
-        const response = await fetch('/api/admin/unavailability-requests', { credentials: 'same-origin' });
+        // Correct endpoint is /api/admin/service-requests
+        const response = await fetch('/api/admin/service-requests', { credentials: 'same-origin' });
         if (!response.ok) throw new Error('Failed to load requests');
         const requests = await response.json();
         
@@ -1181,7 +1191,7 @@
               <td>${req.faculty_name}</td>
               <td>${req.week_label}</td>
               <td>${req.week_number}</td>
-              <td><span class="badge badge-${req.status === 'approved' ? 'active' : 'inactive'}">${req.status}</span></td>
+              <td><span class="badge badge-${req.status === 'approved' ? 'active' : req.status === 'unavailable' ? 'inactive' : 'moonlighter'}">${req.status}</span></td>
               <td>${req.points_spent || 0}</td>
               <td>${req.points_earned || 0}</td>
               <td>${new Date(req.created_at).toLocaleDateString()}</td>
@@ -1385,7 +1395,7 @@
       };
       
       try {
-        const response = await fetch('/api/admin/generate-weeks', {
+        const response = await fetch('/api/admin/generate-service-weeks', {
           method: 'POST',
           credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
