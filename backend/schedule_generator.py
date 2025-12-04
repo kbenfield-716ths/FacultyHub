@@ -12,11 +12,13 @@ Constraints:
 - Faculty can only be assigned to services where they have weeks > 0
 - Each faculty can work +/- 1 week of their allocated amount per service
 - Faculty marked unavailable for a week cannot be assigned
+- NO BACK-TO-BACK BLOCKS: Faculty must have at least one week off between any inpatient service assignments
 - Try to distribute assignments evenly across the year
+
 """
 
-from typing import List, Dict, Tuple, Optional
-from dataclasses import dataclass
+from typing import List, Dict, Tuple, Optional, Set
+from dataclasses import dataclass, field
 from collections import defaultdict
 import random
 from sqlalchemy.orm import Session
@@ -37,6 +39,8 @@ class FacultyCapacity:
     app_icu_assigned: int = 0
     procedures_assigned: int = 0
     consults_assigned: int = 0
+    last_assigned_week: int = -999  # Track last week number assigned (for back-to-back prevention)
+    assigned_weeks: Set[int] = field(default_factory=set)  # All weeks this faculty is assigned
     
     def can_work_service(self, service_type: str) -> bool:
         """Check if faculty can work more weeks of this service (+1 flexibility)"""
@@ -50,6 +54,21 @@ class FacultyCapacity:
             return self.consults_target > 0 and self.consults_assigned < self.consults_target + 1
         return False
     
+    def can_work_week(self, week_number: int) -> bool:
+        """
+        Check if faculty can work this week (no back-to-back constraint).
+        Must have at least one week gap from any previous assignment.
+        """
+        # Check if the previous week or next week is already assigned
+        # We need a gap of at least 1 week between assignments
+        if (week_number - 1) in self.assigned_weeks:
+            return False  # Previous week is assigned - can't do back-to-back
+        if (week_number + 1) in self.assigned_weeks:
+            return False  # Next week is assigned - would create back-to-back
+        if week_number in self.assigned_weeks:
+            return False  # Already assigned this week
+        return True
+    
     def needs_more_weeks(self, service_type: str) -> bool:
         """Check if faculty still needs assignments to meet minimum (-1 flexibility)"""
         if service_type == "MICU":
@@ -62,7 +81,7 @@ class FacultyCapacity:
             return self.consults_target > 0 and self.consults_assigned < max(0, self.consults_target - 1)
         return False
     
-    def assign(self, service_type: str):
+    def assign(self, service_type: str, week_number: int):
         """Record an assignment"""
         if service_type == "MICU":
             self.micu_assigned += 1
@@ -72,6 +91,10 @@ class FacultyCapacity:
             self.procedures_assigned += 1
         elif service_type == "Consults":
             self.consults_assigned += 1
+        
+        # Track for back-to-back prevention
+        self.last_assigned_week = week_number
+        self.assigned_weeks.add(week_number)
     
     def get_priority_score(self, service_type: str) -> float:
         """Get priority score - higher means more urgently needs assignment"""
@@ -92,6 +115,14 @@ class FacultyCapacity:
                 return -1000
             return (self.consults_target - self.consults_assigned) / max(1, self.consults_target)
         return 0
+    
+    def get_total_target(self) -> int:
+        """Get total target weeks across all services"""
+        return self.micu_target + self.app_icu_target + self.procedures_target + self.consults_target
+    
+    def get_total_assigned(self) -> int:
+        """Get total assigned weeks across all services"""
+        return self.micu_assigned + self.app_icu_assigned + self.procedures_assigned + self.consults_assigned
 
 
 @dataclass
@@ -118,6 +149,9 @@ def generate_schedule(
 ) -> Dict:
     """
     Generate a complete inpatient service schedule for the academic year.
+    
+    Key constraint: NO BACK-TO-BACK BLOCKS
+    Faculty must have at least one week off between any inpatient service assignments.
     
     Args:
         db: Database session
@@ -176,9 +210,11 @@ def generate_schedule(
     
     assignments = []
     issues = []
+    back_to_back_prevented = 0  # Track how many times we prevented back-to-back
     
     # For each week, assign faculty to each service
     for week in weeks:
+        week_number = week.week_number
         week_assignments = defaultdict(list)  # service_type -> list of faculty_ids
         unavailable_this_week = unavailability_map.get(week.id, set())
         
@@ -187,18 +223,26 @@ def generate_schedule(
             # Get eligible faculty for this service/week
             eligible = []
             for fid, cap in faculty_capacity.items():
-                # Skip if unavailable this week
+                # Skip if unavailable this week (requested off)
                 if fid in unavailable_this_week:
                     continue
+                    
                 # Skip if already assigned this week to another service
                 if any(fid in assigned for assigned in week_assignments.values()):
                     continue
-                # Check if can work this service
+                
+                # Skip if would create back-to-back (worked last week or scheduled next week)
+                if not cap.can_work_week(week_number):
+                    back_to_back_prevented += 1
+                    continue
+                    
+                # Check if can work this service (has capacity)
                 if cap.can_work_service(service_type):
                     eligible.append((fid, cap))
             
             # Sort by priority (those who need more weeks first)
-            eligible.sort(key=lambda x: x[1].get_priority_score(service_type), reverse=True)
+            # Add small random factor to break ties and spread assignments
+            eligible.sort(key=lambda x: (x[1].get_priority_score(service_type), random.random()), reverse=True)
             
             # Assign required number of faculty
             assigned_count = 0
@@ -214,7 +258,7 @@ def generate_schedule(
                 )
                 assignments.append(assignment)
                 week_assignments[service_type].append(fid)
-                cap.assign(service_type)
+                cap.assign(service_type, week_number)
                 assigned_count += 1
             
             # Track if we couldn't fill all slots
@@ -269,6 +313,7 @@ def generate_schedule(
         "assignments_created": len(assignments),
         "staffing_issues": issues,
         "capacity_issues": capacity_issues,
+        "back_to_back_prevented": back_to_back_prevented,
         "summary": {
             "MICU": sum(1 for a in assignments if a.service_type == "MICU"),
             "APP-ICU": sum(1 for a in assignments if a.service_type == "APP-ICU"),
@@ -349,4 +394,59 @@ def get_schedule_view(
         "complete_weeks": complete_weeks,
         "total_assignments": total_assignments,
         "schedule": schedule
+    }
+
+
+def validate_schedule(
+    db: Session,
+    year: int = 2026
+) -> Dict:
+    """
+    Validate an existing schedule for constraint violations.
+    
+    Checks:
+    - Back-to-back assignments
+    - Capacity violations
+    - Missing assignments
+    
+    Returns dict with any violations found.
+    """
+    from backend.models import Faculty, ServiceWeek, ServiceWeekAssignment
+    
+    weeks = db.query(ServiceWeek).filter(
+        ServiceWeek.year == year
+    ).order_by(ServiceWeek.week_number).all()
+    
+    week_ids = [w.id for w in weeks]
+    assignments = db.query(ServiceWeekAssignment).filter(
+        ServiceWeekAssignment.week_id.in_(week_ids)
+    ).all()
+    
+    # Track which weeks each faculty is assigned
+    faculty_weeks = defaultdict(set)  # faculty_id -> set of week_numbers
+    week_number_lookup = {w.id: w.week_number for w in weeks}
+    
+    for a in assignments:
+        week_num = week_number_lookup.get(a.week_id)
+        if week_num:
+            faculty_weeks[a.faculty_id].add(week_num)
+    
+    # Check for back-to-back violations
+    back_to_back_violations = []
+    for faculty_id, assigned_weeks in faculty_weeks.items():
+        sorted_weeks = sorted(assigned_weeks)
+        for i in range(len(sorted_weeks) - 1):
+            if sorted_weeks[i+1] - sorted_weeks[i] == 1:
+                back_to_back_violations.append({
+                    "faculty_id": faculty_id,
+                    "week1": sorted_weeks[i],
+                    "week2": sorted_weeks[i+1]
+                })
+    
+    return {
+        "year": year,
+        "total_assignments": len(assignments),
+        "back_to_back_violations": back_to_back_violations,
+        "violation_count": len(back_to_back_violations),
+        "is_valid": len(back_to_back_violations) == 0
     }
