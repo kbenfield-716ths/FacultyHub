@@ -13,7 +13,7 @@ import resend
 logger = logging.getLogger(__name__)
 
 # Email configuration
-SENDER_EMAIL = "nooneseesthis@rekindelingproject.com"
+SENDER_EMAIL = "nooneseesthis@pccmschedule.edu"
 SENDER_NAME = "PCCM Faculty Hub"
 
 # Get Resend API key from environment variable
@@ -346,4 +346,4 @@ def send_unavailability_confirmation(
         faculty_name, faculty_email, selected_weeks, academic_year
     )
     
-    return send_email(faculty_email, faculty_name, subject, html_content)email_service.py
+    return send_email(faculty_email, faculty_name, subject, html_content)
