@@ -13,7 +13,7 @@ import uuid
 
 from backend.models import Faculty, ServiceWeek, UnavailabilityRequest, get_db
 from backend.auth import get_current_user
-from email_service import send_unavailability_confirmation
+from backend.email_service import send_unavailability_confirmation
 import logging
 
 logger = logging.getLogger(__name__)
