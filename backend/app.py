@@ -26,6 +26,10 @@ from .routes.auth import router as auth_router, get_current_user
 from .routes.service_requests import router as service_requests_router
 from .routes.service_weeks import router as service_weeks_router
 from .routes.schedule_routes import router as schedule_router
+from email_service import send_irpa_confirmation
+import logging
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 app.add_middleware(GZipMiddleware, minimum_size=1000)
