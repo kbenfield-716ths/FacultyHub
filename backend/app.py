@@ -196,7 +196,7 @@ def get_current_user_info(
 @app.post("/api/signup")
 def save_signup(
     payload: SignupPayload,
-    current_user: Faculty = Depends(get_current_user),  # <-- ADD AUTH
+    current_user: Faculty = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Save moonlighting signup - requires authentication."""
@@ -210,7 +210,6 @@ def save_signup(
         provider = Provider(id=payload.provider_id, name=payload.provider_name)
         db.add(provider)
     else:
-        # keep name in sync with whatever comes from the front-end
         provider.name = payload.provider_name
 
     # Ensure Month row exists
@@ -258,6 +257,32 @@ def save_signup(
         db.add(su)
 
     db.commit()
+    
+    # ========== EMAIL CONFIRMATION ==========
+    # Send confirmation email (non-blocking - don't fail submission if email fails)
+    try:
+        # Convert dates to strings for email
+        date_strings = [d.isoformat() for d in sorted(payload.dates)]
+        
+        # Determine academic year from month
+        # If month is July-December, it's the first year of the academic year
+        # If January-June, it's the second year
+        if month_num >= 7:
+            academic_year = f"{year}-{year+1}"
+        else:
+            academic_year = f"{year-1}-{year}"
+        
+        send_irpa_confirmation(
+            faculty_name=current_user.name,
+            faculty_email=current_user.email,
+            selected_dates=date_strings,
+            academic_year=academic_year
+        )
+        logger.info(f"IRPA confirmation email sent to {current_user.email}")
+    except Exception as e:
+        # Log error but don't fail the submission
+        logger.error(f"Failed to send IRPA confirmation email: {e}")
+    
     return {"status": "ok", "message": f"Signup saved for {payload.provider_name}"}
 
 
