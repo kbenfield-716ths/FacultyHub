@@ -79,7 +79,6 @@ def calculate_dynamic_cost(base_cost: int, request_count: int) -> int:
 # ==========================================
 # ENDPOINTS
 # ==========================================
-
 @router.post("", status_code=status.HTTP_201_CREATED)
 def submit_unavailability_requests(
     data: UnavailabilityRequestSubmit,
@@ -98,7 +97,7 @@ def submit_unavailability_requests(
         db.query(UnavailabilityRequest).filter(
             UnavailabilityRequest.faculty_id == current_user.id
         ).delete()
-        db.flush()  # Ensure deletions are committed before counting
+        db.flush()
         
         # Track totals for validation
         total_points_spent = 0
@@ -156,7 +155,7 @@ def submit_unavailability_requests(
                 status=req.status,
                 points_spent=points_spent,
                 points_earned=points_earned,
-                gives_priority=False  # Will be set by admin during draft
+                gives_priority=False
             )
             
             db.add(unavailability_request)
@@ -176,7 +175,6 @@ def submit_unavailability_requests(
         db.commit()
         
         # ========== EMAIL CONFIRMATION ==========
-        # Send confirmation email (non-blocking - don't fail submission if email fails)
         try:
             # Prepare week data for email - only include unavailable requests
             unavailable_weeks = []
@@ -192,14 +190,10 @@ def submit_unavailability_requests(
             
             # Only send email if there are unavailable weeks
             if unavailable_weeks:
-                # Determine academic year from the first week
                 first_week = db.query(ServiceWeek).filter_by(
                     id=created_requests[0].week_id
                 ).first()
                 
-                # Academic year runs July-June
-                # If week is in July-December, use that year as start
-                # If week is in January-June, use previous year as start
                 week_year = first_week.start_date.year
                 week_month = first_week.start_date.month
                 
@@ -216,7 +210,6 @@ def submit_unavailability_requests(
                 )
                 logger.info(f"Unavailability confirmation email sent to {current_user.email}")
         except Exception as e:
-            # Log error but don't fail the submission
             logger.error(f"Failed to send unavailability confirmation email: {e}")
         
         return {
@@ -237,103 +230,3 @@ def submit_unavailability_requests(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to submit requests: {str(e)}"
         )
-        )
-
-
-@router.get("/my-requests", response_model=List[UnavailabilityRequestResponse])
-def get_my_requests(
-    current_user: Faculty = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Get all availability requests for the current faculty member.
-    """
-    requests = (
-        db.query(
-            UnavailabilityRequest.id,
-            UnavailabilityRequest.faculty_id,
-            Faculty.name.label("faculty_name"),
-            UnavailabilityRequest.week_id,
-            ServiceWeek.week_number,
-            ServiceWeek.label.label("week_label"),
-            UnavailabilityRequest.status,
-            UnavailabilityRequest.points_spent,
-            UnavailabilityRequest.points_earned,
-            UnavailabilityRequest.created_at
-        )
-        .join(Faculty, UnavailabilityRequest.faculty_id == Faculty.id)
-        .join(ServiceWeek, UnavailabilityRequest.week_id == ServiceWeek.id)
-        .filter(UnavailabilityRequest.faculty_id == current_user.id)
-        .order_by(ServiceWeek.week_number)
-        .all()
-    )
-    
-    return [
-        UnavailabilityRequestResponse(
-            id=r.id,
-            faculty_id=r.faculty_id,
-            faculty_name=r.faculty_name,
-            week_id=r.week_id,
-            week_number=r.week_number,
-            week_label=r.week_label,
-            status=r.status,
-            points_spent=r.points_spent,
-            points_earned=r.points_earned,
-            created_at=r.created_at
-        )
-        for r in requests
-    ]
-
-
-@router.delete("/my-requests", status_code=status.HTTP_204_NO_CONTENT)
-def delete_my_requests(
-    current_user: Faculty = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Delete all availability requests for the current faculty member.
-    """
-    db.query(UnavailabilityRequest).filter(
-        UnavailabilityRequest.faculty_id == current_user.id
-    ).delete()
-    
-    db.commit()
-    return None
-
-
-@router.get("/summary")
-def get_my_summary(
-    current_user: Faculty = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Get summary statistics for the current faculty member.
-    """
-    # Count requests by status
-    requests = db.query(UnavailabilityRequest).filter(
-        UnavailabilityRequest.faculty_id == current_user.id
-    ).all()
-    
-    unavailable_count = sum(1 for r in requests if r.status == "unavailable")
-    available_count = sum(1 for r in requests if r.status == "available")
-    
-    total_spent = sum(r.points_spent for r in requests)
-    total_earned = sum(r.points_earned for r in requests)
-    
-    base_points = current_user.base_points
-    bonus_points = current_user.bonus_points or 0
-    available_points = base_points + bonus_points - total_spent + total_earned
-    
-    return {
-        "faculty_id": current_user.id,
-        "faculty_name": current_user.name,
-        "base_points": base_points,
-        "bonus_points": bonus_points,
-        "total_points": base_points + bonus_points,
-        "points_spent": total_spent,
-        "points_earned": total_earned,
-        "available_points": available_points,
-        "weeks_unavailable": unavailable_count,
-        "weeks_available": available_count,
-        "total_requests": len(requests)
-    }
