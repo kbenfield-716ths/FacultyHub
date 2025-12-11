@@ -12,10 +12,11 @@ import io
 
 from sqlalchemy.orm import Session
 from sqlalchemy import delete
+from .auth import get_current_user
 
 from .models import (
     SessionLocal, init_db,
-    Provider, Month, Shift, Signup, Assignment
+    Provider, Month, Shift, Signup, Assignment, Faculty
 )
 from .optimizer_bridge import run_optimizer_for_month
 from .notion_integration import get_notion_kb
