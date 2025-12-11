@@ -14,7 +14,7 @@ COPY backend /app/backend
 COPY moonlighter_optimizer.py /app/moonlighter_optimizer.py
 
 # Copy faculty.csv so the app can seed providers
-COPY faculty.csv /app/faculty.csv
+COPY backend/seed_data/faculty.csv /app/faculty.csv
 
 # Copy all static files for the frontend
 # Copy HTML files (both .html and .Html extensions)
