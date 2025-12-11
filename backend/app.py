@@ -27,6 +27,8 @@ from .routes.auth import router as auth_router
 from .routes.service_requests import router as service_requests_router
 from .routes.service_weeks import router as service_weeks_router
 from .routes.schedule_routes import router as schedule_router
+from backend.email_service import send_irpa_confirmation
+import logging
 
 app = FastAPI()
 app.add_middleware(GZipMiddleware, minimum_size=1000)
@@ -183,7 +185,24 @@ def save_signup(payload: SignupPayload, db: Session = Depends(get_db)):
     else:
         # keep name in sync with whatever comes from the front-end
         provider.name = payload.provider_name
-
+try:
+    date_strings = [d.isoformat() for d in sorted(payload.dates)]
+    
+    if month_num >= 7:
+        academic_year = f"{year}-{year+1}"
+    else:
+        academic_year = f"{year-1}-{year}"
+    
+    send_irpa_confirmation(
+        faculty_name=current_user.name,
+        faculty_email=current_user.email,
+        selected_dates=date_strings,
+        academic_year=academic_year
+    )
+    logger.info(f"IRPA confirmation email sent to {current_user.email}")
+except Exception as e:
+    logger.error(f"Failed to send IRPA confirmation email: {e}")
+    
     # Ensure Month row exists
     year, month_num = map(int, payload.month.split("-"))
     month_row = (
