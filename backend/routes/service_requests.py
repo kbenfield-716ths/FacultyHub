@@ -13,6 +13,10 @@ import uuid
 
 from backend.models import Faculty, ServiceWeek, UnavailabilityRequest, get_db
 from backend.auth import get_current_user
+from backend.email_service import send_unavailability_confirmation
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/service-requests", tags=["service-requests"])
 
@@ -189,7 +193,41 @@ def submit_unavailability_requests(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to submit requests: {str(e)}"
         )
-
+try:
+    unavailable_weeks = []
+    for req in created_requests:
+        if req.status == "unavailable":
+            week = db.query(ServiceWeek).filter_by(id=req.week_id).first()
+            if week:
+                unavailable_weeks.append({
+                    "week_number": week.week_number,
+                    "start_date": week.start_date.isoformat(),
+                    "end_date": week.end_date.isoformat()
+                })
+    
+    if unavailable_weeks:
+        first_week = db.query(ServiceWeek).filter_by(
+            id=created_requests[0].week_id
+        ).first()
+        
+        week_year = first_week.start_date.year
+        week_month = first_week.start_date.month
+        
+        if week_month >= 7:
+            academic_year = f"{week_year}-{week_year+1}"
+        else:
+            academic_year = f"{week_year-1}-{week_year}"
+        
+        send_unavailability_confirmation(
+            faculty_name=current_user.name,
+            faculty_email=current_user.email,
+            selected_weeks=unavailable_weeks,
+            academic_year=academic_year
+        )
+        logger.info(f"Unavailability confirmation email sent to {current_user.email}")
+except Exception as e:
+    logger.error(f"Failed to send unavailability confirmation email: {e}")
+    
 
 @router.get("/my-requests", response_model=List[UnavailabilityRequestResponse])
 def get_my_requests(
