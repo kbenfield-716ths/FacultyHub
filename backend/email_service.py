@@ -347,3 +347,33 @@ def send_unavailability_confirmation(
     )
     
     return send_email(faculty_email, faculty_name, subject, html_content)
+
+
+# ==== 1. Feedback ====
+
+def send_feedback_email(
+    user_name: str,
+    user_email: str,
+    feedback_type: str,
+    message: str,
+    page_url: str = None
+) -> bool:
+    """Send feedback from users to admin"""
+    admin_email = "ke4z@uvahealth.org"
+    subject = f"Faculty Hub Feedback: {feedback_type.title()} from {user_name}"
+    
+    page_info = f"<p><strong>Page:</strong> {page_url}</p>" if page_url else ""
+    
+    html_content = f"""
+    <html><body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <h2 style="color: #0056b3;">New Feedback Received</h2>
+        <p><strong>From:</strong> {user_name} ({user_email})</p>
+        <p><strong>Type:</strong> {feedback_type}</p>
+        {page_info}
+        <hr><h3>Message:</h3>
+        <div style="background: #f5f5f5; padding: 15px; border-left: 4px solid #E57200; white-space: pre-wrap;">{message}</div>
+        <hr><p style="color: #666;">Reply to: <a href="mailto:{user_email}">{user_email}</a></p>
+    </body></html>
+    """
+    
+    return send_email(admin_email, "Admin", subject, html_content)
