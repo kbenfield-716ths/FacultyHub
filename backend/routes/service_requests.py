@@ -328,3 +328,4 @@ def get_my_summary(
         "weeks_available": available_count,
         "total_requests": len(requests)
     }
+    }
