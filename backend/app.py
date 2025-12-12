@@ -863,7 +863,16 @@ async def serve_cache_manager():
         return response
     return {"error": "cache-manager.js not found"}
 
-
+@app.get("/{filename}.js")
+async def serve_js_file(filename: str):
+    """Serve any JavaScript file from root directory"""
+    js_path = STATIC_DIR / f"{filename}.js"
+    if js_path.exists():
+        response = FileResponse(js_path, media_type="application/javascript")
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        return response
+    return {"error": f"{filename}.js not found"}
+    
 @app.get("/static/{path:path}")
 async def serve_static(path: str):
     """Serve any static file from backend/static"""
