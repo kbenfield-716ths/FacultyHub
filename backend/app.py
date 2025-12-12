@@ -30,6 +30,8 @@ from .routes.schedule_routes import router as schedule_router
 from backend.email_service import send_irpa_confirmation
 import logging
 
+logger = logging.getLogger(__name__)
+
 app = FastAPI()
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
@@ -177,6 +179,7 @@ def startup_event():
 
 @app.post("/api/signup")
 def save_signup(payload: SignupPayload, db: Session = Depends(get_db)):
+    """Save moonlighting signup for a provider."""
     # Ensure provider exists (or update name/email if needed)
     provider = db.query(Provider).get(payload.provider_id)
     if not provider:
@@ -185,24 +188,7 @@ def save_signup(payload: SignupPayload, db: Session = Depends(get_db)):
     else:
         # keep name in sync with whatever comes from the front-end
         provider.name = payload.provider_name
-try:
-    date_strings = [d.isoformat() for d in sorted(payload.dates)]
-    
-    if month_num >= 7:
-        academic_year = f"{year}-{year+1}"
-    else:
-        academic_year = f"{year-1}-{year}"
-    
-    send_irpa_confirmation(
-        faculty_name=current_user.name,
-        faculty_email=current_user.email,
-        selected_dates=date_strings,
-        academic_year=academic_year
-    )
-    logger.info(f"IRPA confirmation email sent to {current_user.email}")
-except Exception as e:
-    logger.error(f"Failed to send IRPA confirmation email: {e}")
-    
+
     # Ensure Month row exists
     year, month_num = map(int, payload.month.split("-"))
     month_row = (
@@ -248,6 +234,30 @@ except Exception as e:
         db.add(su)
 
     db.commit()
+    
+    # Send confirmation email (non-blocking - errors won't fail the request)
+    try:
+        date_strings = [d.isoformat() for d in sorted(payload.dates)]
+        
+        if month_num >= 7:
+            academic_year = f"{year}-{year+1}"
+        else:
+            academic_year = f"{year-1}-{year}"
+        
+        # Get provider email if available
+        if provider.email:
+            send_irpa_confirmation(
+                faculty_name=provider.name,
+                faculty_email=provider.email,
+                selected_dates=date_strings,
+                academic_year=academic_year
+            )
+            logger.info(f"IRPA confirmation email sent to {provider.email}")
+        else:
+            logger.info(f"No email on file for provider {provider.name}, skipping confirmation email")
+    except Exception as e:
+        logger.error(f"Failed to send IRPA confirmation email: {e}")
+    
     return {"status": "ok"}
 
 
@@ -498,6 +508,8 @@ def clear_month_data(
         "status": "ok",
         "message": f"Cleared month {month}: {signup_count} signups, {assignment_count} assignments, {shift_count} shifts"
     }
+
+
 @app.delete("/api/admin/clear_all")
 def clear_all_data(confirm: str, db: Session = Depends(get_db)):
     """
