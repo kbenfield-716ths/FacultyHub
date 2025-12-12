@@ -704,7 +704,38 @@ def search_knowledge_base(q: str):
     articles = notion_kb.search_articles(q)
     return {"articles": articles}
 
+from pydantic import BaseModel
 
+class FeedbackSubmission(BaseModel):
+    feedback_type: str
+    message: str
+    page_url: str = None
+
+@app.post("/api/feedback")
+def submit_feedback(
+    feedback: FeedbackSubmission,
+    current_user: Faculty = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Submit user feedback"""
+    from .email_service import send_feedback_email
+    
+    try:
+        success = send_feedback_email(
+            user_name=current_user.name,
+            user_email=current_user.email,
+            feedback_type=feedback.feedback_type,
+            message=feedback.message,
+            page_url=feedback.page_url
+        )
+        
+        if success:
+            return {"status": "ok", "message": "Feedback sent successfully"}
+        else:
+            raise HTTPException(500, "Failed to send feedback email")
+    except Exception as e:
+        logger.error(f"Feedback submission error: {e}")
+        raise HTTPException(500, f"Error: {str(e)}")
 # ========================================
 # STATIC FILE ROUTES - MUST COME AFTER API ROUTES
 # ========================================
