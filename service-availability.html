@@ -791,9 +791,9 @@
           <div class="stat-label">Available Points</div>
           <div class="stat-value" id="availablePoints">-</div>
         </div>
-        <!-- MODIFIED: Changed label from "Weeks Requested" to "Weeks Requested Off" -->
+        <!-- MODIFIED: Changed label from "Weeks Requested" to "Weeks Requested Unavailable" -->
         <div class="stat-box selected">
-          <div class="stat-label">Weeks Requested Off</div>
+          <div class="stat-label">Weeks Unavailable</div>
           <div class="stat-value" id="weeksRequested">0</div>
         </div>
         <!-- NEW: Weeks Volunteered counter -->
@@ -819,7 +819,7 @@
     <div class="instructions">
       <h3>📝 How This Works</h3>
       <ul>
-        <li><strong>Request Off:</strong> Select weeks you want OFF from service (costs points)</li>
+        <li><strong>Request Unavailable:</strong> Select weeks you are UNAVAILABLE for service (costs points)</li>
         <li><strong>Volunteer:</strong> Select weeks you're willing to work (earns points)</li>
         <li><strong>Draft system</strong> allocates final assignments based on seniority and coverage</li>
         <li>You can select both options for different weeks</li>
@@ -1040,7 +1040,7 @@
         <div class="calendar-legend">
           <div class="legend-item">
             <div class="legend-color off"></div>
-            <span>Requested Off</span>
+            <span>Unavailable</span>
           </div>
           <div class="legend-item">
             <div class="legend-color volunteer"></div>
@@ -1205,7 +1205,7 @@
                   ${!canRequestOff ? 'disabled' : ''}>
             ${week.is_full && !isRequestedOff ? '<span class="full-badge">FULL</span>' : '<span class="checkmark">✓</span>'}
             <div>
-              <div class="btn-label">Request Off</div>
+              <div class="btn-label">Unavailable</div>
               <div class="btn-points">
                 -${week.point_cost_off} pts
                 ${costIncreased ? `<span class="cost-change">(+${costDiff})</span>` : ''}
@@ -1317,7 +1317,7 @@ function toggleRequestOff(weekId) {
       const availableCount = availableWeeks.size;
       
       let message = `You are requesting:<br><br>`;
-      if (unavailableCount > 0) message += `<strong>${unavailableCount} weeks OFF</strong> from service<br>`;
+      if (unavailableCount > 0) message += `<strong>${unavailableCount} weeks UNAVAILABLE</strong> from service<br>`;
       if (availableCount > 0) message += `<strong>${availableCount} weeks AVAILABLE</strong> to volunteer<br>`;
       message += `<br>Submit these requests?`;
 
