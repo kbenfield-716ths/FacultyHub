@@ -99,9 +99,26 @@
     }
 
     .stat-box.selected {
-      background: linear-gradient(135deg, #ddd6fe 0%, #c7d2fe 100%);
-      border-left-color: #8b5cf6;
+      background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+      border-left-color: #dc2626;
     }
+
+    /* ========================================
+       NEW CODE: Additional stat box styles for 
+       Weeks Volunteered and Points Earned
+       ======================================== */
+    .stat-box.volunteered {
+      background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+      border-left-color: #10b981;
+    }
+
+    .stat-box.earned {
+      background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+      border-left-color: #16a34a;
+    }
+    /* ======================================== 
+       END NEW CODE
+       ======================================== */
 
     .stat-label {
       font-size: 12px;
@@ -173,6 +190,194 @@
       color: white;
       border-color: #667eea;
     }
+
+    /* ========================================
+       NEW CODE: View Toggle Styles for 
+       List vs Calendar view
+       ======================================== */
+    .view-toggle {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .view-btn {
+      background: white;
+      border: 2px solid #e5e7eb;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #6b7280;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .view-btn.active {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+
+    .view-btn:hover:not(.active) {
+      background: #f3f4f6;
+    }
+
+    /* Calendar View Styles */
+    .calendar-view {
+      display: none;
+    }
+
+    .calendar-view.active {
+      display: block;
+    }
+
+    .calendar-month {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .calendar-month-header {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+
+    .calendar-day-header {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #6b7280;
+      padding: 8px 4px;
+      text-transform: uppercase;
+    }
+
+    .calendar-day {
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      border-radius: 8px;
+      cursor: default;
+      transition: all 0.2s;
+      position: relative;
+      min-height: 45px;
+      background: #f9fafb;
+    }
+
+    .calendar-day.empty {
+      background: transparent;
+    }
+
+    .calendar-day.has-week {
+      cursor: pointer;
+      background: #f3f4f6;
+    }
+
+    .calendar-day.has-week:hover {
+      background: #e5e7eb;
+      transform: scale(1.05);
+    }
+
+    .calendar-day.requested-off {
+      background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%) !important;
+      border: 2px solid #dc2626;
+    }
+
+    .calendar-day.volunteered {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important;
+      border: 2px solid #16a34a;
+    }
+
+    .calendar-day .day-number {
+      font-weight: 600;
+      color: #1f2937;
+    }
+
+    .calendar-day .week-badge {
+      font-size: 8px;
+      color: #6b7280;
+      margin-top: 2px;
+      font-weight: 600;
+    }
+
+    .calendar-day.requested-off .week-badge {
+      color: #dc2626;
+    }
+
+    .calendar-day.volunteered .week-badge {
+      color: #16a34a;
+    }
+
+    .calendar-legend {
+      display: flex;
+      gap: 16px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding: 12px;
+      background: white;
+      border-radius: 8px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .legend-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+    }
+
+    .legend-color.off {
+      background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+      border: 2px solid #dc2626;
+    }
+
+    .legend-color.volunteer {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border: 2px solid #16a34a;
+    }
+
+    .legend-color.available {
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+    }
+
+    @media (max-width: 640px) {
+      .calendar-day {
+        font-size: 10px;
+        min-height: 38px;
+      }
+      .calendar-day .week-badge {
+        font-size: 7px;
+      }
+    }
+    /* ======================================== 
+       END NEW CODE (View Toggle & Calendar)
+       ======================================== */
 
     /* Week Cards - New Compact Design */
     .weeks-container {
@@ -577,20 +782,38 @@
   <div class="user-info">
     <div class="info-card">
       <div class="user-name" id="userName">Loading...</div>
+      <!-- ========================================
+           MODIFIED: Stats Grid - Added "Weeks Volunteered" 
+           and "Points Earned", clarified "Weeks Requested Off"
+           ======================================== -->
       <div class="stats-grid">
         <div class="stat-box points">
           <div class="stat-label">Available Points</div>
           <div class="stat-value" id="availablePoints">-</div>
         </div>
+        <!-- MODIFIED: Changed label from "Weeks Requested" to "Weeks Requested Off" -->
         <div class="stat-box selected">
-          <div class="stat-label">Weeks Requested</div>
+          <div class="stat-label">Weeks Requested Off</div>
           <div class="stat-value" id="weeksRequested">0</div>
+        </div>
+        <!-- NEW: Weeks Volunteered counter -->
+        <div class="stat-box volunteered">
+          <div class="stat-label">Weeks Volunteered</div>
+          <div class="stat-value" id="weeksVolunteered">0</div>
         </div>
         <div class="stat-box">
           <div class="stat-label">Points Spent</div>
           <div class="stat-value" id="pointsSpent">0</div>
         </div>
+        <!-- NEW: Points Earned counter -->
+        <div class="stat-box earned">
+          <div class="stat-label">Points Earned</div>
+          <div class="stat-value" id="pointsEarned">0</div>
+        </div>
       </div>
+      <!-- ======================================== 
+           END MODIFIED STATS GRID
+           ======================================== -->
     </div>
 
     <div class="instructions">
@@ -613,9 +836,32 @@
       <button class="filter-btn" data-filter="conferences">Conferences</button>
     </div>
 
+    <!-- ========================================
+         NEW CODE: View Toggle (List vs Calendar)
+         ======================================== -->
+    <div class="view-toggle">
+      <button class="view-btn active" data-view="list" title="List View">
+        📋 List View
+      </button>
+      <button class="view-btn" data-view="calendar" title="Calendar View">
+        📅 Calendar View
+      </button>
+    </div>
+    <!-- ======================================== 
+         END NEW CODE (View Toggle)
+         ======================================== -->
+
     <div id="weeksContainer">
       <div class="loading">Loading available weeks...</div>
     </div>
+
+    <!-- ========================================
+         NEW CODE: Calendar View Container
+         ======================================== -->
+    <div id="calendarContainer" class="calendar-view"></div>
+    <!-- ======================================== 
+         END NEW CODE (Calendar Container)
+         ======================================== -->
   </div>
 
   <div class="submit-container">
@@ -641,6 +887,12 @@
     let selectedWeeks = new Set(); // Set of week IDs for unavailable (requesting OFF)
     let availableWeeks = new Set(); // Set of week IDs for available (volunteering)
     let currentFilter = 'all';
+    
+    // ========================================
+    // NEW CODE: View state variable
+    // ========================================
+    let currentView = 'list'; // 'list' or 'calendar'
+    // ======================================== 
 
     // Load current user from auth
     async function loadCurrentUser() {
@@ -673,7 +925,7 @@
         }
 
         await loadExistingRequests();
-        renderWeeks();
+        renderCurrentView(); // MODIFIED: Changed from renderWeeks() to renderCurrentView()
       } catch (error) {
         console.error('Error loading weeks:', error);
         document.getElementById('weeksContainer').innerHTML = '<div class="error">Failed to load weeks. Please try refreshing the page.</div>';
@@ -705,9 +957,188 @@
         document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         currentFilter = btn.dataset.filter;
-        renderWeeks();
+        renderCurrentView(); // MODIFIED: Changed from renderWeeks() to renderCurrentView()
       });
     });
+
+    // ========================================
+    // NEW CODE: View toggle handlers
+    // ========================================
+    document.querySelectorAll('.view-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentView = btn.dataset.view;
+        renderCurrentView();
+      });
+    });
+
+    function renderCurrentView() {
+      const listContainer = document.getElementById('weeksContainer');
+      const calendarContainer = document.getElementById('calendarContainer');
+      
+      if (currentView === 'list') {
+        listContainer.style.display = 'block';
+        calendarContainer.classList.remove('active');
+        renderWeeks();
+      } else {
+        listContainer.style.display = 'none';
+        calendarContainer.classList.add('active');
+        renderCalendarView();
+      }
+      
+      updateStats();
+    }
+
+    function renderCalendarView() {
+      const container = document.getElementById('calendarContainer');
+      const filteredWeeks = filterWeeks(allWeeks);
+      
+      if (filteredWeeks.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="color: white;"><h3>No weeks match this filter</h3></div>';
+        return;
+      }
+      
+      // Group weeks by month
+      const weeksByMonth = {};
+      filteredWeeks.forEach(week => {
+        const startDate = new Date(week.start_date);
+        const monthKey = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+        const monthName = startDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        
+        if (!weeksByMonth[monthKey]) {
+          weeksByMonth[monthKey] = { name: monthName, year: startDate.getFullYear(), month: startDate.getMonth(), weeks: [] };
+        }
+        weeksByMonth[monthKey].weeks.push(week);
+      });
+
+      let html = '';
+      
+      // Sort months chronologically
+      Object.keys(weeksByMonth).sort().forEach(monthKey => {
+        const monthData = weeksByMonth[monthKey];
+        
+        html += `
+          <div class="calendar-month">
+            <div class="calendar-month-header">${monthData.name}</div>
+            <div class="calendar-grid">
+              <div class="calendar-day-header">Sun</div>
+              <div class="calendar-day-header">Mon</div>
+              <div class="calendar-day-header">Tue</div>
+              <div class="calendar-day-header">Wed</div>
+              <div class="calendar-day-header">Thu</div>
+              <div class="calendar-day-header">Fri</div>
+              <div class="calendar-day-header">Sat</div>
+              ${generateCalendarDays(monthData.year, monthData.month, monthData.weeks)}
+            </div>
+          </div>
+        `;
+      });
+
+      // Legend
+      html += `
+        <div class="calendar-legend">
+          <div class="legend-item">
+            <div class="legend-color off"></div>
+            <span>Requested Off</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color volunteer"></div>
+            <span>Volunteered</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color available"></div>
+            <span>Available Week</span>
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = html;
+    }
+
+    function generateCalendarDays(year, month, weeksInMonth) {
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const startingDay = firstDay.getDay();
+      const totalDays = lastDay.getDate();
+      
+      let html = '';
+      
+      // Empty cells for days before the first of the month
+      for (let i = 0; i < startingDay; i++) {
+        html += '<div class="calendar-day empty"></div>';
+      }
+      
+      // Days of the month
+      for (let day = 1; day <= totalDays; day++) {
+        const currentDate = new Date(year, month, day);
+        
+        // Find which week this day belongs to (check all weeks, not just filtered)
+        const week = allWeeks.find(w => {
+          const start = new Date(w.start_date);
+          const end = new Date(w.end_date);
+          return currentDate >= start && currentDate <= end;
+        });
+        
+        let classes = 'calendar-day';
+        let weekBadge = '';
+        let clickHandler = '';
+        
+        if (week) {
+          // Check if this week is in the filtered set
+          const isInFilter = weeksInMonth.some(w => w.id === week.id);
+          
+          if (isInFilter) {
+            classes += ' has-week';
+            weekBadge = `<span class="week-badge">W${week.week_number}</span>`;
+            
+            if (selectedWeeks.has(week.id)) {
+              classes += ' requested-off';
+            } else if (availableWeeks.has(week.id)) {
+              classes += ' volunteered';
+            }
+            
+            clickHandler = `onclick="toggleWeekFromCalendar('${week.id}')"`;
+          }
+        }
+        
+        html += `
+          <div class="${classes}" ${clickHandler}>
+            <span class="day-number">${day}</span>
+            ${weekBadge}
+          </div>
+        `;
+      }
+      
+      return html;
+    }
+
+    function toggleWeekFromCalendar(weekId) {
+      const week = allWeeks.find(w => w.id === weekId);
+      
+      // Cycle through: none -> requested off -> volunteered -> none
+      if (selectedWeeks.has(weekId)) {
+        // Currently requested off -> switch to volunteered
+        selectedWeeks.delete(weekId);
+        availableWeeks.add(weekId);
+      } else if (availableWeeks.has(weekId)) {
+        // Currently volunteered -> switch to none
+        availableWeeks.delete(weekId);
+      } else {
+        // Currently none -> switch to requested off (if not full)
+        if (week && !week.is_full) {
+          selectedWeeks.add(weekId);
+        } else if (week && week.is_full) {
+          alert(`Week ${week.week_number} (${week.label}) is full. Maximum ${week.max_capacity} faculty can request this week.`);
+          return;
+        }
+      }
+      
+      renderCurrentView();
+    }
+    // ======================================== 
+    // END NEW CODE (Calendar View)
+    // ========================================
 
     function filterWeeks(weeks) {
       if (currentFilter === 'all') return weeks;
@@ -816,7 +1247,7 @@ function toggleRequestOff(weekId) {
     selectedWeeks.add(weekId);
   }
   
-  renderWeeks();
+  renderCurrentView(); // MODIFIED: Changed from renderWeeks() to renderCurrentView()
 }
 
     function toggleVolunteer(weekId) {
@@ -830,9 +1261,12 @@ function toggleRequestOff(weekId) {
         availableWeeks.add(weekId);
       }
       
-      renderWeeks();
+      renderCurrentView(); // MODIFIED: Changed from renderWeeks() to renderCurrentView()
     }
 
+    // ========================================
+    // MODIFIED: updateStats() - Added weeksVolunteered and pointsEarned
+    // ========================================
     function updateStats() {
       if (!currentUser) return;
 
@@ -854,7 +1288,9 @@ function toggleRequestOff(weekId) {
 
       document.getElementById('availablePoints').textContent = availablePoints;
       document.getElementById('weeksRequested').textContent = selectedWeeks.size;
+      document.getElementById('weeksVolunteered').textContent = availableWeeks.size;  // NEW LINE
       document.getElementById('pointsSpent').textContent = pointsSpent;
+      document.getElementById('pointsEarned').textContent = pointsEarned;  // NEW LINE
 
       // Enable submit button if there are changes
       const hasChanges = selectedWeeks.size > 0 || availableWeeks.size > 0;
@@ -867,6 +1303,9 @@ function toggleRequestOff(weekId) {
         document.getElementById('availablePoints').style.color = '#1f2937';
       }
     }
+    // ======================================== 
+    // END MODIFIED updateStats()
+    // ========================================
 
     function formatDate(dateStr) {
       const date = new Date(dateStr);
