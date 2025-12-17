@@ -18,14 +18,12 @@ primary_region = 'iad'
   processes = ['app']
 
 # Health check configuration - gives startup time for DB initialization
-  [http_service.checks]
-    [http_service.checks.alive]
-      type = "http"
-      interval = "15s"
-      timeout = "10s"
-      grace_period = "10s"  # Critical: allows 10s for DB init
-      method = "GET"
-      path = "/health"
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "15s"
+  method = "GET"
+  path = "/health"
+  timeout = "10s"
 
 [mounts]
   source = "moonlighter_data"
