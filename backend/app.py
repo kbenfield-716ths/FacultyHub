@@ -33,8 +33,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
-app.add_middleware(GZipMiddleware, minimum_size=1000)
 # ---------- App Health Check/Start -----------
 app = FastAPI()
 app.add_middleware(GZipMiddleware, minimum_size=1000)
