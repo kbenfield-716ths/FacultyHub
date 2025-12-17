@@ -28,10 +28,18 @@ from .routes.service_requests import router as service_requests_router
 from .routes.service_weeks import router as service_weeks_router
 from .routes.schedule_routes import router as schedule_router
 from backend.email_service import send_irpa_confirmation
+from backend.sync_utils import sync_provider_from_faculty, sync_all_providers_from_faculty
 import logging
 
+logger = logging.getLogger(__name__)
+
+# ---------- App Health Check/Start -----------
 app = FastAPI()
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for Fly.io monitoring"""
+    return {"status": "healthy"}
 
 # Include routers FIRST - before catch-all routes
 app.include_router(auth_router)
@@ -123,6 +131,7 @@ class AssignmentOut(BaseModel):
         from_attributes = True
 
 
+
 # ---------- FastAPI lifecycle ----------
 
 @app.on_event("startup")
@@ -177,6 +186,10 @@ def startup_event():
 
 @app.post("/api/signup")
 def save_signup(payload: SignupPayload, db: Session = Depends(get_db)):
+    """Save moonlighting signup for a provider."""
+    # SYNC: Pull email from Faculty table to Provider table
+    sync_provider_from_faculty(db, payload.provider_id)
+    
     # Ensure provider exists (or update name/email if needed)
     provider = db.query(Provider).get(payload.provider_id)
     if not provider:
@@ -185,24 +198,7 @@ def save_signup(payload: SignupPayload, db: Session = Depends(get_db)):
     else:
         # keep name in sync with whatever comes from the front-end
         provider.name = payload.provider_name
-try:
-    date_strings = [d.isoformat() for d in sorted(payload.dates)]
-    
-    if month_num >= 7:
-        academic_year = f"{year}-{year+1}"
-    else:
-        academic_year = f"{year-1}-{year}"
-    
-    send_irpa_confirmation(
-        faculty_name=current_user.name,
-        faculty_email=current_user.email,
-        selected_dates=date_strings,
-        academic_year=academic_year
-    )
-    logger.info(f"IRPA confirmation email sent to {current_user.email}")
-except Exception as e:
-    logger.error(f"Failed to send IRPA confirmation email: {e}")
-    
+
     # Ensure Month row exists
     year, month_num = map(int, payload.month.split("-"))
     month_row = (
@@ -248,7 +244,52 @@ except Exception as e:
         db.add(su)
 
     db.commit()
+    
+    # Refresh provider to get synced email
+    db.refresh(provider)
+    
+    # Send confirmation email (non-blocking - errors won't fail the request)
+    try:
+        date_strings = [d.isoformat() for d in sorted(payload.dates)]
+        
+        if month_num >= 7:
+            academic_year = f"{year}-{year+1}"
+        else:
+            academic_year = f"{year-1}-{year}"
+        
+        # Get provider email if available
+        if provider.email:
+            send_irpa_confirmation(
+                faculty_name=provider.name,
+                faculty_email=provider.email,
+                selected_dates=date_strings,
+                academic_year=academic_year
+            )
+            logger.info(f"IRPA confirmation email sent to {provider.email}")
+        else:
+            logger.warning(f"No email on file for provider {provider.name} ({payload.provider_id}), skipping confirmation email")
+    except Exception as e:
+        logger.error(f"Failed to send IRPA confirmation email: {e}")
+    
     return {"status": "ok"}
+
+
+# ---------- Admin: Sync Provider/Faculty emails ----------
+
+@app.post("/api/admin/sync_provider_emails")
+def sync_provider_emails_endpoint(
+    current_user: Faculty = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    One-time sync of all Provider emails from Faculty table.
+    Admin only.
+    """
+    if not current_user.is_admin:
+        raise HTTPException(403, "Admin access required")
+    
+    result = sync_all_providers_from_faculty(db)
+    return result
 
 
 # ---------- Admin: list signups ----------
@@ -498,6 +539,8 @@ def clear_month_data(
         "status": "ok",
         "message": f"Cleared month {month}: {signup_count} signups, {assignment_count} assignments, {shift_count} shifts"
     }
+
+
 @app.delete("/api/admin/clear_all")
 def clear_all_data(confirm: str, db: Session = Depends(get_db)):
     """
@@ -667,7 +710,38 @@ def search_knowledge_base(q: str):
     articles = notion_kb.search_articles(q)
     return {"articles": articles}
 
+from pydantic import BaseModel
 
+class FeedbackSubmission(BaseModel):
+    feedback_type: str
+    message: str
+    page_url: str = None
+
+@app.post("/api/feedback")
+def submit_feedback(
+    feedback: FeedbackSubmission,
+    current_user: Faculty = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Submit user feedback"""
+    from .email_service import send_feedback_email
+    
+    try:
+        success = send_feedback_email(
+            user_name=current_user.name,
+            user_email=current_user.email,
+            feedback_type=feedback.feedback_type,
+            message=feedback.message,
+            page_url=feedback.page_url
+        )
+        
+        if success:
+            return {"status": "ok", "message": "Feedback sent successfully"}
+        else:
+            raise HTTPException(500, "Failed to send feedback email")
+    except Exception as e:
+        logger.error(f"Feedback submission error: {e}")
+        raise HTTPException(500, f"Error: {str(e)}")
 # ========================================
 # STATIC FILE ROUTES - MUST COME AFTER API ROUTES
 # ========================================
@@ -795,7 +869,16 @@ async def serve_cache_manager():
         return response
     return {"error": "cache-manager.js not found"}
 
-
+@app.get("/{filename}.js")
+async def serve_js_file(filename: str):
+    """Serve any JavaScript file from root directory"""
+    js_path = STATIC_DIR / f"{filename}.js"
+    if js_path.exists():
+        response = FileResponse(js_path, media_type="application/javascript")
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        return response
+    return {"error": f"{filename}.js not found"}
+    
 @app.get("/static/{path:path}")
 async def serve_static(path: str):
     """Serve any static file from backend/static"""

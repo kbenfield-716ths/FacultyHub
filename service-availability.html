@@ -99,8 +99,18 @@
     }
 
     .stat-box.selected {
-      background: linear-gradient(135deg, #ddd6fe 0%, #c7d2fe 100%);
-      border-left-color: #8b5cf6;
+      background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+      border-left-color: #dc2626;
+    }
+
+    .stat-box.volunteered {
+      background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+      border-left-color: #10b981;
+    }
+
+    .stat-box.earned {
+      background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+      border-left-color: #16a34a;
     }
 
     .stat-label {
@@ -172,6 +182,188 @@
       background: #667eea;
       color: white;
       border-color: #667eea;
+    }
+
+    /* View Toggle Styles */
+    .view-toggle {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .view-btn {
+      background: white;
+      border: 2px solid #e5e7eb;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #6b7280;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .view-btn.active {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+
+    .view-btn:hover:not(.active) {
+      background: #f3f4f6;
+    }
+
+    /* Calendar View Styles */
+    .calendar-view {
+      display: none;
+    }
+
+    .calendar-view.active {
+      display: block;
+    }
+
+    .calendar-month {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .calendar-month-header {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+
+    .calendar-day-header {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #6b7280;
+      padding: 8px 4px;
+      text-transform: uppercase;
+    }
+
+    .calendar-day {
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      border-radius: 8px;
+      cursor: default;
+      transition: all 0.2s;
+      position: relative;
+      min-height: 45px;
+      background: #f9fafb;
+    }
+
+    .calendar-day.empty {
+      background: transparent;
+    }
+
+    .calendar-day.has-week {
+      cursor: pointer;
+      background: #f3f4f6;
+    }
+
+    .calendar-day.has-week:hover {
+      background: #e5e7eb;
+      transform: scale(1.05);
+    }
+
+    .calendar-day.requested-off {
+      background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%) !important;
+      border: 2px solid #dc2626;
+    }
+
+    .calendar-day.volunteered {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important;
+      border: 2px solid #16a34a;
+    }
+
+    .calendar-day .day-number {
+      font-weight: 600;
+      color: #1f2937;
+    }
+
+    .calendar-day .week-badge {
+      font-size: 8px;
+      color: #6b7280;
+      margin-top: 2px;
+      font-weight: 600;
+    }
+
+    .calendar-day.requested-off .week-badge {
+      color: #dc2626;
+    }
+
+    .calendar-day.volunteered .week-badge {
+      color: #16a34a;
+    }
+
+    .calendar-legend {
+      display: flex;
+      gap: 16px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding: 12px;
+      background: white;
+      border-radius: 8px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .legend-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+    }
+
+    .legend-color.off {
+      background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+      border: 2px solid #dc2626;
+    }
+
+    .legend-color.volunteer {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border: 2px solid #16a34a;
+    }
+
+    .legend-color.available {
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+    }
+
+    @media (max-width: 640px) {
+      .calendar-day {
+        font-size: 10px;
+        min-height: 38px;
+      }
+      .calendar-day .week-badge {
+        font-size: 7px;
+      }
     }
 
     /* Week Cards - New Compact Design */
@@ -349,6 +541,86 @@
       color: #16a34a;
       border: 2px solid #16a34a;
     }
+
+    /* ========================================
+       NEW CODE: Service Preference Comment Styles
+       ======================================== */
+    .service-preference {
+      margin-top: 12px;
+      display: none;  /* Hidden by default, shown when week is selected */
+    }
+
+    .service-preference.visible {
+      display: block;
+    }
+
+    .preference-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #6b7280;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .preference-label .icon {
+      font-size: 14px;
+    }
+
+    .preference-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      background: #f9fafb;
+    }
+
+    .preference-input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      background: white;
+    }
+
+    .preference-input::placeholder {
+      color: #9ca3af;
+    }
+
+    .preference-input.has-value {
+      border-color: #10b981;
+      background: #f0fdf4;
+    }
+
+    .preference-suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .suggestion-chip {
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      color: #6b7280;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .suggestion-chip:hover {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+    /* ======================================== 
+       END NEW CODE (Service Preference)
+       ======================================== */
 
     /* Submit Button */
     .submit-container {
@@ -583,12 +855,20 @@
           <div class="stat-value" id="availablePoints">-</div>
         </div>
         <div class="stat-box selected">
-          <div class="stat-label">Weeks Requested</div>
+          <div class="stat-label">Weeks Unavailable</div>
           <div class="stat-value" id="weeksRequested">0</div>
+        </div>
+        <div class="stat-box volunteered">
+          <div class="stat-label">Weeks Volunteered</div>
+          <div class="stat-value" id="weeksVolunteered">0</div>
         </div>
         <div class="stat-box">
           <div class="stat-label">Points Spent</div>
           <div class="stat-value" id="pointsSpent">0</div>
+        </div>
+        <div class="stat-box earned">
+          <div class="stat-label">Points Earned</div>
+          <div class="stat-value" id="pointsEarned">0</div>
         </div>
       </div>
     </div>
@@ -596,10 +876,14 @@
     <div class="instructions">
       <h3>📝 How This Works</h3>
       <ul>
-        <li><strong>Request Off:</strong> Select weeks you want OFF from service (costs points)</li>
+        <li><strong>Request Unavailable:</strong> Select weeks you are UNAVAILABLE for service (costs points)</li>
         <li><strong>Volunteer:</strong> Select weeks you're willing to work (earns points)</li>
+        <!-- ========================================
+             NEW CODE: Added instruction about comments
+             ======================================== -->
+        <li><strong>Service Preference:</strong> Add optional comments about preferred service type (MICU, Procedures, Consults, etc.)</li>
+        <!-- ======================================== -->
         <li><strong>Draft system</strong> allocates final assignments based on seniority and coverage</li>
-        <li>You can select both options for different weeks</li>
       </ul>
     </div>
   </div>
@@ -613,9 +897,20 @@
       <button class="filter-btn" data-filter="conferences">Conferences</button>
     </div>
 
+    <div class="view-toggle">
+      <button class="view-btn active" data-view="list" title="List View">
+        📋 List View
+      </button>
+      <button class="view-btn" data-view="calendar" title="Calendar View">
+        📅 Calendar View
+      </button>
+    </div>
+
     <div id="weeksContainer">
       <div class="loading">Loading available weeks...</div>
     </div>
+
+    <div id="calendarContainer" class="calendar-view"></div>
   </div>
 
   <div class="submit-container">
@@ -641,6 +936,48 @@
     let selectedWeeks = new Set(); // Set of week IDs for unavailable (requesting OFF)
     let availableWeeks = new Set(); // Set of week IDs for available (volunteering)
     let currentFilter = 'all';
+    let currentView = 'list'; // 'list' or 'calendar'
+    
+    // ========================================
+    // NEW CODE: Service preference storage
+    // ========================================
+    let weekPreferences = {}; // Object to store preferences by week_id
+    
+    function getPreference(weekId) {
+      return weekPreferences[weekId] || '';
+    }
+    
+    function setPreference(weekId, value) {
+      const trimmedValue = value.trim();
+      if (trimmedValue) {
+        weekPreferences[weekId] = trimmedValue;
+      } else {
+        delete weekPreferences[weekId];
+      }
+      // Update input styling
+      const input = document.querySelector(`input[data-week-id="${weekId}"]`);
+      if (input) {
+        if (trimmedValue) {
+          input.classList.add('has-value');
+        } else {
+          input.classList.remove('has-value');
+        }
+      }
+    }
+    
+    function addSuggestion(weekId, suggestion) {
+      const input = document.querySelector(`input[data-week-id="${weekId}"]`);
+      if (input) {
+        const currentValue = input.value.trim();
+        if (currentValue) {
+          input.value = currentValue + ', ' + suggestion;
+        } else {
+          input.value = suggestion;
+        }
+        setPreference(weekId, input.value);
+      }
+    }
+    // ======================================== 
 
     // Load current user from auth
     async function loadCurrentUser() {
@@ -673,7 +1010,7 @@
         }
 
         await loadExistingRequests();
-        renderWeeks();
+        renderCurrentView();
       } catch (error) {
         console.error('Error loading weeks:', error);
         document.getElementById('weeksContainer').innerHTML = '<div class="error">Failed to load weeks. Please try refreshing the page.</div>';
@@ -692,6 +1029,13 @@
             } else if (req.status === 'available') {
               availableWeeks.add(req.week_id);
             }
+            // ========================================
+            // NEW CODE: Load existing service preferences
+            // ========================================
+            if (req.service_preference) {
+              weekPreferences[req.week_id] = req.service_preference;
+            }
+            // ======================================== 
           });
         }
       } catch (error) {
@@ -705,9 +1049,183 @@
         document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         currentFilter = btn.dataset.filter;
-        renderWeeks();
+        renderCurrentView();
       });
     });
+
+    // View toggle handlers
+    document.querySelectorAll('.view-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentView = btn.dataset.view;
+        renderCurrentView();
+      });
+    });
+
+    function renderCurrentView() {
+      const listContainer = document.getElementById('weeksContainer');
+      const calendarContainer = document.getElementById('calendarContainer');
+      
+      if (currentView === 'list') {
+        listContainer.style.display = 'block';
+        calendarContainer.classList.remove('active');
+        renderWeeks();
+      } else {
+        listContainer.style.display = 'none';
+        calendarContainer.classList.add('active');
+        renderCalendarView();
+      }
+      
+      updateStats();
+    }
+
+    function renderCalendarView() {
+      const container = document.getElementById('calendarContainer');
+      const filteredWeeks = filterWeeks(allWeeks);
+      
+      if (filteredWeeks.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="color: white;"><h3>No weeks match this filter</h3></div>';
+        return;
+      }
+      
+      // Group weeks by month
+      const weeksByMonth = {};
+      filteredWeeks.forEach(week => {
+        const startDate = new Date(week.start_date);
+        const monthKey = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+        const monthName = startDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        
+        if (!weeksByMonth[monthKey]) {
+          weeksByMonth[monthKey] = { name: monthName, year: startDate.getFullYear(), month: startDate.getMonth(), weeks: [] };
+        }
+        weeksByMonth[monthKey].weeks.push(week);
+      });
+
+      let html = '';
+      
+      // Sort months chronologically
+      Object.keys(weeksByMonth).sort().forEach(monthKey => {
+        const monthData = weeksByMonth[monthKey];
+        
+        html += `
+          <div class="calendar-month">
+            <div class="calendar-month-header">${monthData.name}</div>
+            <div class="calendar-grid">
+              <div class="calendar-day-header">Sun</div>
+              <div class="calendar-day-header">Mon</div>
+              <div class="calendar-day-header">Tue</div>
+              <div class="calendar-day-header">Wed</div>
+              <div class="calendar-day-header">Thu</div>
+              <div class="calendar-day-header">Fri</div>
+              <div class="calendar-day-header">Sat</div>
+              ${generateCalendarDays(monthData.year, monthData.month, monthData.weeks)}
+            </div>
+          </div>
+        `;
+      });
+
+      // Legend
+      html += `
+        <div class="calendar-legend">
+          <div class="legend-item">
+            <div class="legend-color off"></div>
+            <span>Unavailable</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color volunteer"></div>
+            <span>Volunteered</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color available"></div>
+            <span>Available Week</span>
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = html;
+    }
+
+    function generateCalendarDays(year, month, weeksInMonth) {
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const startingDay = firstDay.getDay();
+      const totalDays = lastDay.getDate();
+      
+      let html = '';
+      
+      // Empty cells for days before the first of the month
+      for (let i = 0; i < startingDay; i++) {
+        html += '<div class="calendar-day empty"></div>';
+      }
+      
+      // Days of the month
+      for (let day = 1; day <= totalDays; day++) {
+        const currentDate = new Date(year, month, day);
+        
+        // Find which week this day belongs to (check all weeks, not just filtered)
+        const week = allWeeks.find(w => {
+          const start = new Date(w.start_date);
+          const end = new Date(w.end_date);
+          return currentDate >= start && currentDate <= end;
+        });
+        
+        let classes = 'calendar-day';
+        let weekBadge = '';
+        let clickHandler = '';
+        
+        if (week) {
+          // Check if this week is in the filtered set
+          const isInFilter = weeksInMonth.some(w => w.id === week.id);
+          
+          if (isInFilter) {
+            classes += ' has-week';
+            weekBadge = `<span class="week-badge">W${week.week_number}</span>`;
+            
+            if (selectedWeeks.has(week.id)) {
+              classes += ' requested-off';
+            } else if (availableWeeks.has(week.id)) {
+              classes += ' volunteered';
+            }
+            
+            clickHandler = `onclick="toggleWeekFromCalendar('${week.id}')"`;
+          }
+        }
+        
+        html += `
+          <div class="${classes}" ${clickHandler}>
+            <span class="day-number">${day}</span>
+            ${weekBadge}
+          </div>
+        `;
+      }
+      
+      return html;
+    }
+
+    function toggleWeekFromCalendar(weekId) {
+      const week = allWeeks.find(w => w.id === weekId);
+      
+      // Cycle through: none -> requested off -> volunteered -> none
+      if (selectedWeeks.has(weekId)) {
+        // Currently requested off -> switch to volunteered
+        selectedWeeks.delete(weekId);
+        availableWeeks.add(weekId);
+      } else if (availableWeeks.has(weekId)) {
+        // Currently volunteered -> switch to none
+        availableWeeks.delete(weekId);
+      } else {
+        // Currently none -> switch to requested off (if not full)
+        if (week && !week.is_full) {
+          selectedWeeks.add(weekId);
+        } else if (week && week.is_full) {
+          alert(`Week ${week.week_number} (${week.label}) is full. Maximum ${week.max_capacity} faculty can request this week.`);
+          return;
+        }
+      }
+      
+      renderCurrentView();
+    }
 
     function filterWeeks(weeks) {
       if (currentFilter === 'all') return weeks;
@@ -719,105 +1237,143 @@
     }
 
     function renderWeeks() {
-  const container = document.getElementById('weeksContainer');
-  const filteredWeeks = filterWeeks(allWeeks);
-  
-  if (filteredWeeks.length === 0) {
-    container.innerHTML = '<div class="empty-state"><h3>No weeks match this filter</h3></div>';
-    return;
-  }
+      const container = document.getElementById('weeksContainer');
+      const filteredWeeks = filterWeeks(allWeeks);
+      
+      if (filteredWeeks.length === 0) {
+        container.innerHTML = '<div class="empty-state"><h3>No weeks match this filter</h3></div>';
+        return;
+      }
 
-  container.innerHTML = filteredWeeks.map(week => {
-    const isRequestedOff = selectedWeeks.has(week.id);
-    const isVolunteer = availableWeeks.has(week.id);
-    
-    // Calculate demand bar width
-    const demandPercent = (week.request_count / week.max_capacity) * 100;
-    
-    // Check if cost increased from base
-    const costIncreased = week.point_cost_off > week.base_cost;
-    const costDiff = week.point_cost_off - week.base_cost;
-    
-    // Determine if can request off
-    const canRequestOff = !week.is_full || isRequestedOff;
-    
-    return `
-      <div class="week-card">
-        <div class="week-info">
-          <span class="week-number">Week ${week.week_number}</span>
-          <div class="week-details">
-            <div class="week-label">${week.label}</div>
-            <div class="week-dates">${formatDate(week.start_date)} - ${formatDate(week.end_date)}</div>
-          </div>
-          <span class="week-type ${week.week_type}">${week.week_type.replace('_', ' ')}</span>
-        </div>
+      container.innerHTML = filteredWeeks.map(week => {
+        const isRequestedOff = selectedWeeks.has(week.id);
+        const isVolunteer = availableWeeks.has(week.id);
+        const isSelected = isRequestedOff || isVolunteer;
         
-        <!-- Demand Indicator -->
-        <div class="demand-indicator">
-          <div class="demand-bar-container">
-            <div class="demand-bar ${week.demand_level}" style="width: ${demandPercent}%"></div>
-          </div>
-          <div class="demand-text">
-            <span>${week.request_count}/${week.max_capacity} requests</span>
-            <span class="demand-badge ${week.demand_level}">
-              ${week.is_full ? 'FULL' : 
-                week.demand_level === 'critical' ? week.spots_remaining + ' left!' :
-                week.demand_level === 'high' ? 'High Demand' :
-                week.demand_level === 'medium' ? 'Medium' : 'Available'}
-            </span>
-          </div>
-        </div>
+        // Calculate demand bar width
+        const demandPercent = (week.request_count / week.max_capacity) * 100;
         
-        <div class="week-actions">
-          <button class="action-btn request-off ${isRequestedOff ? 'active' : ''}" 
-                  onclick="toggleRequestOff('${week.id}')"
-                  ${!canRequestOff ? 'disabled' : ''}>
-            ${week.is_full && !isRequestedOff ? '<span class="full-badge">FULL</span>' : '<span class="checkmark">✓</span>'}
-            <div>
-              <div class="btn-label">Request Off</div>
-              <div class="btn-points">
-                -${week.point_cost_off} pts
-                ${costIncreased ? `<span class="cost-change">(+${costDiff})</span>` : ''}
+        // Check if cost increased from base
+        const costIncreased = week.point_cost_off > week.base_cost;
+        const costDiff = week.point_cost_off - week.base_cost;
+        
+        // Determine if can request off
+        const canRequestOff = !week.is_full || isRequestedOff;
+        
+        // ========================================
+        // NEW CODE: Get existing preference for this week
+        // ========================================
+        const existingPreference = getPreference(week.id);
+        const hasPreference = existingPreference.length > 0;
+        // ======================================== 
+        
+        return `
+          <div class="week-card">
+            <div class="week-info">
+              <span class="week-number">Week ${week.week_number}</span>
+              <div class="week-details">
+                <div class="week-label">${week.label}</div>
+                <div class="week-dates">${formatDate(week.start_date)} - ${formatDate(week.end_date)}</div>
+              </div>
+              <span class="week-type ${week.week_type}">${week.week_type.replace('_', ' ')}</span>
+            </div>
+            
+            <!-- Demand Indicator -->
+            <div class="demand-indicator">
+              <div class="demand-bar-container">
+                <div class="demand-bar ${week.demand_level}" style="width: ${demandPercent}%"></div>
+              </div>
+              <div class="demand-text">
+                <span>${week.request_count}/${week.max_capacity} requests</span>
+                <span class="demand-badge ${week.demand_level}">
+                  ${week.is_full ? 'FULL' : 
+                    week.demand_level === 'critical' ? week.spots_remaining + ' left!' :
+                    week.demand_level === 'high' ? 'High Demand' :
+                    week.demand_level === 'medium' ? 'Medium' : 'Available'}
+                </span>
               </div>
             </div>
-          </button>
-          <button class="action-btn volunteer ${isVolunteer ? 'active' : ''}" 
-                  onclick="toggleVolunteer('${week.id}')">
-            <span class="checkmark">✓</span>
-            <div>
-              <div class="btn-label">Volunteer</div>
-              <div class="btn-points">+${week.point_reward_work} pts</div>
+            
+            <div class="week-actions">
+              <button class="action-btn request-off ${isRequestedOff ? 'active' : ''}" 
+                      onclick="toggleRequestOff('${week.id}')"
+                      ${!canRequestOff ? 'disabled' : ''}>
+                ${week.is_full && !isRequestedOff ? '<span class="full-badge">FULL</span>' : '<span class="checkmark">✓</span>'}
+                <div>
+                  <div class="btn-label">Unavailable</div>
+                  <div class="btn-points">
+                    -${week.point_cost_off} pts
+                    ${costIncreased ? `<span class="cost-change">(+${costDiff})</span>` : ''}
+                  </div>
+                </div>
+              </button>
+              <button class="action-btn volunteer ${isVolunteer ? 'active' : ''}" 
+                      onclick="toggleVolunteer('${week.id}')">
+                <span class="checkmark">✓</span>
+                <div>
+                  <div class="btn-label">Volunteer</div>
+                  <div class="btn-points">+${week.point_reward_work} pts</div>
+                </div>
+              </button>
             </div>
-          </button>
-        </div>
-      </div>
-    `;
-  }).join('');
+            
+            <!-- ========================================
+                 NEW CODE: Service Preference Comment Field
+                 Shows when week is selected (unavailable or volunteer)
+                 ======================================== -->
+            <div class="service-preference ${isSelected ? 'visible' : ''}">
+              <div class="preference-label">
+                <span class="icon">💬</span>
+                Service Preference (optional)
+              </div>
+              <input 
+                type="text" 
+                class="preference-input ${hasPreference ? 'has-value' : ''}"
+                data-week-id="${week.id}"
+                placeholder="e.g., Prefer Procedures, Would like MICU, Available for Consults..."
+                value="${existingPreference}"
+                onchange="setPreference('${week.id}', this.value)"
+                oninput="setPreference('${week.id}', this.value)"
+              >
+              <div class="preference-suggestions">
+                <span class="suggestion-chip" onclick="addSuggestion('${week.id}', 'Prefer MICU')">MICU</span>
+                <span class="suggestion-chip" onclick="addSuggestion('${week.id}', 'Prefer Procedures')">Procedures</span>
+                <span class="suggestion-chip" onclick="addSuggestion('${week.id}', 'Prefer Consults')">Consults</span>
+                <span class="suggestion-chip" onclick="addSuggestion('${week.id}', 'Prefer APP-ICU')">APP-ICU</span>
+                <span class="suggestion-chip" onclick="addSuggestion('${week.id}', 'Flexible')">Flexible</span>
+              </div>
+            </div>
+            <!-- ======================================== 
+                 END NEW CODE (Service Preference)
+                 ======================================== -->
+          </div>
+        `;
+      }).join('');
 
-  updateStats();
-}
+      updateStats();
+    }
 
-function toggleRequestOff(weekId) {
-  const week = allWeeks.find(w => w.id === weekId);
-  
-  // If week is full and not already selected by this user, show alert
-  if (week && week.is_full && !selectedWeeks.has(weekId)) {
-    alert(`Week ${week.week_number} (${week.label}) is full. Maximum ${week.max_capacity} faculty can request this week.`);
-    return;
-  }
-  
-  // Remove from volunteer if present
-  availableWeeks.delete(weekId);
-  
-  // Toggle request off
-  if (selectedWeeks.has(weekId)) {
-    selectedWeeks.delete(weekId);
-  } else {
-    selectedWeeks.add(weekId);
-  }
-  
-  renderWeeks();
-}
+    function toggleRequestOff(weekId) {
+      const week = allWeeks.find(w => w.id === weekId);
+      
+      // If week is full and not already selected by this user, show alert
+      if (week && week.is_full && !selectedWeeks.has(weekId)) {
+        alert(`Week ${week.week_number} (${week.label}) is full. Maximum ${week.max_capacity} faculty can request this week.`);
+        return;
+      }
+      
+      // Remove from volunteer if present
+      availableWeeks.delete(weekId);
+      
+      // Toggle request off
+      if (selectedWeeks.has(weekId)) {
+        selectedWeeks.delete(weekId);
+      } else {
+        selectedWeeks.add(weekId);
+      }
+      
+      renderCurrentView();
+    }
 
     function toggleVolunteer(weekId) {
       // Remove from request off if present
@@ -830,7 +1386,7 @@ function toggleRequestOff(weekId) {
         availableWeeks.add(weekId);
       }
       
-      renderWeeks();
+      renderCurrentView();
     }
 
     function updateStats() {
@@ -854,7 +1410,9 @@ function toggleRequestOff(weekId) {
 
       document.getElementById('availablePoints').textContent = availablePoints;
       document.getElementById('weeksRequested').textContent = selectedWeeks.size;
+      document.getElementById('weeksVolunteered').textContent = availableWeeks.size;
       document.getElementById('pointsSpent').textContent = pointsSpent;
+      document.getElementById('pointsEarned').textContent = pointsEarned;
 
       // Enable submit button if there are changes
       const hasChanges = selectedWeeks.size > 0 || availableWeeks.size > 0;
@@ -877,9 +1435,22 @@ function toggleRequestOff(weekId) {
       const unavailableCount = selectedWeeks.size;
       const availableCount = availableWeeks.size;
       
+      // ========================================
+      // NEW CODE: Count weeks with preferences
+      // ========================================
+      const preferencesCount = Object.keys(weekPreferences).filter(
+        weekId => selectedWeeks.has(weekId) || availableWeeks.has(weekId)
+      ).length;
+      // ======================================== 
+      
       let message = `You are requesting:<br><br>`;
-      if (unavailableCount > 0) message += `<strong>${unavailableCount} weeks OFF</strong> from service<br>`;
+      if (unavailableCount > 0) message += `<strong>${unavailableCount} weeks UNAVAILABLE</strong> from service<br>`;
       if (availableCount > 0) message += `<strong>${availableCount} weeks AVAILABLE</strong> to volunteer<br>`;
+      // ========================================
+      // NEW CODE: Show preferences count in confirmation
+      // ========================================
+      if (preferencesCount > 0) message += `<br><em>${preferencesCount} week(s) with service preferences noted</em><br>`;
+      // ======================================== 
       message += `<br>Submit these requests?`;
 
       document.getElementById('confirmMessage').innerHTML = message;
@@ -902,7 +1473,12 @@ function toggleRequestOff(weekId) {
               week_id: weekId,
               status: 'unavailable',
               points_spent: week.point_cost_off,
-              points_earned: 0
+              points_earned: 0,
+              // ========================================
+              // NEW CODE: Include service preference
+              // ========================================
+              service_preference: weekPreferences[weekId] || null
+              // ======================================== 
             });
           }
         });
@@ -915,7 +1491,12 @@ function toggleRequestOff(weekId) {
               week_id: weekId,
               status: 'available',
               points_spent: 0,
-              points_earned: week.point_reward_work
+              points_earned: week.point_reward_work,
+              // ========================================
+              // NEW CODE: Include service preference
+              // ========================================
+              service_preference: weekPreferences[weekId] || null
+              // ======================================== 
             });
           }
         });
@@ -923,6 +1504,7 @@ function toggleRequestOff(weekId) {
         const response = await fetch(`${API_BASE}/api/service-requests`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
           body: JSON.stringify({ requests })
         });
 
@@ -937,6 +1519,7 @@ function toggleRequestOff(weekId) {
         // Reload to show updated state
         selectedWeeks.clear();
         availableWeeks.clear();
+        weekPreferences = {}; // Clear preferences too
         await loadWeeks();
 
       } catch (error) {

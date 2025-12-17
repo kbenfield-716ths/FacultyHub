@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        #feedback-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #E57200;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        #feedback-btn:hover {
+            background: #C66100;
+        }
+        #feedback-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1001;
+        }
+        #feedback-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+        }
+        .feedback-field { margin: 15px 0; }
+        .feedback-field label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .feedback-field select, .feedback-field textarea { 
+            width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; 
+        }
+        .feedback-field textarea { min-height: 120px; resize: vertical; }
+        .feedback-buttons { display: flex; gap: 10px; margin-top: 20px; }
+        .feedback-buttons button {
+            flex: 1; padding: 10px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;
+        }
+        .btn-submit { background: #E57200; color: white; }
+        .btn-cancel { background: #ddd; }
+    </style>
+</head>
+<body>
+    <button id="feedback-btn" onclick="openFeedback()">📝 Feedback</button>
+    
+    <div id="feedback-modal" onclick="closeFeedback(event)">
+        <div id="feedback-content" onclick="event.stopPropagation()">
+            <h2 style="margin-top: 0;">Send Feedback</h2>
+            <p style="color: #666; font-size: 14px;">Help us improve the Faculty Hub!</p>
+            
+            <div class="feedback-field">
+                <label>Type:</label>
+                <select id="feedback-type">
+                    <option value="bug">🐛 Bug Report</option>
+                    <option value="feature">💡 Feature Request</option>
+                    <option value="general">💬 General Feedback</option>
+                </select>
+            </div>
+            
+            <div class="feedback-field">
+                <label>Message:</label>
+                <textarea id="feedback-message" placeholder="Describe your feedback..."></textarea>
+            </div>
+            
+            <div id="feedback-status" style="display: none; padding: 10px; border-radius: 5px; margin-top: 10px;"></div>
+            
+            <div class="feedback-buttons">
+                <button class="btn-cancel" onclick="closeFeedback()">Cancel</button>
+                <button class="btn-submit" onclick="submitFeedback()">Send Feedback</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openFeedback() {
+            document.getElementById('feedback-modal').style.display = 'block';
+            document.getElementById('feedback-message').value = '';
+            document.getElementById('feedback-status').style.display = 'none';
+        }
+        
+        function closeFeedback(event) {
+            if (!event || event.target.id === 'feedback-modal') {
+                document.getElementById('feedback-modal').style.display = 'none';
+            }
+        }
+        
+        async function submitFeedback() {
+            const type = document.getElementById('feedback-type').value;
+            const message = document.getElementById('feedback-message').value.trim();
+            const status = document.getElementById('feedback-status');
+            
+            if (!message) {
+                status.style.display = 'block';
+                status.style.background = '#ffebee';
+                status.style.color = '#c62828';
+                status.textContent = 'Please enter a message';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        feedback_type: type,
+                        message: message,
+                        page_url: window.location.href
+                    })
+                });
+                
+                if (response.ok) {
+                    status.style.display = 'block';
+                    status.style.background = '#e8f5e9';
+                    status.style.color = '#2e7d32';
+                    status.textContent = '✓ Feedback sent! Thank you!';
+                    setTimeout(() => closeFeedback(), 2000);
+                } else {
+                    throw new Error('Failed to send');
+                }
+            } catch (error) {
+                status.style.display = 'block';
+                status.style.background = '#ffebee';
+                status.style.color = '#c62828';
+                status.textContent = 'Error sending feedback. Please try again.';
+            }
+        }
+    </script>
+</body>
+</html>
