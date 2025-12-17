@@ -35,6 +35,15 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+# ---------- App Health Check/Start -----------
+app = FastAPI()
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for Fly.io monitoring"""
+    return {"status": "healthy"}
+# ----------- Routes --------------------------
+app.include_router(auth_router)
 
 # Include routers FIRST - before catch-all routes
 app.include_router(auth_router)
@@ -125,14 +134,7 @@ class AssignmentOut(BaseModel):
     class Config:
         from_attributes = True
 
-# ---------- App Health Check -----------
-app = FastAPI()
-app.add_middleware(GZipMiddleware, minimum_size=1000)
-@app.get("/health")
-async def health_check():
-    """Health check endpoint for Fly.io monitoring"""
-    return {"status": "healthy"}
-app.include_router(auth_router)
+
 
 # ---------- FastAPI lifecycle ----------
 
