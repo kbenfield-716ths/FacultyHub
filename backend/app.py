@@ -40,8 +40,6 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 async def health_check():
     """Health check endpoint for Fly.io monitoring"""
     return {"status": "healthy"}
-# ----------- Routes --------------------------
-app.include_router(auth_router)
 
 # Include routers FIRST - before catch-all routes
 app.include_router(auth_router)
