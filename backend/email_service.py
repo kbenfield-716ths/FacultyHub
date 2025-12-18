@@ -347,6 +347,8 @@ def send_unavailability_confirmation(
     )
     
     return send_email(faculty_email, faculty_name, subject, html_content)
+
+
 def send_feedback_email(feedback_data: dict) -> bool:
     """
     Send feedback submission email to admin
@@ -360,7 +362,7 @@ def send_feedback_email(feedback_data: dict) -> bool:
     Returns:
         bool: True if email sent successfully
     """
-    admin_email = "kjm5ul@virginia.edu"
+    admin_email = "ke4z@uvaheath.org"
     
     html_content = f"""
     <html>
