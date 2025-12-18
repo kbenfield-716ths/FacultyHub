@@ -369,7 +369,7 @@ def send_feedback_email(
     Returns:
         bool: True if email sent successfully
     """
-    admin_email = "kjm5ul@virginia.edu"
+    admin_email = "ke4z@uvahealth.org"
     
     # Format timestamp
     timestamp = datetime.now().strftime("%A, %B %d, %Y at %I:%M %p")
