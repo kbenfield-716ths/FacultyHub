@@ -349,20 +349,37 @@ def send_unavailability_confirmation(
     return send_email(faculty_email, faculty_name, subject, html_content)
 
 
-def send_feedback_email(feedback_data: dict) -> bool:
+def send_feedback_email(
+    user_name: str,
+    user_email: str,
+    feedback_type: str,
+    message: str,
+    page_url: str = None
+) -> bool:
     """
     Send feedback submission email to admin
     
     Args:
-        feedback_data: Dictionary containing feedback details
-            - user_email: Email of user submitting feedback
-            - feedback_text: The feedback content
-            - timestamp: When feedback was submitted
+        user_name: Name of user submitting feedback
+        user_email: Email of user submitting feedback  
+        feedback_type: Type of feedback (bug, feature, question, etc.)
+        message: The feedback message content
+        page_url: Optional URL of page where feedback was submitted
     
     Returns:
         bool: True if email sent successfully
     """
-    admin_email = "ke4z@uvaheath.org"
+    admin_email = "kjm5ul@virginia.edu"
+    
+    # Format timestamp
+    timestamp = datetime.now().strftime("%A, %B %d, %Y at %I:%M %p")
+    
+    # Build page URL section if provided
+    page_section = ""
+    if page_url:
+        page_section = f"""
+                <p><strong>Page:</strong> <a href="{page_url}">{page_url}</a></p>
+        """
     
     html_content = f"""
     <html>
@@ -402,6 +419,16 @@ def send_feedback_email(feedback_data: dict) -> bool:
                 margin: 15px 0;
                 border-radius: 5px;
             }}
+            .type-badge {{
+                display: inline-block;
+                background-color: #E57200;
+                color: white;
+                padding: 4px 12px;
+                border-radius: 12px;
+                font-size: 12px;
+                font-weight: bold;
+                text-transform: uppercase;
+            }}
         </style>
     </head>
     <body>
@@ -410,19 +437,21 @@ def send_feedback_email(feedback_data: dict) -> bool:
         </div>
         <div class="content">
             <div class="meta">
-                <p><strong>From:</strong> {feedback_data.get('user_email', 'Anonymous')}</p>
-                <p><strong>Submitted:</strong> {feedback_data.get('timestamp', 'Unknown')}</p>
+                <p><strong>From:</strong> {user_name} ({user_email})</p>
+                <p><strong>Type:</strong> <span class="type-badge">{feedback_type}</span></p>
+                <p><strong>Submitted:</strong> {timestamp}</p>
+{page_section}
             </div>
             
-            <p><strong>Feedback:</strong></p>
+            <p><strong>Message:</strong></p>
             <div class="feedback">
-{feedback_data.get('feedback_text', '')}
+{message}
             </div>
         </div>
     </body>
     </html>
     """
     
-    subject = f"Faculty Hub Feedback from {feedback_data.get('faculty_email', 'faculty_name')}"
+    subject = f"Faculty Hub Feedback [{feedback_type.upper()}] from {user_name}"
     
     return send_email(admin_email, "Admin", subject, html_content)
