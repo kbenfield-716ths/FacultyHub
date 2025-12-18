@@ -423,6 +423,6 @@ def send_feedback_email(feedback_data: dict) -> bool:
     </html>
     """
     
-    subject = f"Faculty Hub Feedback from {feedback_data.get('user_email', 'User')}"
+    subject = f"Faculty Hub Feedback from {feedback_data.get('faculty_email', 'faculty_name')}"
     
     return send_email(admin_email, "Admin", subject, html_content)
