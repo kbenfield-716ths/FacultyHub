@@ -347,8 +347,7 @@ def send_unavailability_confirmation(
     )
     
     return send_email(faculty_email, faculty_name, subject, html_content)
-
-async def send_feedback_email(feedback_data: dict) -> bool:
+def send_feedback_email(feedback_data: dict) -> bool:
     """
     Send feedback submission email to admin
     
@@ -361,30 +360,67 @@ async def send_feedback_email(feedback_data: dict) -> bool:
     Returns:
         bool: True if email sent successfully
     """
-    try:
-        html_content = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #232D4B;">Faculty Hub Feedback Received</h2>
+    admin_email = "kjm5ul@virginia.edu"
+    
+    html_content = f"""
+    <html>
+    <head>
+        <style>
+            body {{
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+            }}
+            .header {{
+                background-color: #232D4B;
+                color: #E57200;
+                padding: 20px;
+                text-align: center;
+                border-radius: 5px 5px 0 0;
+            }}
+            .content {{
+                background-color: #f9f9f9;
+                padding: 20px;
+                border: 1px solid #ddd;
+                border-radius: 0 0 5px 5px;
+            }}
+            .feedback {{
+                background-color: white;
+                padding: 15px;
+                margin: 15px 0;
+                border-left: 4px solid #E57200;
+                white-space: pre-wrap;
+            }}
+            .meta {{
+                background-color: #E8F4F8;
+                padding: 15px;
+                margin: 15px 0;
+                border-radius: 5px;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h2>Faculty Hub Feedback Received</h2>
+        </div>
+        <div class="content">
+            <div class="meta">
                 <p><strong>From:</strong> {feedback_data.get('user_email', 'Anonymous')}</p>
                 <p><strong>Submitted:</strong> {feedback_data.get('timestamp', 'Unknown')}</p>
-                <hr style="border: 1px solid #E57200;">
-                <h3>Feedback:</h3>
-                <p style="white-space: pre-wrap;">{feedback_data.get('feedback_text', '')}</p>
-            </body>
-        </html>
-        """
-        
-        params = {
-            "from": "PCCM Faculty Hub <noreply@facultyhub.fly.dev>",
-            "to": ["kjm5ul@virginia.edu"],  # Your admin email
-            "subject": f"Faculty Hub Feedback from {feedback_data.get('user_email', 'User')}",
-            "html": html_content,
-        }
-        
-        email = resend.Emails.send(params)
-        return True
-        
-    except Exception as e:
-        print(f"Error sending feedback email: {e}")
-        return False
+            </div>
+            
+            <p><strong>Feedback:</strong></p>
+            <div class="feedback">
+{feedback_data.get('feedback_text', '')}
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    subject = f"Faculty Hub Feedback from {feedback_data.get('user_email', 'User')}"
+    
+    return send_email(admin_email, "Admin", subject, html_content)
