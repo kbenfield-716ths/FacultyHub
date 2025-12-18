@@ -347,3 +347,44 @@ def send_unavailability_confirmation(
     )
     
     return send_email(faculty_email, faculty_name, subject, html_content)
+
+async def send_feedback_email(feedback_data: dict) -> bool:
+    """
+    Send feedback submission email to admin
+    
+    Args:
+        feedback_data: Dictionary containing feedback details
+            - user_email: Email of user submitting feedback
+            - feedback_text: The feedback content
+            - timestamp: When feedback was submitted
+    
+    Returns:
+        bool: True if email sent successfully
+    """
+    try:
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #232D4B;">Faculty Hub Feedback Received</h2>
+                <p><strong>From:</strong> {feedback_data.get('user_email', 'Anonymous')}</p>
+                <p><strong>Submitted:</strong> {feedback_data.get('timestamp', 'Unknown')}</p>
+                <hr style="border: 1px solid #E57200;">
+                <h3>Feedback:</h3>
+                <p style="white-space: pre-wrap;">{feedback_data.get('feedback_text', '')}</p>
+            </body>
+        </html>
+        """
+        
+        params = {
+            "from": "PCCM Faculty Hub <noreply@facultyhub.fly.dev>",
+            "to": ["kjm5ul@virginia.edu"],  # Your admin email
+            "subject": f"Faculty Hub Feedback from {feedback_data.get('user_email', 'User')}",
+            "html": html_content,
+        }
+        
+        email = resend.Emails.send(params)
+        return True
+        
+    except Exception as e:
+        print(f"Error sending feedback email: {e}")
+        return False
