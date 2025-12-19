@@ -1,27 +1,27 @@
 """
 Email notification service for PCCM Faculty Hub
 Handles confirmation emails for IRPA shifts and unavailability requests
-Uses Resend API (https://resend.com)
+Uses Gmail SMTP (replacing Resend)
 """
 
 import os
+import smtplib
 from datetime import datetime
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from typing import List, Dict
 import logging
-import resend
 
 logger = logging.getLogger(__name__)
 
 # Email configuration
-SENDER_EMAIL = "kbenfield@facultyhub.app"
+SENDER_EMAIL = os.getenv("GMAIL_USER", "uvapccmfacultyhub@gmail.com")
 SENDER_NAME = "PCCM Faculty Hub"
 
-# Get Resend API key from environment variable
-RESEND_API_KEY = os.getenv("RESEND_API_KEY")
-
-# Set the API key for the resend library
-if RESEND_API_KEY:
-    resend.api_key = RESEND_API_KEY
+# Gmail SMTP configuration
+GMAIL_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 465
 
 
 def format_date_with_day(date_str: str) -> str:
@@ -263,34 +263,45 @@ def create_unavailability_confirmation_email(
     return html_content
 
 
-def send_email(to_email: str, to_name: str, subject: str, html_content: str) -> bool:
+def send_email(to_email: str, to_name: str, subject: str, html_content: str, reply_to: str = None) -> bool:
     """
-    Send email via Resend
+    Send email via Gmail SMTP
+    
+    Args:
+        to_email: Recipient email address
+        to_name: Recipient name
+        subject: Email subject line
+        html_content: HTML body of email
+        reply_to: Optional reply-to email address
     
     Returns:
         bool: True if successful, False otherwise
     """
-    if not RESEND_API_KEY:
-        logger.error("RESEND_API_KEY environment variable not set")
+    if not GMAIL_PASSWORD:
+        logger.error("GMAIL_APP_PASSWORD environment variable not set")
         return False
     
     try:
-        params = {
-            "from": f"{SENDER_NAME} <{SENDER_EMAIL}>",
-            "to": [to_email],
-            "subject": subject,
-            "html": html_content,
-        }
+        # Create message
+        msg = MIMEMultipart('alternative')
+        msg['From'] = f"{SENDER_NAME} <{SENDER_EMAIL}>"
+        msg['To'] = to_email
+        msg['Subject'] = subject
         
-        response = resend.Emails.send(params)
+        if reply_to:
+            msg['Reply-To'] = reply_to
         
-        # Resend returns a dict with 'id' on success
-        if response and 'id' in response:
-            logger.info(f"Email sent successfully to {to_email}: {subject} (ID: {response['id']})")
-            return True
-        else:
-            logger.error(f"Failed to send email to {to_email}. Response: {response}")
-            return False
+        # Attach HTML content
+        html_part = MIMEText(html_content, 'html')
+        msg.attach(html_part)
+        
+        # Send via Gmail SMTP
+        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
+            server.login(SENDER_EMAIL, GMAIL_PASSWORD)
+            server.send_message(msg)
+        
+        logger.info(f"Email sent successfully to {to_email}: {subject}")
+        return True
             
     except Exception as e:
         logger.error(f"Error sending email to {to_email}: {str(e)}")
@@ -454,4 +465,5 @@ def send_feedback_email(
     
     subject = f"Faculty Hub Feedback [{feedback_type.upper()}] from {user_name}"
     
-    return send_email(admin_email, "Admin", subject, html_content)
+    # Include reply-to so you can reply directly to the user
+    return send_email(admin_email, "Admin", subject, html_content, reply_to=user_email)
