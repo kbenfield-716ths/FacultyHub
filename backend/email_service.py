@@ -13,7 +13,7 @@ import resend
 logger = logging.getLogger(__name__)
 
 # Email configuration
-SENDER_EMAIL = "kbenfield@rekindelingproject.com"
+SENDER_EMAIL = "kbenfield@send.facultyhub.app"
 SENDER_NAME = "PCCM Faculty Hub"
 
 # Get Resend API key from environment variable
